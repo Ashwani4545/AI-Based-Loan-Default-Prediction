@@ -115,7 +115,7 @@ Deployment: - GitHub - Render / Heroku / AWS
 ------------------------------------------------------------------------
 
 ## Project Structure
-
+```
 AI_Loan_Default_Predictor/
 │
 ├── data/
@@ -165,7 +165,7 @@ AI_Loan_Default_Predictor/
 ├── requirements.txt
 │
 └── README.md
-
+```
 ------------------------------------------------------------------------
 
 ## Installation
