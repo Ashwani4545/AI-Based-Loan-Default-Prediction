@@ -116,19 +116,55 @@ Deployment: - GitHub - Render / Heroku / AWS
 
 ## Project Structure
 
-AI-Loan-Default-Prediction
-
-data/ - raw_dataset.csv - processed_dataset.csv
-
-notebooks/ - exploratory_data_analysis.ipynb - model_training.ipynb
-
-model/ - loan_default_model.pkl
-
-app/ - app.py templates/ - index.html static/ - css/ - js/
-
-utils/ - preprocessing.py - explainability.py - drift_detection.py
-
-requirements.txt README.md
+AI_Loan_Default_Predictor/
+│
+├── data/
+│   ├── raw/
+│   │   └── loan_data.csv
+│   │
+│   └── processed/
+│       └── cleaned_data.csv
+│
+├── notebooks/
+│   └── EDA.ipynb
+│
+├── src/
+│   ├── data_preprocessing.py
+│   ├── feature_engineering.py
+│   ├── train_model.py
+│   ├── evaluate_model.py
+│   ├── predict.py
+│
+├── models/
+│   └── loan_default_model.pkl
+│
+├── explainability/
+│   └── shap_explainer.py
+│
+├── monitoring/
+│   └── drift_detection.py
+│
+├── webapp/
+│   ├── app.py
+│   │
+│   ├── templates/
+│   │   ├── index.html
+│   │   ├── result.html
+│   │   └── dashboard.html
+│   │
+│   └── static/
+│       ├── css/
+│       │   └── style.css
+│       │
+│       └── js/
+│           └── script.js
+│
+├── utils/
+│   └── config.py
+│
+├── requirements.txt
+│
+└── README.md
 
 ------------------------------------------------------------------------
 
