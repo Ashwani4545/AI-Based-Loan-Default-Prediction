@@ -1,4 +1,7 @@
-# train_model.py
+# src/train_model.py
+
+import sys
+from pathlib import Path
 
 import pandas as pd
 import joblib
@@ -10,48 +13,79 @@ from sklearn.linear_model import LogisticRegression
 
 from xgboost import XGBClassifier
 
-import config
+from utils.config import (
+    PROCESSED_DATA_PATH,
+    TARGET_COLUMN,
+    TEST_SIZE,
+    RANDOM_STATE,
+    MODEL_PATH,
+    XGB_PARAMS,
+)
 
+
+# Ensure project root is on sys.path when running: python src/train_model.py
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+# ========================
+# LOAD DATA
+# ========================
 
 def load_data():
-    data = pd.read_csv(config.DATA_PATH)
+    data = pd.read_csv(PROCESSED_DATA_PATH)
     return data
 
 
+# ========================
+# PREPROCESS DATA
+# ========================
+
 def preprocess_data(data):
-    X = data.drop(config.TARGET_COLUMN, axis=1)
-    y = data[config.TARGET_COLUMN]
+    X = data.drop(TARGET_COLUMN, axis=1)
+    y = data[TARGET_COLUMN]
     return X, y
 
 
-def split_data(X, y):
+# ========================
+# SPLIT DATA
+# ========================
 
-    X_train, X_test, y_train, y_test = train_test_split(
+def split_data(X, y):
+    return train_test_split(
         X,
         y,
-        test_size=config.TEST_SIZE,
-        random_state=config.RANDOM_STATE
+        test_size=TEST_SIZE,
+        random_state=RANDOM_STATE,
+        stratify=y
     )
 
-    return X_train, X_test, y_train, y_test
 
+# ========================
+# TRAIN MODELS
+# ========================
 
 def train_models(X_train, y_train):
 
     models = {
         "logistic_regression": LogisticRegression(max_iter=1000),
-        "random_forest": RandomForestClassifier(),
-        "xgboost": XGBClassifier(eval_metric="logloss")
+        "random_forest": RandomForestClassifier(n_estimators=100),
+        "xgboost": XGBClassifier(**XGB_PARAMS)
     }
 
     trained_models = {}
 
     for name, model in models.items():
+        print(f"\nTraining {name}...")
         model.fit(X_train, y_train)
         trained_models[name] = model
 
     return trained_models
 
+
+# ========================
+# EVALUATE MODELS
+# ========================
 
 def evaluate_models(models, X_test, y_test):
 
@@ -59,30 +93,37 @@ def evaluate_models(models, X_test, y_test):
 
     for name, model in models.items():
 
-        predictions = model.predict(X_test)
+        preds = model.predict(X_test)
+        acc = accuracy_score(y_test, preds)
 
-        accuracy = accuracy_score(y_test, predictions)
+        print(f"\nModel: {name}")
+        print(f"Accuracy: {acc:.4f}")
+        print(classification_report(y_test, preds))
 
-        print("\nModel:", name)
-        print("Accuracy:", accuracy)
-        print(classification_report(y_test, predictions))
-
-        results[name] = accuracy
+        results[name] = acc
 
     return results
 
+
+# ========================
+# SAVE BEST MODEL
+# ========================
 
 def save_best_model(models, results):
 
     best_model_name = max(results, key=results.get)
     best_model = models[best_model_name]
 
-    print("\nBest Model:", best_model_name)
+    print(f"\nBest Model: {best_model_name}")
 
-    joblib.dump(best_model, config.MODEL_PATH)
+    joblib.dump(best_model, MODEL_PATH)
 
-    print("Model saved at:", config.MODEL_PATH)
+    print(f"Model saved at: {MODEL_PATH}")
 
+
+# ========================
+# MAIN
+# ========================
 
 def main():
 
