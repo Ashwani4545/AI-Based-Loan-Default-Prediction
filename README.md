@@ -145,19 +145,14 @@ AI_Loan_Default_Predictor/
 │   └── drift_detection.py
 │
 ├── webapp/
-│   ├── app.py
-│   │
-│   ├── templates/
-│   │   ├── index.html
-│   │   ├── result.html
-│   │   └── dashboard.html
-│   │
-│   └── static/
-│       ├── css/
-│       │   └── style.css
-│       │
-│       └── js/
-│           └── script.js
+│   ├── app.py                → Main Flask backend
+│   ├── templates/            → HTML pages (UI)
+│       ├── index.html        → Input form (user enters data)
+│       ├── result.html       → Prediction result page
+│       └── dashboard.html    → Admin/analytics page
+│   ├── static/               → Frontend assets
+│       ├── css/style.css     → Styling
+│       └── js/script.js      → JS logic (optional)
 │
 ├── utils/
 │   └── config.py
