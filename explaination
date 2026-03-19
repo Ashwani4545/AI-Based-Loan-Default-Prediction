@@ -1,0 +1,4 @@
+Accuracy:=
+Logistic Regression - 80.01%
+Random Forest - 80.65%
+XGBoost - 80.93%

@@ -1,7 +1,10 @@
 # src/train_model.py
 
 import sys
-from pathlib import Path
+import os
+import re
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd
 import joblib
@@ -10,7 +13,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-
 from xgboost import XGBClassifier
 
 from utils.config import (
@@ -22,11 +24,6 @@ from utils.config import (
     XGB_PARAMS,
 )
 
-
-# Ensure project root is on sys.path when running: python src/train_model.py
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 
 # ========================
 # LOAD DATA
@@ -41,10 +38,42 @@ def load_data():
 # PREPROCESS DATA
 # ========================
 
+def _sanitize_and_uniquify_columns(columns):
+    seen = {}
+    cleaned = []
+
+    for col in columns:
+        c = str(col)
+        c = re.sub(r"[\[\]<>]", "_", c)      # xgboost-forbidden chars
+        c = re.sub(r"\s+", "_", c.strip())   # spaces -> _
+        c = re.sub(r"[^0-9a-zA-Z_]", "_", c) # keep safe chars
+
+        if c in seen:
+            seen[c] += 1
+            c = f"{c}_{seen[c]}"
+        else:
+            seen[c] = 0
+
+        cleaned.append(c)
+
+    return cleaned
+
+
 def preprocess_data(data):
     X = data.drop(TARGET_COLUMN, axis=1)
     y = data[TARGET_COLUMN]
+    
+    # Convert object/string columns to numeric
+    X = pd.get_dummies(X, drop_first=True)
+
+    # Ensure XGBoost-compatible feature names
+    X.columns = _sanitize_and_uniquify_columns(X.columns)
+
+    # Ensure numeric dtype for all models
+    X = X.astype("float32")
+    
     return X, y
+
 
 
 # ========================
@@ -68,7 +97,7 @@ def split_data(X, y):
 def train_models(X_train, y_train):
 
     models = {
-        "logistic_regression": LogisticRegression(max_iter=1000),
+        "logistic_regression": LogisticRegression(max_iter=5000, solver="saga"),
         "random_forest": RandomForestClassifier(n_estimators=100),
         "xgboost": XGBClassifier(**XGB_PARAMS)
     }
