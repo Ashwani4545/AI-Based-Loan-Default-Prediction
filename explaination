@@ -2,3 +2,54 @@ Accuracy:=
 Logistic Regression - 80.01%
 Random Forest - 80.65%
 XGBoost - 80.93%
+
+Viva:=
+phase-1:=
+Question:=
+
+Answer:=
+
+
+phase-2:=
+Question:=
+
+Answer:=
+
+
+phase-3:=
+Question:=
+
+Answer:=
+
+
+phase-4:=
+Question:=
+
+Answer:=
+
+
+
+phase-5:=
+Question:=
+“What did you achieve in this phase?”
+Answer:=
+“In Phase 5, I implemented the Governance and Explainability layer using SHAP to interpret model decisions and fairness metrics like demographic parity and equal opportunity to detect bias. This ensures the system is transparent, fair, and regulator-ready.”
+
+
+phase-6:=
+Question-1:=
+“How do you detect model instability?”
+Answer:=
+“We use Population Stability Index (PSI) to compare feature distributions between training and incoming data. If PSI exceeds threshold, we trigger drift alerts.”
+
+Question-2:=
+“How does your system ensure stability?”
+Answer:=
+“We implemented a PSI-based drift monitoring system that continuously compares incoming data with training data and triggers alerts when distribution shifts occur.”
+
+
+phase-:7=
+Question:=
+
+Answer:=
+
