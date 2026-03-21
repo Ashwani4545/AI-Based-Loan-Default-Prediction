@@ -5,10 +5,11 @@ import numpy as np
 import sys
 from pathlib import Path
 import xgboost as xgb
+import pickle
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from utils.config import MODEL_PATH, PROCESSED_DATA_PATH
+from utils.config import MODEL_PATH
 
 app = Flask(__name__)
 
@@ -16,18 +17,18 @@ app = Flask(__name__)
 model = joblib.load(MODEL_PATH)
 print(f"✅ Model loaded from {MODEL_PATH}")
 
-# Load training data to get feature names
-training_data = pd.read_csv(PROCESSED_DATA_PATH)
-expected_features = sorted([col for col in training_data.columns if col != 'loan_status'])
-print(f"✅ Expected {len(expected_features)} features")
+# Load expected features
+with open('utils/model_features.pkl', 'rb') as f:
+    model_features = pickle.load(f)
+print(f"✅ Model expects {len(model_features)} features")
 
 def preprocess_input(form_data):
-    """Convert form input to one-hot encoded features matching training data"""
+    """Convert form input to one-hot encoded features matching model"""
     
-    # Initialize all features with 0
-    input_dict = {feature: 0.0 for feature in expected_features}
+    # Initialize all model features with 0
+    input_dict = {feature: 0.0 for feature in model_features}
     
-    # Set numeric features
+    # Set numeric features directly
     numeric_fields = {
         'loan_amnt', 'int_rate', 'installment', 'annual_inc', 'dti',
         'fico_range_low', 'fico_range_high', 'open_acc', 'revol_bal',
@@ -69,9 +70,9 @@ def preprocess_input(form_data):
         if col_name in input_dict:
             input_dict[col_name] = 1.0
     
-    # Create DataFrame in correct order
+    # Create DataFrame in exact model order
     df = pd.DataFrame([input_dict])
-    df = df[expected_features].astype('float32')
+    df = df[model_features].astype('float32')
     
     return df
 
@@ -85,12 +86,12 @@ def predict():
         form_data = request.form.to_dict()
         print(f"📝 Form data received")
         
-        # Preprocess to one-hot encoded features
+        # Preprocess to model features
         input_df = preprocess_input(form_data)
-        print(f"📊 Input shape: {input_df.shape}, Features: {len(input_df.columns)}")
+        print(f"📊 Input shape: {input_df.shape}")
         
         # Make prediction
-        dmatrix = xgb.DMatrix(input_df, enable_categorical=False)
+        dmatrix = xgb.DMatrix(input_df)
         booster = model.get_booster()
         probability = booster.predict(dmatrix)[0]
         prediction = 1 if probability > 0.5 else 0
