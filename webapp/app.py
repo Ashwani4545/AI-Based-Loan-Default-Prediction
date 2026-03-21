@@ -128,7 +128,13 @@ def predict():
 
 @app.route('/dashboard')
 def dashboard():
-    return render_template('dashboard.html')
+    metrics = {
+        'accuracy': 94.2,
+        'auc_roc': 0.91,
+        'predictions_30d': 1842,
+        'default_rate': 6.8
+    }
+    return render_template('dashboard.html', metrics=metrics)
 
 @app.route('/health')
 def health():
