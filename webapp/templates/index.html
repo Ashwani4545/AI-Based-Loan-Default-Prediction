@@ -33,269 +33,240 @@
       <div class="hero-strip">
         <div class="hero-eyebrow">⚡ AI Risk Engine v2.4</div>
         <h1 class="hero-title">Loan Default<br />Prediction</h1>
-        <p class="hero-sub">
-          Enter applicant details below. Our ML model will assess default
-          probability in real-time using 47 risk indicators.
-        </p>
       </div>
 
       <div class="content-area">
-        <div
-          style="
-            display: grid;
-            grid-template-columns: 1fr 360px;
-            gap: 24px;
-            align-items: start;
-          "
-        >
-          <!-- LEFT: FORM -->
-          <div class="card fade-up">
-            <div class="card-label">Application Form</div>
-            <div class="card-title" style="margin-bottom: 28px">
-              Applicant Details
+        <form method="POST" action="/predict" class="loan-form">
+          <div class="form-section">
+            <h3>Loan Details</h3>
+
+            <div class="form-group">
+              <label for="loan_amount">Loan Amount ($)</label>
+              <input
+                type="number"
+                id="loan_amount"
+                name="loan_amount"
+                required
+                value="5000"
+                min="0"
+                step="100"
+              />
             </div>
 
-            <form action="/predict" method="post" id="predictForm">
-              <div class="form-grid">
-                <!-- Row 1 -->
-                <div
-                  style="
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 16px;
-                  "
-                >
-                  <div class="form-group">
-                    <label class="form-label">Age</label>
-                    <input
-                      class="form-input"
-                      type="number"
-                      name="age"
-                      placeholder="e.g. 34"
-                      min="18"
-                      max="80"
-                      required
-                    />
-                  </div>
-                  <div class="form-group">
-                    <label class="form-label">Employment Status</label>
-                    <select class="form-input" name="employment">
-                      <option value="salaried">Salaried</option>
-                      <option value="self_employed">Self-Employed</option>
-                      <option value="business">Business Owner</option>
-                      <option value="retired">Retired</option>
-                    </select>
-                  </div>
-                </div>
-
-                <!-- Income -->
-                <div class="form-group">
-                  <label class="form-label">Annual Income</label>
-                  <div class="form-input-prefix">
-                    <span class="prefix-symbol">₹</span>
-                    <input
-                      class="form-input"
-                      type="number"
-                      name="income"
-                      placeholder="e.g. 1200000"
-                      required
-                    />
-                  </div>
-                  <span class="form-hint"
-                    >Gross annual income before taxes</span
-                  >
-                </div>
-
-                <!-- Loan row -->
-                <div
-                  style="
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 16px;
-                  "
-                >
-                  <div class="form-group">
-                    <label class="form-label">Loan Amount</label>
-                    <div class="form-input-prefix">
-                      <span class="prefix-symbol">₹</span>
-                      <input
-                        class="form-input"
-                        type="number"
-                        name="loan_amount"
-                        placeholder="e.g. 500000"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div class="form-group">
-                    <label class="form-label">Tenure (Months)</label>
-                    <select class="form-input" name="tenure">
-                      <option value="12">12 months</option>
-                      <option value="24">24 months</option>
-                      <option value="36" selected>36 months</option>
-                      <option value="48">48 months</option>
-                      <option value="60">60 months</option>
-                      <option value="84">84 months</option>
-                    </select>
-                  </div>
-                </div>
-
-                <!-- Credit score -->
-                <div class="form-group">
-                  <label class="form-label">Credit Score (CIBIL)</label>
-                  <input
-                    class="form-input"
-                    type="number"
-                    name="credit_score"
-                    placeholder="300 – 900"
-                    min="300"
-                    max="900"
-                  />
-                  <span class="form-hint"
-                    >Leave blank if not available — model will infer</span
-                  >
-                </div>
-
-                <!-- Loan purpose -->
-                <div class="form-group">
-                  <label class="form-label">Loan Purpose</label>
-                  <select class="form-input" name="purpose">
-                    <option value="home">Home Purchase</option>
-                    <option value="vehicle">Vehicle</option>
-                    <option value="education">Education</option>
-                    <option value="business">Business Expansion</option>
-                    <option value="medical">Medical</option>
-                    <option value="personal">Personal</option>
-                  </select>
-                </div>
-
-                <!-- Existing EMIs -->
-                <div class="form-group">
-                  <label class="form-label">Existing Monthly EMIs</label>
-                  <div class="form-input-prefix">
-                    <span class="prefix-symbol">₹</span>
-                    <input
-                      class="form-input"
-                      type="number"
-                      name="existing_emi"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-
-                <div class="divider" style="margin: 4px 0"></div>
-
-                <button
-                  type="submit"
-                  class="btn btn-primary btn-full"
-                  id="submitBtn"
-                >
-                  <div class="spinner"></div>
-                  <span class="btn-text">Run Risk Assessment →</span>
-                </button>
-              </div>
-            </form>
-          </div>
-
-          <!-- RIGHT: INFO PANEL -->
-          <div style="display: flex; flex-direction: column; gap: 16px">
-            <div class="card fade-up delay-1">
-              <div class="card-label">Model Performance</div>
-              <div
-                style="
-                  display: grid;
-                  grid-template-columns: 1fr 1fr;
-                  gap: 12px;
-                  margin-top: 12px;
-                "
-              >
-                <div>
-                  <div
-                    class="stat-value"
-                    style="font-size: 22px; color: var(--gold)"
-                  >
-                    94.2%
-                  </div>
-                  <div class="stat-label">Accuracy</div>
-                </div>
-                <div>
-                  <div
-                    class="stat-value"
-                    style="font-size: 22px; color: var(--teal)"
-                  >
-                    0.91
-                  </div>
-                  <div class="stat-label">AUC-ROC</div>
-                </div>
-                <div>
-                  <div class="stat-value" style="font-size: 22px">47</div>
-                  <div class="stat-label">Features</div>
-                </div>
-                <div>
-                  <div class="stat-value" style="font-size: 22px">XGBoost</div>
-                  <div class="stat-label">Algorithm</div>
-                </div>
-              </div>
+            <div class="form-group">
+              <label for="int_rate">Interest Rate (%)</label>
+              <input
+                type="number"
+                id="int_rate"
+                name="int_rate"
+                required
+                value="12"
+                min="0"
+                max="30"
+                step="0.1"
+              />
             </div>
 
-            <div class="card fade-up delay-2">
-              <div class="card-label">Key Risk Factors</div>
-              <div style="margin-top: 14px">
-                <div class="factor-row">
-                  <span class="factor-name">Debt-to-Income</span>
-                  <div class="factor-bar-wrap">
-                    <div class="factor-bar" style="width: 85%"></div>
-                  </div>
-                  <span class="factor-val">0.85</span>
-                </div>
-                <div class="factor-row">
-                  <span class="factor-name">Credit History</span>
-                  <div class="factor-bar-wrap">
-                    <div class="factor-bar" style="width: 72%"></div>
-                  </div>
-                  <span class="factor-val">0.72</span>
-                </div>
-                <div class="factor-row">
-                  <span class="factor-name">Employment</span>
-                  <div class="factor-bar-wrap">
-                    <div class="factor-bar" style="width: 61%"></div>
-                  </div>
-                  <span class="factor-val">0.61</span>
-                </div>
-                <div class="factor-row">
-                  <span class="factor-name">Loan Amount</span>
-                  <div class="factor-bar-wrap">
-                    <div class="factor-bar" style="width: 55%"></div>
-                  </div>
-                  <span class="factor-val">0.55</span>
-                </div>
-              </div>
+            <div class="form-group">
+              <label for="term">Loan Term</label>
+              <select id="term" name="term" required>
+                <option value="36_months">36 Months</option>
+                <option value="60_months" selected>60 Months</option>
+              </select>
             </div>
 
-            <div
-              class="card fade-up delay-3"
-              style="
-                background: var(--gold-dim);
-                border-color: rgba(201, 168, 76, 0.25);
-              "
-            >
-              <div
-                style="
-                  font-size: 13px;
-                  color: var(--gold-light);
-                  line-height: 1.6;
-                "
-              >
-                <strong
-                  style="display: block; margin-bottom: 6px; font-size: 14px"
-                  >📋 Compliance Notice</strong
-                >
-                All predictions are indicative only and must be reviewed by a
-                certified credit officer before any disbursement decision.
-              </div>
+            <div class="form-group">
+              <label for="purpose">Loan Purpose</label>
+              <select id="purpose" name="purpose" required>
+                <option value="debt_consolidation" selected>
+                  Debt Consolidation
+                </option>
+                <option value="credit_card">Credit Card</option>
+                <option value="home_improvement">Home Improvement</option>
+                <option value="major_purchase">Major Purchase</option>
+                <option value="medical">Medical</option>
+                <option value="moving">Moving</option>
+                <option value="other">Other</option>
+              </select>
             </div>
           </div>
-        </div>
+
+          <div class="form-section">
+            <h3>Financial Information</h3>
+
+            <div class="form-group">
+              <label for="income">Annual Income ($)</label>
+              <input
+                type="number"
+                id="income"
+                name="income"
+                required
+                value="50000"
+                min="0"
+                step="1000"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="dti">Debt-to-Income Ratio</label>
+              <input
+                type="number"
+                id="dti"
+                name="dti"
+                required
+                value="0.3"
+                min="0"
+                max="1"
+                step="0.01"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="credit_score">Credit Score</label>
+              <input
+                type="number"
+                id="credit_score"
+                name="credit_score"
+                required
+                value="700"
+                min="300"
+                max="850"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="revol_bal">Revolving Balance ($)</label>
+              <input
+                type="number"
+                id="revol_bal"
+                name="revol_bal"
+                value="0"
+                min="0"
+                step="100"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="revol_util">Revolving Utilization (%)</label>
+              <input
+                type="number"
+                id="revol_util"
+                name="revol_util"
+                value="30"
+                min="0"
+                max="100"
+                step="1"
+              />
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3>Credit History</h3>
+
+            <div class="form-group">
+              <label for="open_acc">Open Accounts</label>
+              <input
+                type="number"
+                id="open_acc"
+                name="open_acc"
+                value="5"
+                min="0"
+                step="1"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="total_acc">Total Accounts</label>
+              <input
+                type="number"
+                id="total_acc"
+                name="total_acc"
+                value="10"
+                min="0"
+                step="1"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="delinq_2yrs">Delinquencies (2 years)</label>
+              <input
+                type="number"
+                id="delinq_2yrs"
+                name="delinq_2yrs"
+                value="0"
+                min="0"
+                step="1"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="inq_last_6mths">Inquiries (Last 6 Months)</label>
+              <input
+                type="number"
+                id="inq_last_6mths"
+                name="inq_last_6mths"
+                value="0"
+                min="0"
+                step="1"
+              />
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3>Personal Information</h3>
+
+            <div class="form-group">
+              <label for="emp_length">Employment Length</label>
+              <select id="emp_length" name="emp_length" required>
+                <option value="<1_year">Less than 1 year</option>
+                <option value="1_year">1 year</option>
+                <option value="2_years">2 years</option>
+                <option value="3_years">3 years</option>
+                <option value="4_years">4 years</option>
+                <option value="5_years" selected>5 years</option>
+                <option value="6_years">6 years</option>
+                <option value="7_years">7 years</option>
+                <option value="8_years">8 years</option>
+                <option value="9_years">9 years</option>
+                <option value="10+_years">10+ years</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="home_ownership">Home Ownership</label>
+              <select id="home_ownership" name="home_ownership" required>
+                <option value="MORTGAGE" selected>Mortgage</option>
+                <option value="OWN">Own</option>
+                <option value="RENT">Rent</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="addr_state">State</label>
+              <select id="addr_state" name="addr_state" required>
+                <option value="CA" selected>California</option>
+                <option value="TX">Texas</option>
+                <option value="NY">New York</option>
+                <option value="FL">Florida</option>
+                <option value="IL">Illinois</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="verification_status">Verification Status</label>
+              <select
+                id="verification_status"
+                name="verification_status"
+                required
+              >
+                <option value="Verified" selected>Verified</option>
+                <option value="Source_Verified">Source Verified</option>
+              </select>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-submit">🔍 Assess Risk</button>
+        </form>
       </div>
     </div>
 
