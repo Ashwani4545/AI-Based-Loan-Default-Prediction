@@ -42,48 +42,27 @@
         <!-- STATS ROW -->
         <div class="stats-row">
           <div class="stat-card fade-up">
-            <div
-              class="stat-icon"
-              style="background: var(--gold-dim); color: var(--gold)"
-            >
-              🎯
-            </div>
-            <div class="stat-value">{{ metrics.accuracy }}%</div>
-            <div class="stat-label">Model Accuracy</div>
-            <div class="stat-change up">▲ +0.4% this month</div>
+            <div class="stat-icon" style="background: var(--gold-dim); color: var(--gold)">🎯</div>
+            <div class="stat-value">{{ (metrics.accuracy * 100) | round(2) }}%</div>
+            <div class="stat-label">Accuracy</div>
           </div>
-          <div class="stat-card fade-up delay-1">
-            <div
-              class="stat-icon"
-              style="background: var(--teal-dim); color: var(--teal)"
-            >
-              📈
-            </div>
-            <div class="stat-value">0.91</div>
-            <div class="stat-label">AUC-ROC Score</div>
-            <div class="stat-change up">▲ +0.02 vs baseline</div>
+
+          <div class="stat-card fade-up">
+            <div class="stat-icon" style="background: var(--blue-dim); color: var(--blue)">✓</div>
+            <div class="stat-value">{{ (metrics.precision * 100) | round(2) }}%</div>
+            <div class="stat-label">Precision</div>
           </div>
-          <div class="stat-card fade-up delay-2">
-            <div
-              class="stat-icon"
-              style="background: var(--green-dim); color: var(--green)"
-            >
-              ✅
-            </div>
-            <div class="stat-value">1,842</div>
-            <div class="stat-label">Predictions (30d)</div>
-            <div class="stat-change up">▲ +12% vs prior period</div>
+
+          <div class="stat-card fade-up">
+            <div class="stat-icon" style="background: var(--green-dim); color: var(--green)">↗</div>
+            <div class="stat-value">{{ (metrics.recall * 100) | round(2) }}%</div>
+            <div class="stat-label">Recall</div>
           </div>
-          <div class="stat-card fade-up delay-3">
-            <div
-              class="stat-icon"
-              style="background: var(--red-dim); color: var(--red)"
-            >
-              ⚠️
-            </div>
-            <div class="stat-value">6.8%</div>
-            <div class="stat-label">Default Rate Flagged</div>
-            <div class="stat-change down">▼ −0.9% vs industry avg</div>
+
+          <div class="stat-card fade-up">
+            <div class="stat-icon" style="background: var(--red-dim); color: var(--red)">⚡</div>
+            <div class="stat-value">{{ (metrics.f1_score * 100) | round(2) }}%</div>
+            <div class="stat-label">F1 Score</div>
           </div>
         </div>
 
