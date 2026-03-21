@@ -1,16 +1,650 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
-    <title>Dashboard</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AegisBank — Model Dashboard</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
   </head>
   <body>
-    <h2>Model Dashboard</h2>
+    <!-- NAV -->
+    <nav class="nav">
+      <a class="nav-brand" href="/">
+        <div class="nav-logo">A</div>
+        <span class="nav-name">AegisBank</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="/">Assessment</a></li>
+        <li><a href="/dashboard" class="active">Dashboard</a></li>
+        <li><a href="#">History</a></li>
+        <li><a href="#">Reports</a></li>
+      </ul>
+      <div class="nav-actions">
+        <div class="nav-badge">🔔</div>
+        <div class="nav-badge">👤</div>
+      </div>
+    </nav>
 
-    <p>Coming Soon:</p>
-    <ul>
-      <li>Model Accuracy</li>
-      <li>Drift Monitoring</li>
-      <li>SHAP Graphs</li>
-    </ul>
+    <div class="page-wrapper">
+      <div class="hero-strip">
+        <div class="hero-eyebrow">🗠 Live Analytics</div>
+        <h1 class="hero-title">Model Dashboard</h1>
+        <p class="hero-sub">
+          Real-time performance metrics, drift monitoring, and explainability
+          insights for the AegisBank Risk Engine.
+        </p>
+      </div>
+
+      <div class="content-area">
+        <!-- STATS ROW -->
+        <div class="stats-row">
+          <div class="stat-card fade-up">
+            <div
+              class="stat-icon"
+              style="background: var(--gold-dim); color: var(--gold)"
+            >
+              🎯
+            </div>
+            <div class="stat-value">94.2%</div>
+            <div class="stat-label">Model Accuracy</div>
+            <div class="stat-change up">▲ +0.4% this month</div>
+          </div>
+          <div class="stat-card fade-up delay-1">
+            <div
+              class="stat-icon"
+              style="background: var(--teal-dim); color: var(--teal)"
+            >
+              📈
+            </div>
+            <div class="stat-value">0.91</div>
+            <div class="stat-label">AUC-ROC Score</div>
+            <div class="stat-change up">▲ +0.02 vs baseline</div>
+          </div>
+          <div class="stat-card fade-up delay-2">
+            <div
+              class="stat-icon"
+              style="background: var(--green-dim); color: var(--green)"
+            >
+              ✅
+            </div>
+            <div class="stat-value">1,842</div>
+            <div class="stat-label">Predictions (30d)</div>
+            <div class="stat-change up">▲ +12% vs prior period</div>
+          </div>
+          <div class="stat-card fade-up delay-3">
+            <div
+              class="stat-icon"
+              style="background: var(--red-dim); color: var(--red)"
+            >
+              ⚠️
+            </div>
+            <div class="stat-value">6.8%</div>
+            <div class="stat-label">Default Rate Flagged</div>
+            <div class="stat-change down">▼ −0.9% vs industry avg</div>
+          </div>
+        </div>
+
+        <!-- TABS -->
+        <div class="pill-tabs fade-up">
+          <button class="pill-tab active" onclick="showTab('accuracy', this)">
+            Model Accuracy
+          </button>
+          <button class="pill-tab" onclick="showTab('drift', this)">
+            Drift Monitoring
+          </button>
+          <button class="pill-tab" onclick="showTab('shap', this)">
+            SHAP Analysis
+          </button>
+        </div>
+
+        <!-- TAB: ACCURACY -->
+        <div
+          id="tab-accuracy"
+          style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px"
+          class="fade-up"
+        >
+          <div class="card">
+            <div class="card-label">Accuracy Over Time (30d)</div>
+            <div class="chart-area" style="height: 220px">
+              <svg
+                width="100%"
+                height="100%"
+                viewBox="0 0 400 160"
+                preserveAspectRatio="none"
+                style="position: absolute; inset: 0; width: 100%; height: 100%"
+              >
+                <defs>
+                  <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#c9a84c" stop-opacity="0.3" />
+                    <stop offset="100%" stop-color="#c9a84c" stop-opacity="0" />
+                  </linearGradient>
+                </defs>
+                <path
+                  d="M0,100 C30,90 60,80 90,75 C120,70 150,72 180,65 C210,58 240,55 270,50 C300,45 330,42 360,38 L400,35 L400,160 L0,160 Z"
+                  fill="url(#lineGrad)"
+                />
+                <path
+                  d="M0,100 C30,90 60,80 90,75 C120,70 150,72 180,65 C210,58 240,55 270,50 C300,45 330,42 360,38 L400,35"
+                  fill="none"
+                  stroke="#c9a84c"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                />
+                <!-- dots -->
+                <circle cx="0" cy="100" r="4" fill="#c9a84c" />
+                <circle cx="90" cy="75" r="4" fill="#c9a84c" />
+                <circle cx="180" cy="65" r="4" fill="#c9a84c" />
+                <circle cx="270" cy="50" r="4" fill="#c9a84c" />
+                <circle cx="400" cy="35" r="4" fill="#c9a84c" />
+              </svg>
+              <div class="chart-icon" style="position: relative">📊</div>
+              <span style="position: relative"
+                >Accuracy trend over 30 days</span
+              >
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-label">Confusion Matrix</div>
+            <div
+              style="
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+                margin-top: 16px;
+              "
+            >
+              <div
+                style="
+                  background: var(--green-dim);
+                  border: 1px solid rgba(34, 197, 94, 0.2);
+                  border-radius: 10px;
+                  padding: 20px;
+                  text-align: center;
+                "
+              >
+                <div
+                  style="
+                    font-family: &quot;Playfair Display&quot;, serif;
+                    font-size: 28px;
+                    font-weight: 700;
+                    color: var(--green);
+                  "
+                >
+                  847
+                </div>
+                <div
+                  style="
+                    font-size: 12px;
+                    color: var(--text-secondary);
+                    margin-top: 4px;
+                  "
+                >
+                  True Negatives
+                </div>
+              </div>
+              <div
+                style="
+                  background: var(--red-dim);
+                  border: 1px solid rgba(239, 68, 68, 0.2);
+                  border-radius: 10px;
+                  padding: 20px;
+                  text-align: center;
+                "
+              >
+                <div
+                  style="
+                    font-family: &quot;Playfair Display&quot;, serif;
+                    font-size: 28px;
+                    font-weight: 700;
+                    color: var(--red);
+                  "
+                >
+                  54
+                </div>
+                <div
+                  style="
+                    font-size: 12px;
+                    color: var(--text-secondary);
+                    margin-top: 4px;
+                  "
+                >
+                  False Positives
+                </div>
+              </div>
+              <div
+                style="
+                  background: var(--red-dim);
+                  border: 1px solid rgba(239, 68, 68, 0.2);
+                  border-radius: 10px;
+                  padding: 20px;
+                  text-align: center;
+                "
+              >
+                <div
+                  style="
+                    font-family: &quot;Playfair Display&quot;, serif;
+                    font-size: 28px;
+                    font-weight: 700;
+                    color: var(--red);
+                  "
+                >
+                  38
+                </div>
+                <div
+                  style="
+                    font-size: 12px;
+                    color: var(--text-secondary);
+                    margin-top: 4px;
+                  "
+                >
+                  False Negatives
+                </div>
+              </div>
+              <div
+                style="
+                  background: var(--green-dim);
+                  border: 1px solid rgba(34, 197, 94, 0.2);
+                  border-radius: 10px;
+                  padding: 20px;
+                  text-align: center;
+                "
+              >
+                <div
+                  style="
+                    font-family: &quot;Playfair Display&quot;, serif;
+                    font-size: 28px;
+                    font-weight: 700;
+                    color: var(--green);
+                  "
+                >
+                  903
+                </div>
+                <div
+                  style="
+                    font-size: 12px;
+                    color: var(--text-secondary);
+                    margin-top: 4px;
+                  "
+                >
+                  True Positives
+                </div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 16px">
+              <div
+                style="
+                  flex: 1;
+                  background: var(--navy-light);
+                  border-radius: 8px;
+                  padding: 12px;
+                  text-align: center;
+                "
+              >
+                <div
+                  style="font-size: 18px; font-weight: 700; color: var(--teal)"
+                >
+                  93.1%
+                </div>
+                <div style="font-size: 11px; color: var(--text-muted)">
+                  Precision
+                </div>
+              </div>
+              <div
+                style="
+                  flex: 1;
+                  background: var(--navy-light);
+                  border-radius: 8px;
+                  padding: 12px;
+                  text-align: center;
+                "
+              >
+                <div
+                  style="font-size: 18px; font-weight: 700; color: var(--teal)"
+                >
+                  96.0%
+                </div>
+                <div style="font-size: 11px; color: var(--text-muted)">
+                  Recall
+                </div>
+              </div>
+              <div
+                style="
+                  flex: 1;
+                  background: var(--navy-light);
+                  border-radius: 8px;
+                  padding: 12px;
+                  text-align: center;
+                "
+              >
+                <div
+                  style="font-size: 18px; font-weight: 700; color: var(--teal)"
+                >
+                  94.5%
+                </div>
+                <div style="font-size: 11px; color: var(--text-muted)">
+                  F1-Score
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: DRIFT -->
+        <div id="tab-drift" style="display: none">
+          <div
+            style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px"
+            class="fade-up"
+          >
+            <div class="card">
+              <div class="card-label">Population Stability Index (PSI)</div>
+              <div
+                style="
+                  margin-top: 16px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 14px;
+                "
+              >
+                {% for feature, psi, status in [('Income', 0.04, 'stable'),
+                ('Age', 0.07, 'stable'), ('Loan Amount', 0.12, 'warn'), ('Credit
+                Score', 0.03, 'stable'), ('DTI Ratio', 0.19, 'drift')] %}
+                <div>
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      margin-bottom: 6px;
+                      font-size: 13px;
+                    "
+                  >
+                    <span>{{ feature }}</span>
+                    <span
+                      style="font-family:'DM Mono',monospace; color:{% if status=='drift' %}var(--red){% elif status=='warn' %}#f59e0b{% else %}var(--green){% endif %};"
+                    >
+                      PSI {{ psi }} — {{ status | upper }}
+                    </span>
+                  </div>
+                  <div class="risk-track">
+                    <div
+                      class="risk-fill {% if status=='drift' %}high{% elif status=='warn' %}medium{% else %}low{% endif %}"
+                      style="width:{{ (psi / 0.25 * 100) | int }}%"
+                    ></div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+              <div
+                style="
+                  margin-top: 16px;
+                  font-size: 12px;
+                  color: var(--text-muted);
+                "
+              >
+                PSI &lt; 0.10: Stable &nbsp;|&nbsp; 0.10–0.20: Warning
+                &nbsp;|&nbsp; &gt;0.20: Drift
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-label">Drift Alerts</div>
+              <div
+                style="
+                  margin-top: 16px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 12px;
+                "
+              >
+                <div
+                  style="
+                    padding: 14px;
+                    background: var(--red-dim);
+                    border: 1px solid rgba(239, 68, 68, 0.2);
+                    border-radius: 10px;
+                  "
+                >
+                  <div
+                    style="
+                      font-size: 13px;
+                      font-weight: 600;
+                      color: var(--red);
+                      margin-bottom: 4px;
+                    "
+                  >
+                    🚨 DTI Ratio — High Drift
+                  </div>
+                  <div style="font-size: 12px; color: var(--text-secondary)">
+                    PSI = 0.19. Distribution shift detected vs training data.
+                    Consider retraining.
+                  </div>
+                </div>
+                <div
+                  style="
+                    padding: 14px;
+                    background: rgba(245, 158, 11, 0.08);
+                    border: 1px solid rgba(245, 158, 11, 0.2);
+                    border-radius: 10px;
+                  "
+                >
+                  <div
+                    style="
+                      font-size: 13px;
+                      font-weight: 600;
+                      color: #f59e0b;
+                      margin-bottom: 4px;
+                    "
+                  >
+                    ⚡ Loan Amount — Moderate Shift
+                  </div>
+                  <div style="font-size: 12px; color: var(--text-secondary)">
+                    PSI = 0.12. Monitor over next 2 weeks before action.
+                  </div>
+                </div>
+                <div
+                  style="
+                    padding: 14px;
+                    background: var(--green-dim);
+                    border: 1px solid rgba(34, 197, 94, 0.15);
+                    border-radius: 10px;
+                  "
+                >
+                  <div
+                    style="
+                      font-size: 13px;
+                      font-weight: 600;
+                      color: var(--green);
+                      margin-bottom: 4px;
+                    "
+                  >
+                    ✅ All Other Features Stable
+                  </div>
+                  <div style="font-size: 12px; color: var(--text-secondary)">
+                    4 of 5 monitored features within acceptable PSI range.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: SHAP -->
+        <div id="tab-shap" style="display: none">
+          <div
+            style="display: grid; grid-template-columns: 1fr 360px; gap: 20px"
+            class="fade-up"
+          >
+            <div class="card">
+              <div class="card-label">Global SHAP Feature Importance</div>
+              <div
+                style="
+                  margin-top: 20px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 16px;
+                "
+              >
+                {% for name, val, pct, direction in [ ('Debt-to-Income Ratio',
+                0.31, 90, 'negative'), ('CIBIL Credit Score', 0.27, 78,
+                'positive'), ('Monthly Income', 0.19, 55, 'positive'),
+                ('Loan-to-Value Ratio', 0.16, 47, 'negative'), ('Employment
+                Tenure', 0.14, 40, 'positive'), ('Existing EMI Burden', 0.12,
+                34, 'negative'), ('Age', 0.09, 26, 'positive'), ('Loan Purpose',
+                0.07, 20, 'negative') ] %}
+                <div>
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      margin-bottom: 8px;
+                      font-size: 13px;
+                    "
+                  >
+                    <span>{{ name }}</span>
+                    <div style="display: flex; align-items: center; gap: 10px">
+                      <span
+                        style="font-size:11px; padding:2px 8px; border-radius:20px;
+                    {% if direction=='positive' %}background:var(--green-dim); color:var(--green);{% else %}background:var(--red-dim); color:var(--red);{% endif %}"
+                      >
+                        {{ '▼ protective' if direction=='positive' else '▲ risk
+                        driver' }}
+                      </span>
+                      <span
+                        style="
+                          font-family: &quot;DM Mono&quot;, monospace;
+                          color: var(--gold);
+                        "
+                        >{{ val }}</span
+                      >
+                    </div>
+                  </div>
+                  <div class="risk-track" style="height: 6px">
+                    <div
+                      style="height:100%; border-radius:99px; width:{{ pct }}%;
+                  background: linear-gradient(90deg, {% if direction=='positive' %}#22c55e, #4ade80{% else %}#ef4444, #f87171{% endif %});"
+                    ></div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 16px">
+              <div class="card">
+                <div class="card-label">Model Explainability</div>
+                <div
+                  style="
+                    margin-top: 12px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                  "
+                >
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      font-size: 13px;
+                    "
+                  >
+                    <span style="color: var(--text-secondary)"
+                      >Explainability Score</span
+                    >
+                    <span
+                      style="
+                        color: var(--gold);
+                        font-family: &quot;DM Mono&quot;, monospace;
+                      "
+                      >87/100</span
+                    >
+                  </div>
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      font-size: 13px;
+                    "
+                  >
+                    <span style="color: var(--text-secondary)"
+                      >Monotonicity</span
+                    >
+                    <span style="color: var(--green)">✓ Enforced</span>
+                  </div>
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      font-size: 13px;
+                    "
+                  >
+                    <span style="color: var(--text-secondary)"
+                      >Fairness Audit</span
+                    >
+                    <span style="color: var(--green)">✓ Passed</span>
+                  </div>
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      font-size: 13px;
+                    "
+                  >
+                    <span style="color: var(--text-secondary)">Bias Check</span>
+                    <span style="color: var(--green)">✓ No Protected</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-label">Retraining Schedule</div>
+                <div
+                  style="
+                    margin-top: 12px;
+                    font-size: 13px;
+                    color: var(--text-secondary);
+                    line-height: 1.7;
+                  "
+                >
+                  <div
+                    style="
+                      color: var(--text-primary);
+                      font-weight: 500;
+                      margin-bottom: 6px;
+                    "
+                  >
+                    Next retraining in 14 days
+                  </div>
+                  Automatic trigger if PSI &gt; 0.20 on any key feature or
+                  accuracy drops below 92%.
+                </div>
+                <button
+                  class="btn btn-ghost"
+                  style="margin-top: 16px; width: 100%; font-size: 13px"
+                >
+                  Force Retrain Now
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+      function showTab(name, el) {
+        document
+          .querySelectorAll('[id^="tab-"]')
+          .forEach((t) => (t.style.display = "none"));
+        document.getElementById("tab-" + name).style.display = "";
+        document
+          .querySelectorAll(".pill-tab")
+          .forEach((t) => t.classList.remove("active"));
+        el.classList.add("active");
+      }
+    </script>
   </body>
 </html>

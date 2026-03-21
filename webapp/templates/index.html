@@ -1,26 +1,304 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
-    <title>Loan Prediction</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AegisBank — Loan Assessment</title>
     <link
       rel="stylesheet"
       href="{{ url_for('static', filename='css/style.css') }}"
     />
   </head>
   <body>
-    <h2>Loan Default Prediction</h2>
+    <!-- NAV -->
+    <nav class="nav">
+      <a class="nav-brand" href="/">
+        <div class="nav-logo">A</div>
+        <span class="nav-name">AegisBank</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="/" class="active">Assessment</a></li>
+        <li><a href="/dashboard">Dashboard</a></li>
+        <li><a href="#">History</a></li>
+        <li><a href="#">Reports</a></li>
+      </ul>
+      <div class="nav-actions">
+        <div class="nav-badge" title="Notifications">🔔</div>
+        <div class="nav-badge" title="Account">👤</div>
+      </div>
+    </nav>
 
-    <form action="/predict" method="post">
-      <label>Age:</label>
-      <input type="number" name="age" required /><br />
+    <div class="page-wrapper">
+      <!-- HERO -->
+      <div class="hero-strip">
+        <div class="hero-eyebrow">⚡ AI Risk Engine v2.4</div>
+        <h1 class="hero-title">Loan Default<br />Prediction</h1>
+        <p class="hero-sub">
+          Enter applicant details below. Our ML model will assess default
+          probability in real-time using 47 risk indicators.
+        </p>
+      </div>
 
-      <label>Income:</label>
-      <input type="number" name="income" required /><br />
+      <div class="content-area">
+        <div
+          style="
+            display: grid;
+            grid-template-columns: 1fr 360px;
+            gap: 24px;
+            align-items: start;
+          "
+        >
+          <!-- LEFT: FORM -->
+          <div class="card fade-up">
+            <div class="card-label">Application Form</div>
+            <div class="card-title" style="margin-bottom: 28px">
+              Applicant Details
+            </div>
 
-      <label>Loan Amount:</label>
-      <input type="number" name="loan_amount" required /><br />
+            <form action="/predict" method="post" id="predictForm">
+              <div class="form-grid">
+                <!-- Row 1 -->
+                <div
+                  style="
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 16px;
+                  "
+                >
+                  <div class="form-group">
+                    <label class="form-label">Age</label>
+                    <input
+                      class="form-input"
+                      type="number"
+                      name="age"
+                      placeholder="e.g. 34"
+                      min="18"
+                      max="80"
+                      required
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Employment Status</label>
+                    <select class="form-input" name="employment">
+                      <option value="salaried">Salaried</option>
+                      <option value="self_employed">Self-Employed</option>
+                      <option value="business">Business Owner</option>
+                      <option value="retired">Retired</option>
+                    </select>
+                  </div>
+                </div>
 
-      <button type="submit">Predict</button>
-    </form>
+                <!-- Income -->
+                <div class="form-group">
+                  <label class="form-label">Annual Income</label>
+                  <div class="form-input-prefix">
+                    <span class="prefix-symbol">₹</span>
+                    <input
+                      class="form-input"
+                      type="number"
+                      name="income"
+                      placeholder="e.g. 1200000"
+                      required
+                    />
+                  </div>
+                  <span class="form-hint"
+                    >Gross annual income before taxes</span
+                  >
+                </div>
+
+                <!-- Loan row -->
+                <div
+                  style="
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 16px;
+                  "
+                >
+                  <div class="form-group">
+                    <label class="form-label">Loan Amount</label>
+                    <div class="form-input-prefix">
+                      <span class="prefix-symbol">₹</span>
+                      <input
+                        class="form-input"
+                        type="number"
+                        name="loan_amount"
+                        placeholder="e.g. 500000"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Tenure (Months)</label>
+                    <select class="form-input" name="tenure">
+                      <option value="12">12 months</option>
+                      <option value="24">24 months</option>
+                      <option value="36" selected>36 months</option>
+                      <option value="48">48 months</option>
+                      <option value="60">60 months</option>
+                      <option value="84">84 months</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Credit score -->
+                <div class="form-group">
+                  <label class="form-label">Credit Score (CIBIL)</label>
+                  <input
+                    class="form-input"
+                    type="number"
+                    name="credit_score"
+                    placeholder="300 – 900"
+                    min="300"
+                    max="900"
+                  />
+                  <span class="form-hint"
+                    >Leave blank if not available — model will infer</span
+                  >
+                </div>
+
+                <!-- Loan purpose -->
+                <div class="form-group">
+                  <label class="form-label">Loan Purpose</label>
+                  <select class="form-input" name="purpose">
+                    <option value="home">Home Purchase</option>
+                    <option value="vehicle">Vehicle</option>
+                    <option value="education">Education</option>
+                    <option value="business">Business Expansion</option>
+                    <option value="medical">Medical</option>
+                    <option value="personal">Personal</option>
+                  </select>
+                </div>
+
+                <!-- Existing EMIs -->
+                <div class="form-group">
+                  <label class="form-label">Existing Monthly EMIs</label>
+                  <div class="form-input-prefix">
+                    <span class="prefix-symbol">₹</span>
+                    <input
+                      class="form-input"
+                      type="number"
+                      name="existing_emi"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+
+                <div class="divider" style="margin: 4px 0"></div>
+
+                <button
+                  type="submit"
+                  class="btn btn-primary btn-full"
+                  id="submitBtn"
+                >
+                  <div class="spinner"></div>
+                  <span class="btn-text">Run Risk Assessment →</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- RIGHT: INFO PANEL -->
+          <div style="display: flex; flex-direction: column; gap: 16px">
+            <div class="card fade-up delay-1">
+              <div class="card-label">Model Performance</div>
+              <div
+                style="
+                  display: grid;
+                  grid-template-columns: 1fr 1fr;
+                  gap: 12px;
+                  margin-top: 12px;
+                "
+              >
+                <div>
+                  <div
+                    class="stat-value"
+                    style="font-size: 22px; color: var(--gold)"
+                  >
+                    94.2%
+                  </div>
+                  <div class="stat-label">Accuracy</div>
+                </div>
+                <div>
+                  <div
+                    class="stat-value"
+                    style="font-size: 22px; color: var(--teal)"
+                  >
+                    0.91
+                  </div>
+                  <div class="stat-label">AUC-ROC</div>
+                </div>
+                <div>
+                  <div class="stat-value" style="font-size: 22px">47</div>
+                  <div class="stat-label">Features</div>
+                </div>
+                <div>
+                  <div class="stat-value" style="font-size: 22px">XGBoost</div>
+                  <div class="stat-label">Algorithm</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card fade-up delay-2">
+              <div class="card-label">Key Risk Factors</div>
+              <div style="margin-top: 14px">
+                <div class="factor-row">
+                  <span class="factor-name">Debt-to-Income</span>
+                  <div class="factor-bar-wrap">
+                    <div class="factor-bar" style="width: 85%"></div>
+                  </div>
+                  <span class="factor-val">0.85</span>
+                </div>
+                <div class="factor-row">
+                  <span class="factor-name">Credit History</span>
+                  <div class="factor-bar-wrap">
+                    <div class="factor-bar" style="width: 72%"></div>
+                  </div>
+                  <span class="factor-val">0.72</span>
+                </div>
+                <div class="factor-row">
+                  <span class="factor-name">Employment</span>
+                  <div class="factor-bar-wrap">
+                    <div class="factor-bar" style="width: 61%"></div>
+                  </div>
+                  <span class="factor-val">0.61</span>
+                </div>
+                <div class="factor-row">
+                  <span class="factor-name">Loan Amount</span>
+                  <div class="factor-bar-wrap">
+                    <div class="factor-bar" style="width: 55%"></div>
+                  </div>
+                  <span class="factor-val">0.55</span>
+                </div>
+              </div>
+            </div>
+
+            <div
+              class="card fade-up delay-3"
+              style="
+                background: var(--gold-dim);
+                border-color: rgba(201, 168, 76, 0.25);
+              "
+            >
+              <div
+                style="
+                  font-size: 13px;
+                  color: var(--gold-light);
+                  line-height: 1.6;
+                "
+              >
+                <strong
+                  style="display: block; margin-bottom: 6px; font-size: 14px"
+                  >📋 Compliance Notice</strong
+                >
+                All predictions are indicative only and must be reviewed by a
+                certified credit officer before any disbursement decision.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
   </body>
 </html>
