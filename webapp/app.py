@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import sys
 from pathlib import Path
+import xgboost as xgb
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -15,83 +16,62 @@ app = Flask(__name__)
 model = joblib.load(MODEL_PATH)
 print(f"✅ Model loaded from {MODEL_PATH}")
 
-# Load training feature names
+# Load training data to get feature names
 training_data = pd.read_csv(PROCESSED_DATA_PATH)
-training_features = [col for col in training_data.columns if col != 'loan_status']
-print(f"✅ Training features loaded: {len(training_features)} features")
+expected_features = sorted([col for col in training_data.columns if col != 'loan_status'])
+print(f"✅ Expected {len(expected_features)} features")
 
-def preprocess_input(data):
-    """Convert form to match training preprocessing"""
-    # Create DataFrame initialized to 0
-    df = pd.DataFrame(0.0, index=[0], columns=training_features)
+def preprocess_input(form_data):
+    """Convert form input to one-hot encoded features matching training data"""
     
-    # Numeric features
-    numeric_map = {
-        'loan_amnt': float(data.get('loan_amount', 5000)),
-        'int_rate': float(data.get('int_rate', 12)),
-        'installment': float(data.get('existing_emi', 200)),
-        'annual_inc': float(data.get('income', 50000)),
-        'dti': float(data.get('dti', 0.3)),
-        'fico_range_low': float(data.get('credit_score', 700)),
-        'fico_range_high': float(data.get('credit_score', 700)) + 10,
-        'open_acc': float(data.get('open_acc', 5)),
-        'revol_bal': float(data.get('revol_bal', 0)),
-        'revol_util': float(data.get('revol_util', 30)),
-        'total_acc': float(data.get('total_acc', 10)),
-        'delinq_2yrs': float(data.get('delinq_2yrs', 0)),
-        'inq_last_6mths': float(data.get('inq_last_6mths', 0)),
-        'pub_rec': float(data.get('pub_rec', 0)),
-        'pub_rec_bankruptcies': float(data.get('pub_rec_bankruptcies', 0)),
-        'tax_liens': float(data.get('tax_liens', 0)),
-        'collections_12_mths_ex_med': float(data.get('collections_12_mths_ex_med', 0)),
-        'acc_now_delinq': float(data.get('acc_now_delinq', 0)),
-        'tot_coll_amt': float(data.get('tot_coll_amt', 0)),
-        'tot_cur_bal': float(data.get('tot_cur_bal', 0)),
-        'avg_cur_bal': float(data.get('avg_cur_bal', 0)),
-        'bc_open_to_buy': float(data.get('bc_open_to_buy', 0)),
-        'bc_util': float(data.get('bc_util', 0)),
-        'num_actv_bc_tl': float(data.get('num_actv_bc_tl', 2)),
-        'num_rev_accts': float(data.get('num_rev_accts', 5)),
-        'percent_bc_gt_75': float(data.get('percent_bc_gt_75', 25)),
+    # Initialize all features with 0
+    input_dict = {feature: 0.0 for feature in expected_features}
+    
+    # Set numeric features
+    numeric_fields = {
+        'loan_amnt', 'int_rate', 'installment', 'annual_inc', 'dti',
+        'fico_range_low', 'fico_range_high', 'open_acc', 'revol_bal',
+        'revol_util', 'total_acc', 'delinq_2yrs', 'inq_last_6mths',
+        'pub_rec', 'pub_rec_bankruptcies', 'tax_liens',
+        'collections_12_mths_ex_med', 'acc_now_delinq', 'tot_coll_amt',
+        'tot_cur_bal', 'avg_cur_bal', 'bc_open_to_buy', 'bc_util',
+        'num_actv_bc_tl', 'num_rev_accts', 'percent_bc_gt_75'
     }
     
-    for col, val in numeric_map.items():
-        if col in df.columns:
-            df[col] = val
+    for field in numeric_fields:
+        if field in input_dict:
+            try:
+                input_dict[field] = float(form_data.get(field, 0))
+            except:
+                input_dict[field] = 0.0
     
     # One-hot encode categoricals
-    term = data.get('term', '60_months')
-    df[f'term__{term}'] = 1
+    categorical_mappings = {
+        'term': form_data.get('term', '60_months'),
+        'grade': form_data.get('grade', 'B'),
+        'sub_grade': form_data.get('sub_grade', 'B1'),
+        'emp_length': form_data.get('emp_length', '5_years'),
+        'home_ownership': form_data.get('home_ownership', 'MORTGAGE'),
+        'verification_status': form_data.get('verification_status', 'Verified'),
+        'purpose': form_data.get('purpose', 'debt_consolidation'),
+        'addr_state': form_data.get('addr_state', 'CA'),
+        'initial_list_status': form_data.get('initial_list_status', 'w'),
+        'earliest_cr_line': form_data.get('earliest_cr_line', '01-Jan-00'),
+    }
     
-    grade = data.get('grade', 'B')
-    df[f'grade_{grade}'] = 1
+    # Set one-hot encoded columns
+    for cat_type, cat_value in categorical_mappings.items():
+        if cat_type == 'term':
+            col_name = f'term__{cat_value}'
+        else:
+            col_name = f'{cat_type}_{cat_value}'
+        
+        if col_name in input_dict:
+            input_dict[col_name] = 1.0
     
-    sub_grade = data.get('sub_grade', 'B1')
-    df[f'sub_grade_{sub_grade}'] = 1
-    
-    emp_length = data.get('emp_length', '5_years')
-    df[f'emp_length_{emp_length}'] = 1
-    
-    home_ownership = data.get('home_ownership', 'MORTGAGE')
-    df[f'home_ownership_{home_ownership}'] = 1
-    
-    verification_status = data.get('verification_status', 'Verified')
-    df[f'verification_status_{verification_status}'] = 1
-    
-    purpose = data.get('purpose', 'debt_consolidation')
-    df[f'purpose_{purpose}'] = 1
-    
-    addr_state = data.get('addr_state', 'CA')
-    df[f'addr_state_{addr_state}'] = 1
-    
-    initial_list_status = data.get('initial_list_status', 'w')
-    df[f'initial_list_status_{initial_list_status}'] = 1
-    
-    # For earliest_cr_line - just set a random/default one
-    df['earliest_cr_line_1_Jan'] = 1
-    
-    # Select only training features and ensure correct type
-    df = df[training_features].astype('float32')
+    # Create DataFrame in correct order
+    df = pd.DataFrame([input_dict])
+    df = df[expected_features].astype('float32')
     
     return df
 
@@ -102,21 +82,45 @@ def home():
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
-        data = request.form.to_dict()
-        df = preprocess_input(data)
+        form_data = request.form.to_dict()
+        print(f"📝 Form data received")
         
-        prediction = model.predict(df)[0]
-        probability = model.predict_proba(df)[0][1]
-
+        # Preprocess to one-hot encoded features
+        input_df = preprocess_input(form_data)
+        print(f"📊 Input shape: {input_df.shape}, Features: {len(input_df.columns)}")
+        
+        # Make prediction
+        dmatrix = xgb.DMatrix(input_df, enable_categorical=False)
+        booster = model.get_booster()
+        probability = booster.predict(dmatrix)[0]
+        prediction = 1 if probability > 0.5 else 0
+        
+        print(f"✅ Prediction: {prediction}, Probability: {probability:.4f}")
+        
+        # Determine risk level
+        if probability > 0.7:
+            risk = "🔴 VERY HIGH RISK"
+            color = "#d32f2f"
+        elif probability > 0.5:
+            risk = "🟠 HIGH RISK"
+            color = "#f57c00"
+        elif probability > 0.3:
+            risk = "🟡 MEDIUM RISK"
+            color = "#fbc02d"
+        else:
+            risk = "🟢 LOW RISK"
+            color = "#388e3c"
+        
         return render_template(
             'result.html',
             prediction=int(prediction),
             probability=round(float(probability * 100), 2),
-            risk_level="🔴 HIGH" if probability > 0.6 else "🟡 MEDIUM" if probability > 0.4 else "🟢 LOW"
+            risk_level=risk,
+            color=color
         )
-
+    
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"❌ Error: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 400
