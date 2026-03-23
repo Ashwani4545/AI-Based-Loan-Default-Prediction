@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 import pickle
 import json
+import xgboost as xgb
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -15,13 +16,21 @@ app = Flask(__name__)
 # ==============================
 # LOAD MODEL
 # ==============================
-model = joblib.load(MODEL_PATH)
-print(f"✅ Model loaded from {MODEL_PATH}")
+try:
+    model = joblib.load(MODEL_PATH)
+    print(f"✅ Model loaded from {MODEL_PATH}")
+except Exception as e:
+    print(f"❌ Error loading model: {e}")
+    model = None
 
 # Load expected features
-with open('utils/model_features.pkl', 'rb') as f:
-    model_features = pickle.load(f)
-print(f"✅ Model expects {len(model_features)} features")
+try:
+    with open(Path(__file__).resolve().parent.parent / 'utils/model_features.pkl', 'rb') as f:
+        model_features = pickle.load(f)
+    print(f"✅ Model expects {len(model_features)} features")
+except Exception as e:
+    print(f"❌ Error loading features: {e}")
+    model_features = []
 
 
 # ==============================
@@ -49,40 +58,46 @@ def load_metrics():
         }
 
     except FileNotFoundError:
-        print("⚠️ model_metrics.json not found. Creating default...")
+        print("⚠️ model_metrics.json not found")
         return {
-            "accuracy": 0.942,
-            "precision": 0.931,
-            "recall": 0.960,
-            "f1_score": 0.945,
+            "accuracy": 0.8074,
+            "precision": 0.5471,
+            "recall": 0.1687,
+            "f1_score": 0.2579,
             "confusion_matrix": {
-                "tn": 847,
-                "fp": 54,
-                "fn": 38,
-                "tp": 903
+                "tn": 1250,
+                "fp": 180,
+                "fn": 302,
+                "tp": 85
             }
         }
 
     except Exception as e:
         print(f"❌ Error loading metrics: {e}")
         return {
-            "accuracy": 0.942,
-            "precision": 0.931,
-            "recall": 0.960,
-            "f1_score": 0.945,
+            "accuracy": 0.8074,
+            "precision": 0.5471,
+            "recall": 0.1687,
+            "f1_score": 0.2579,
             "confusion_matrix": {
-                "tn": 847,
-                "fp": 54,
-                "fn": 38,
-                "tp": 903
+                "tn": 1250,
+                "fp": 180,
+                "fn": 302,
+                "tp": 85
             }
         }
+
+# Load metrics at startup
+metrics = load_metrics()
+print(f"✅ Metrics loaded: Accuracy={metrics['accuracy']:.4f}")
 
 
 # ==============================
 # PREPROCESS INPUT
 # ==============================
 def preprocess_input(form_data):
+    """Convert form input to one-hot encoded features matching model"""
+    
     input_dict = {feature: 0.0 for feature in model_features}
 
     numeric_fields = {
@@ -100,9 +115,11 @@ def preprocess_input(form_data):
             try:
                 value = float(form_data.get(field, 0))
                 if value < 0:
-                    raise ValueError(f"{field} cannot be negative")
+                    print(f"⚠️ {field} is negative, setting to 0")
+                    value = 0
                 input_dict[field] = value
-            except:
+            except ValueError:
+                print(f"⚠️ Could not convert {field} to float")
                 input_dict[field] = 0.0
 
     categorical_mappings = {
@@ -147,15 +164,19 @@ def home():
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
+        if not model:
+            return jsonify({"error": "Model not loaded"}), 500
+
         form_data = request.form.to_dict()
         print("📝 Form data received")
 
         input_df = preprocess_input(form_data)
         print(f"📊 Input shape: {input_df.shape}")
 
-        # ✅ FIXED prediction logic
-        probability = model.predict_proba(input_df)[0][1]
-        prediction = int(probability > 0.5)
+        # Make prediction using predict_proba
+        dmatrix = xgb.DMatrix(input_df)
+        probability = model.get_booster().predict(dmatrix)[0]
+        prediction = 1 if probability > 0.5 else 0
 
         print(f"✅ Prediction: {prediction}, Probability: {probability:.4f}")
 
@@ -183,18 +204,19 @@ def predict():
 
     except Exception as e:
         print(f"❌ Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 400
 
 
 @app.route('/dashboard')
 def dashboard():
-    metrics = load_metrics()
     return render_template('dashboard.html', metrics=metrics)
 
 
 @app.route('/health')
 def health():
-    return jsonify({"status": "ok"})
+    return jsonify({"status": "ok", "model_loaded": model is not None})
 
 
 # ==============================
