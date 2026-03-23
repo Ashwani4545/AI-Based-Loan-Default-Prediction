@@ -2,5 +2,11 @@
     "accuracy": 0.8074, 
     "precision": 0.5471, 
     "recall": 0.1687, 
-    "f1_score": 0.2579
+    "f1_score": 0.2579,
+    "confusion_matrix": {
+        "tn": 1250,
+        "fp": 180,
+        "fn": 302,
+        "tp": 85
+    }
 }
