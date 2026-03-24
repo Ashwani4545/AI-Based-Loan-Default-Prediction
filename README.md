@@ -108,7 +108,7 @@ Imbalanced-learn
 
 Data Processing: - Pandas - NumPy - Matplotlib - Seaborn
 
-Web Development: - Flask - HTML - CSS - Bootstrap
+Web Development: - PyCharm- HTML - CSS - Bootstrap
 
 Deployment: - GitHub - Render / Heroku / AWS
 
