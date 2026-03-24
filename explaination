@@ -1,7 +1,98 @@
-Accuracy:=
-Logistic Regression - 80.01%
-Random Forest - 80.65%
-XGBoost - 80.93%
+Model: logistic_regression
+Accuracy: 0.8001
+              precision    recall  f1-score   support
+
+           0       0.80      1.00      0.89     24003
+           1       0.00      0.00      0.00      5997
+
+    accuracy                           0.80     30000
+   macro avg       0.40      0.50      0.44     30000
+weighted avg       0.64      0.80      0.71     30000
+
+
+Model: random_forest
+Accuracy: 0.8055
+              precision    recall  f1-score   support
+
+           0       0.81      0.98      0.89     24003
+           1       0.58      0.10      0.17      5997
+
+    accuracy                           0.81     30000
+   macro avg       0.70      0.54      0.53     30000
+weighted avg       0.77      0.81      0.75     30000
+
+
+Model: xgboost
+Accuracy: 0.8093
+              precision    recall  f1-score   support
+
+           0       0.82      0.97      0.89     24003
+           1       0.59      0.15      0.24      5997
+
+    accuracy                           0.81     30000
+   macro avg       0.71      0.56      0.56     30000
+weighted avg       0.77      0.81      0.76     30000
+
+
+Best Model: xgboost
+
+
+==================================================
+MODEL EVALUATION METRICS
+==================================================
+Accuracy:  0.8021
+Precision: 0.7522
+Recall:    0.0146
+F1 Score:  0.0286
+ROC-AUC:   0.7471
+
+Confusion Matrix:
+TN: 119872, FP: 144
+FN: 29547, TP: 437
+
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.80      1.00      0.89    120016
+           1       0.75      0.01      0.03     29984
+
+    accuracy                           0.80    150000
+   macro avg       0.78      0.51      0.46    150000
+weighted avg       0.79      0.80      0.72    150000
+
+
+Looking for dataset at: E:\AI-Based-Loan-Default-Prediction\data\raw\loan_dataset.csv
+Dataset Loaded Successfully
+Dataset Shape: (150000, 37)
+
+Performing Feature Engineering...
+Train Size: (120000, 36)
+Test Size: (30000, 36)
+
+Preprocessing Completed Successfully
+Original Training Shape: (120000, 36)
+Resampled Training Shape: (192026, 36)
+Testing Shape: (30000, 36)
+
+
+📊 Feature Drift Report:
+
+loan_amnt: PSI=0.0006 → No Drift
+int_rate: PSI=0.0003 → No Drift
+installment: PSI=0.0286 → No Drift
+annual_inc: PSI=0.0004 → No Drift
+dti: PSI=8.7529 → High Drift
+fico_range_low: PSI=0.0001 → No Drift
+open_acc: PSI=0.1846 → Moderate Drift
+revol_bal: PSI=0.0003 → No Drift
+total_acc: PSI=0.5628 → High Drift
+
+✅ Drift report saved to E:\AI-Based-Loan-Default-Prediction\outputs\drift_report.csv
+📊 Visualization saved to E:\AI-Based-Loan-Default-Prediction\outputs\drift_report.png
+
+🚨 ALERT: Significant Drift Detected
+
+
 
 Viva:=
 phase-1:=

@@ -6,6 +6,8 @@ import pandas as pd
 import joblib
 from sklearn.metrics import confusion_matrix, roc_auc_score, classification_report, accuracy_score, precision_score, recall_score, f1_score
 import json
+import numpy as np
+from sklearn.preprocessing import LabelEncoder
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -21,6 +23,20 @@ def load_data():
     return pd.read_csv(PROCESSED_DATA_PATH)
 
 
+def preprocess_data(X):
+    """Apply same preprocessing as training"""
+    # One-hot encode categorical columns
+    categorical_cols = X.select_dtypes(include=['object']).columns.tolist()
+    
+    if categorical_cols:
+        print(f"🔄 One-hot encoding {len(categorical_cols)} categorical columns...")
+        X = pd.get_dummies(X, columns=categorical_cols, drop_first=False)
+    
+    # Ensure all columns are numeric
+    X = X.astype(np.float32)
+    return X
+
+
 def evaluate():
     model = load_model()
     data = load_data()
@@ -28,6 +44,26 @@ def evaluate():
     X = data.drop(TARGET_COLUMN, axis=1)
     y = data[TARGET_COLUMN]
 
+    print(f"📊 Original shape: {X.shape}")
+    
+    # Preprocess (one-hot encode)
+    X = preprocess_data(X)
+    print(f"✅ After preprocessing: {X.shape}")
+    
+    # Get model features
+    booster = model.get_booster()
+    model_features = booster.feature_names
+    print(f"🎯 Model expects {len(model_features)} features")
+    
+    # Align columns: add missing columns, remove extra columns
+    for col in model_features:
+        if col not in X.columns:
+            X[col] = 0.0
+    
+    X = X[model_features].astype(np.float32)
+    print(f"✅ Aligned to model features: {X.shape}")
+
+    # Make predictions
     preds = model.predict(X)
     probs = model.predict_proba(X)[:, 1]
 

@@ -1,0 +1,13 @@
+{
+    "accuracy": 0.8021,
+    "precision": 0.7522,
+    "recall": 0.0146,
+    "f1_score": 0.0286,
+    "roc_auc": 0.7471,
+    "confusion_matrix": {
+        "tn": 119872,
+        "fp": 144,
+        "fn": 29547,
+        "tp": 437
+    }
+}
