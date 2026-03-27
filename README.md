@@ -103,8 +103,7 @@ The system follows a multi-layer architecture:
 
 Programming Language: - Python
 
-Machine Learning Libraries: - Scikit-learn - XGBoost - SHAP -
-Imbalanced-learn
+Machine Learning Libraries: - Scikit-learn - XGBoost - SHAP - Imbalanced-learn
 
 Data Processing: - Pandas - NumPy - Matplotlib - Seaborn
 
@@ -183,7 +182,7 @@ pip install -r requirements.txt
 
 Start the Flask server
 
-python app/app.py
+`python .\webapp\app.py`
 
 Open your browser
 
