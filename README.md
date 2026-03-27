@@ -168,11 +168,9 @@ AI_Loan_Default_Predictor/
 
 ## Running the Application
 
-Start the Flask server
-`python .\webapp\app.py`
-Open your browser
-`http://127.0.0.1:5000`
-Enter borrower information to receive loan default prediction results.
+- Start the Flask server - `python .\webapp\app.py`
+- Open your browser - `http://127.0.0.1:5000`
+- Enter borrower information to receive loan default prediction results.
 
 ------------------------------------------------------------------------
 
