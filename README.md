@@ -51,28 +51,21 @@ loan default prediction system.
 ## Key Features
 
 ### AI-Based Risk Prediction
-
 Predicts whether a borrower will default using machine learning.
 
 ### Explainable AI
-
 Provides insights into why a prediction was made using SHAP.
 
 ### Data Preprocessing Pipeline
-
 Handles missing values, encoding, and feature scaling.
 
 ### Class Imbalance Handling
-
 SMOTE is used to improve prediction accuracy for rare default cases.
 
 ### Web-Based Interface
-
-Users can input borrower details and receive predictions through a Flask
-web app.
+Users can input borrower details and receive predictions through a Flask web app.
 
 ### Model Monitoring
-
 Includes mechanisms for detecting model drift.
 
 ------------------------------------------------------------------------
@@ -107,9 +100,9 @@ Machine Learning Libraries: - Scikit-learn - XGBoost - SHAP - Imbalanced-learn
 
 Data Processing: - Pandas - NumPy - Matplotlib - Seaborn
 
-Web Development: - PyCharm- HTML - CSS - Bootstrap
+Web Development: - Flask - HTML - CSS - Bootstrap
 
-Deployment: - GitHub - Render / Heroku / AWS
+Deployment: - GitHub - AWS
 
 ------------------------------------------------------------------------
 
