@@ -4,9 +4,7 @@
 
 The AI Loan Default Prediction System is a machine learning--based web
 application designed to help financial institutions evaluate the risk of
-loan applicants. The system predicts whether a borrower is likely to
-default on a loan by analyzing historical borrower and loan data using
-machine learning models.
+loan applicants. 
 
 Traditional credit scoring systems rely heavily on static financial
 records and often exclude individuals with limited credit history. This
