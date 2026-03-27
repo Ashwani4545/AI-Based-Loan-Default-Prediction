@@ -157,30 +157,21 @@ AI_Loan_Default_Predictor/
 
 ## Installation
 
-Clone the repository
-
-git clone (https://github.com/Ashwani4545/AI-Based-Loan-Default-Prediction)
-
-Navigate to project folder
-
-cd AI-Loan-Default-Prediction
-
-Install dependencies
-
-pip install -r requirements.txt
+- Clone the repository
+- git clone (`https://github.com/Ashwani4545/AI-Based-Loan-Default-Prediction`)
+- Navigate to project folder
+- cd AI-Loan-Default-Prediction
+- Install dependencies
+- pip install -r requirements.txt
 
 ------------------------------------------------------------------------
 
 ## Running the Application
 
 Start the Flask server
-
 `python .\webapp\app.py`
-
 Open your browser
-
 `http://127.0.0.1:5000`
-
 Enter borrower information to receive loan default prediction results.
 
 ------------------------------------------------------------------------
