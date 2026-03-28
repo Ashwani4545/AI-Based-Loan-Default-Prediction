@@ -1,6 +1,28 @@
 # AegisBank — Loan Default Prediction System
 
-A production-grade ML web application for predicting loan default risk using XGBoost, with a modern Flask dashboard.
+The AI Loan Default Prediction System is a machine learning--based web application designed to help financial institutions evaluate the risk of loan applicants. The system predicts whether a borrower is likely to default on a loan by analyzing historical borrower and loan data using machine learning models.
+
+Traditional credit scoring systems rely heavily on static financial records and often exclude individuals with limited credit history. This project introduces an AI‑driven approach that improves prediction accuracy while ensuring transparency and explainability.
+
+The system integrates: - XGBoost-based predictive modeling - Explainable AI techniques - Flask-based web application
+
+This creates a complete intelligent credit risk assessment platform.
+
+---
+## Problem Statement
+
+Financial institutions face several challenges in loan risk assessment:
+
+-   Financial Exclusion -- Many individuals lack formal credit history.
+-   Hidden Bias -- AI models may introduce indirect discrimination.
+-   Accuracy vs Explainability Trade-off -- Highly accurate models are
+    often difficult to interpret.
+-   Model Drift -- Prediction performance can degrade over time.
+-   Regulatory Compliance -- AI systems must be transparent and
+    auditable.
+
+The objective is to develop a fair, explainable, and stable AI-based
+loan default prediction system.
 
 ---
 
