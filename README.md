@@ -173,3 +173,16 @@ This could evolve into a Risk Intelligence SaaS platform for banks and
 NBFCs.
 
 ---
+## Conclusion
+
+The AI Loan Default Prediction System demonstrates how machine learning
+can improve financial risk assessment.
+
+By combining predictive modeling, explainable AI, and web deployment,
+the system provides a transparent and intelligent framework for loan
+decision-making.
+
+This approach supports financial inclusion while maintaining fairness
+and regulatory compliance.
+
+---
