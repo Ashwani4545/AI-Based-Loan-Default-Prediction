@@ -156,3 +156,20 @@ values produced during training. No divergence between training and UI.
 - **Column sanitization** — XGBoost-safe column names (no `[]<>` chars) applied identically in training and inference
 - **History** — JSON file (swap for SQLite/Postgres in production)
 - **Print-ready reports** — `report_detail.html` has `@media print` styles
+
+---
+## Future Scope
+
+The system can be expanded into a fintech platform offering:
+
+-   Real-time credit scoring API
+-   Integration with banking systems
+-   Advanced monitoring dashboards
+-   AI fairness auditing tools
+-   Mobile application interface
+-   MSME credit risk analytics
+
+This could evolve into a Risk Intelligence SaaS platform for banks and
+NBFCs.
+
+---
