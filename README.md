@@ -186,3 +186,6 @@ This approach supports financial inclusion while maintaining fairness
 and regulatory compliance.
 
 ---
+## License
+
+This project is developed for academic and research purposes.
