@@ -17,4 +17,4 @@ print(f"Model expects {len(model_features)} features")
 # Save the feature list
 with open('utils/model_features.pkl', 'wb') as f:
     pickle.dump(model_features, f)
-print("✅ Saved model features")
+print("Saved model features")
