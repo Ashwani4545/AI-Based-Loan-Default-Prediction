@@ -118,6 +118,7 @@ Deployment: - GitHub - Render / Heroku / AWS
 ```
 AI_Loan_Default_Predictor/
 │
+|
 ├── data/
 │   ├── raw/
 │   │   └── loan_data.csv
@@ -158,6 +159,9 @@ AI_Loan_Default_Predictor/
 │   └── config.py
 │
 ├── requirements.txt
+├── .dockerignore
+├── docker-compose.yml
+├── Dockerfile
 │
 └── README.md
 ```
