@@ -167,7 +167,7 @@ AI_Loan_Default_Predictor/
 
 Clone the repository
 
-git clone https://github.com/yourusername/AI-Loan-Default-Prediction.git
+git clone https://github.com/Ashwani4545/AI-Loan-Default-Prediction.git
 
 Navigate to project folder
 
