@@ -183,11 +183,11 @@ pip install -r requirements.txt
 
 Start the Flask server
 
-python app/app.py
+`python webapp/app.py`
 
 Open your browser
 
-http://127.0.0.1:5000
+`http://127.0.0.1:5000`
 
 Enter borrower information to receive loan default prediction results.
 
