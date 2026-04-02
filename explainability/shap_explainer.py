@@ -1,194 +1,208 @@
-# shap_explainer.py
+# src/shap_explainer.py
+"""
+Loan Default Prediction — SHAP Explainability & Fairness
+
+Generates:
+  - SHAP summary plot  (shap_summary.png)
+  - SHAP force plot    (shap_force_plot.html)
+  - Fairness report    (fairness_report.txt)
+
+Usage:
+    python -m src.shap_explainer
+"""
 
 import os
+import re
+import sys
+import logging
 import importlib
+import importlib.util
+from pathlib import Path
+
 import joblib
 import pandas as pd
+import matplotlib
+matplotlib.use("Agg")          # non-interactive backend — safe for servers
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
-from pathlib import Path
-import re
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from utils.config import MODEL_PATH, PROCESSED_DATA_PATH, TARGET_COLUMN, SENSITIVE_COLUMN
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
+log = logging.getLogger(__name__)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# COLUMN SANITIZER  (must match train_model.py exactly)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _sanitize_columns(columns) -> list:
+    seen: dict = {}
+    result: list = []
+    for col in columns:
+        c = re.sub(r"[\[\]<>]", "_", str(col))
+        c = re.sub(r"\s+",      "_", c.strip())
+        c = re.sub(r"[^0-9a-zA-Z_]", "_", c)
+        if c in seen:
+            seen[c] += 1; c = f"{c}_{seen[c]}"
+        else:
+            seen[c] = 0
+        result.append(c)
+    return result
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# EXPLAINER CLASS
+# ─────────────────────────────────────────────────────────────────────────────
 
 class LoanModelExplainer:
-    def __init__(self, model_path):
-        """
-        Initialize model and SHAP explainer
-        """
+
+    def __init__(self, model_path: str = MODEL_PATH):
         self.model = joblib.load(model_path)
 
-        shap_spec = importlib.util.find_spec("shap")
-        if shap_spec is None:
-            raise ImportError("The 'shap' package is not installed. Install it with: pip install shap")
-
+        spec = importlib.util.find_spec("shap")
+        if spec is None:
+            raise ImportError("Install shap: pip install shap")
         self.shap = importlib.import_module("shap")
+
         self.explainer = self.shap.Explainer(self.model)
+        log.info("SHAP explainer initialised ✅")
 
-    # =========================
-    # COLUMN SANITIZATION
-    # =========================
-    def _sanitize_and_uniquify_columns(self, columns):
-        seen = {}
-        cleaned = []
+    # ── DATA LOADING ─────────────────────────────────────────────────────────
 
-        for col in columns:
-            c = str(col)
-            c = re.sub(r"[\[\]<>]", "_", c)      # xgboost-forbidden chars
-            c = re.sub(r"\s+", "_", c.strip())   # spaces -> _
-            c = re.sub(r"[^0-9a-zA-Z_]", "_", c) # keep safe chars
-
-            if c in seen:
-                seen[c] += 1
-                c = f"{c}_{seen[c]}"
-            else:
-                seen[c] = 0
-
-            cleaned.append(c)
-
-        return cleaned
-
-    # =========================
-    # DATA LOADING
-    # =========================
-    def load_data(self, file_path, target_column):
+    def load_data(self, file_path: str, target_column: str):
         df = pd.read_csv(file_path)
-        
-        print(f"Available columns: {df.columns.tolist()}")
-        print(f"Looking for target: {target_column}")
-        
+
         if target_column not in df.columns:
-            raise KeyError(f"Target column '{target_column}' not found. Available: {df.columns.tolist()}")
-        
+            raise KeyError(f"Target '{target_column}' not found. Columns: {df.columns.tolist()}")
+
+        # Preserve raw df for sensitive attribute lookup before encoding
+        raw_df = df.copy()
+
         X = df.drop(columns=[target_column])
         y = df[target_column]
-        
-        # Apply same preprocessing as training
-        X = pd.get_dummies(X, drop_first=True)
-        X.columns = self._sanitize_and_uniquify_columns(X.columns)
-        X = X.astype("float32")
-        
-        return df, X, y
 
-    # =========================
-    # PREDICTION
-    # =========================
-    def predict(self, X):
+        X = pd.get_dummies(X, drop_first=True)
+        X.columns = _sanitize_columns(X.columns)
+        X = X.astype("float32")
+
+        # Align to model features
+        try:
+            model_features = self.model.get_booster().feature_names
+        except AttributeError:
+            model_features = list(getattr(self.model, "feature_names_in_", X.columns))
+
+        for col in model_features:
+            if col not in X.columns:
+                X[col] = 0.0
+        X = X[model_features]
+
+        return raw_df, X, y
+
+    # ── PREDICTION ───────────────────────────────────────────────────────────
+
+    def predict(self, X: pd.DataFrame):
         return self.model.predict(X)
 
-    # =========================
-    # SHAP EXPLAINABILITY
-    # =========================
-    def generate_shap_values(self, X):
+    # ── SHAP ─────────────────────────────────────────────────────────────────
+
+    def generate_shap_values(self, X: pd.DataFrame):
+        log.info("Computing SHAP values for %d samples …", len(X))
         return self.explainer(X)
 
-    def save_summary_plot(self, shap_values, X, output_path):
-        plt.figure()
+    def save_summary_plot(self, shap_values, X: pd.DataFrame, output_dir: str) -> None:
+        plt.figure(figsize=(10, 6))
         self.shap.summary_plot(shap_values, X, show=False)
-        plt.savefig(os.path.join(output_path, "shap_summary.png"))
+        plt.tight_layout()
+        path = os.path.join(output_dir, "shap_summary.png")
+        plt.savefig(path, dpi=150, bbox_inches="tight")
         plt.close()
+        log.info("SHAP summary plot → %s", path)
 
-    def save_force_plot(self, shap_values, index, output_path):
+    def save_force_plot(self, shap_values, index: int, output_dir: str) -> None:
         force = self.shap.plots.force(shap_values[index])
-        self.shap.save_html(os.path.join(output_path, "shap_force_plot.html"), force)
+        path  = os.path.join(output_dir, "shap_force_plot.html")
+        self.shap.save_html(path, force)
+        log.info("SHAP force plot  → %s", path)
 
-    # =========================
-    # FAIRNESS METRICS
-    # =========================
-    def demographic_parity(self, y_pred, sensitive_attr):
-        df = pd.DataFrame({
-            "prediction": y_pred,
-            "group": sensitive_attr
-        })
+    # ── FAIRNESS ─────────────────────────────────────────────────────────────
+
+    def demographic_parity(self, y_pred, sensitive_attr: pd.Series) -> pd.Series:
+        """Mean prediction rate per group."""
+        df = pd.DataFrame({"prediction": y_pred, "group": sensitive_attr.values})
         return df.groupby("group")["prediction"].mean()
 
-    def equal_opportunity(self, y_true, y_pred, sensitive_attr):
+    def equal_opportunity(self, y_true, y_pred, sensitive_attr: pd.Series) -> dict:
+        """True-Positive Rate (recall) per group."""
         df = pd.DataFrame({
-            "y_true": y_true,
+            "y_true": y_true.values,
             "y_pred": y_pred,
-            "group": sensitive_attr
+            "group":  sensitive_attr.values,
         })
-
-        results = {}
-
-        for group in df["group"].unique():
-            group_df = df[df["group"] == group]
-
-            # Handle edge case
-            if len(group_df["y_true"].unique()) < 2:
-                results[group] = 0
+        results: dict = {}
+        for group, gdf in df.groupby("group"):
+            if gdf["y_true"].nunique() < 2:
+                results[group] = 0.0
                 continue
-
-            tn, fp, fn, tp = confusion_matrix(
-                group_df["y_true"], group_df["y_pred"]
-            ).ravel()
-
-            tpr = tp / (tp + fn + 1e-6)
-            results[group] = tpr
-
+            tn, fp, fn, tp = confusion_matrix(gdf["y_true"], gdf["y_pred"]).ravel()
+            results[group] = round(tp / (tp + fn + 1e-9), 4)
         return results
 
-    # =========================
-    # REPORT GENERATION
-    # =========================
-    def generate_reports(self, data_path, target_column, sensitive_column, output_path):
-        os.makedirs(output_path, exist_ok=True)
+    # ── FULL REPORT ──────────────────────────────────────────────────────────
 
-        # Load data
-        df, X, y = self.load_data(data_path, target_column)
+    def generate_reports(
+        self,
+        data_path:        str = PROCESSED_DATA_PATH,
+        target_column:    str = TARGET_COLUMN,
+        sensitive_column: str = SENSITIVE_COLUMN,
+        output_dir:       str = "outputs",
+    ) -> None:
+        os.makedirs(output_dir, exist_ok=True)
 
-        # Predictions
-        y_pred = self.predict(X)
+        raw_df, X, y = self.load_data(data_path, target_column)
 
-        # SHAP
+        # Check sensitive column exists in raw (pre-encoding) df
+        if sensitive_column not in raw_df.columns:
+            log.warning("Sensitive column '%s' not found; skipping fairness metrics.", sensitive_column)
+            sensitive_col = None
+        else:
+            sensitive_col = raw_df[sensitive_column]
+
+        y_pred      = self.predict(X)
         shap_values = self.generate_shap_values(X)
 
-        self.save_summary_plot(shap_values, X, output_path)
-        self.save_force_plot(shap_values, index=0, output_path=output_path)
+        self.save_summary_plot(shap_values, X, output_dir)
+        self.save_force_plot(shap_values, index=0, output_dir=output_dir)
 
-        # Fairness
-        dp = self.demographic_parity(y_pred, df[sensitive_column])
-        eo = self.equal_opportunity(y, y_pred, df[sensitive_column])
+        # Fairness report
+        report_path = os.path.join(output_dir, "fairness_report.txt")
+        with open(report_path, "w") as f:
+            if sensitive_col is not None:
+                dp = self.demographic_parity(y_pred, sensitive_col)
+                eo = self.equal_opportunity(y, y_pred, sensitive_col)
+                f.write("=== Demographic Parity (avg prediction rate per group) ===\n")
+                f.write(dp.to_string() + "\n\n")
+                f.write("=== Equal Opportunity (TPR per group) ===\n")
+                for group, tpr in eo.items():
+                    f.write(f"  {group}: {tpr:.4f}\n")
+            else:
+                f.write("Fairness metrics skipped — sensitive column not available.\n")
 
-        # Save fairness report
-        with open(os.path.join(output_path, "fairness_report.txt"), "w") as f:
-            f.write("=== Demographic Parity ===\n")
-            f.write(str(dp) + "\n\n")
-
-            f.write("=== Equal Opportunity ===\n")
-            f.write(str(eo) + "\n")
-
-        print("✅ All reports generated successfully!")
+        log.info("Fairness report → %s", report_path)
+        log.info("All reports generated ✅")
 
 
-# =========================
-# MAIN EXECUTION (OPTIONAL)
-# =========================
-# ...existing code...
+# ─────────────────────────────────────────────────────────────────────────────
+# MAIN
+# ─────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    import sys
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    
-    from utils.config import MODEL_PATH, PROCESSED_DATA_PATH
-    
-    base_dir = Path(__file__).resolve().parent.parent  # project root
-
-    # Use actual paths from config
-    MODEL_PATH_ACTUAL = MODEL_PATH
-    DATA_PATH = PROCESSED_DATA_PATH
-    OUTPUT_PATH = base_dir / "outputs"
-
-    # Verify model exists
-    if not Path(MODEL_PATH_ACTUAL).exists():
-        print(f"❌ Model not found at: {MODEL_PATH_ACTUAL}")
-        print(f"   Run: python -m src.train_model")
-        sys.exit(1)
-
-    explainer = LoanModelExplainer(str(MODEL_PATH_ACTUAL))
-
+    base = Path(__file__).resolve().parent.parent
+    explainer = LoanModelExplainer(str(MODEL_PATH))
     explainer.generate_reports(
-        data_path=str(DATA_PATH),
-        target_column="loan_status",      # CHANGED
-        sensitive_column="addr_state",     # CHANGED
-        output_path=str(OUTPUT_PATH),
+        data_path=str(PROCESSED_DATA_PATH),
+        target_column=TARGET_COLUMN,
+        sensitive_column=SENSITIVE_COLUMN,
+        output_dir=str(base / "outputs"),
     )

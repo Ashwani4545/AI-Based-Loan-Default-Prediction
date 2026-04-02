@@ -1,82 +1,98 @@
-// AegisBank — Risk Engine UI Script
+/* ═══════════════════════════════════════════════════════════════
+   AegisBank — UI Script
+═══════════════════════════════════════════════════════════════ */
 
 document.addEventListener("DOMContentLoaded", () => {
 
-  // ── FORM SUBMIT LOADING STATE ──
-  const form = document.getElementById("predictForm");
+  // ── FORM LOADING STATE ──────────────────────────────────────────────────
+  const form = document.getElementById("loanForm");
   const btn  = document.getElementById("submitBtn");
 
   if (form && btn) {
-    form.addEventListener("submit", () => {
+    form.addEventListener("submit", (e) => {
+      // Basic client-side validation before showing loader
+      const required = form.querySelectorAll("[required]");
+      let valid = true;
+      required.forEach(el => {
+        el.classList.remove("field-error");
+        if (!el.value.trim()) {
+          el.classList.add("field-error");
+          valid = false;
+        }
+      });
+
+      if (!valid) {
+        e.preventDefault();
+        // Scroll to first error
+        const first = form.querySelector(".field-error");
+        if (first) first.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+
       btn.classList.add("loading");
       btn.disabled = true;
+      btn.querySelector(".btn-label").textContent = "Analysing…";
     });
   }
 
-  // ── ANIMATE RISK FILL ON RESULT PAGE ──
-  const riskFills = document.querySelectorAll(".risk-fill");
-  riskFills.forEach(el => {
-    const target = el.style.width;
-    el.style.width = "0%";
+  // ── NAV SCROLL SHADOW ───────────────────────────────────────────────────
+  const nav = document.getElementById("mainNav");
+  if (nav) {
+    window.addEventListener("scroll", () => {
+      nav.style.boxShadow = window.scrollY > 12
+        ? "0 4px 32px rgba(0,0,0,0.45)"
+        : "";
+    }, { passive: true });
+  }
+
+  // ── RISK BAR ANIMATION (result page) ────────────────────────────────────
+  const riskBar = document.querySelector(".rpt-risk-bar");
+  if (riskBar) {
+    const target = riskBar.style.width;
+    riskBar.style.width = "0%";
+    riskBar.style.transition = "none";
     requestAnimationFrame(() => {
-      setTimeout(() => { el.style.width = target; }, 150);
+      setTimeout(() => {
+        riskBar.style.transition = "width 1.1s cubic-bezier(.16,1,.3,1)";
+        riskBar.style.width = target;
+      }, 200);
     });
+  }
+
+  // ── COUNTER ANIMATION (dashboard tiles) ─────────────────────────────────
+  document.querySelectorAll(".mt-value").forEach(el => {
+    const raw = el.textContent.trim();
+    const num = parseFloat(raw.replace(/[^0-9.]/g, ""));
+    if (isNaN(num) || num === 0) return;
+
+    const suffix   = raw.replace(/[0-9.]/g, "");
+    const decimals = raw.includes(".") ? (raw.split(".")[1] || "").replace(/\D/g,"").length : 0;
+    const dur = 1100;
+    const t0  = performance.now();
+
+    (function tick(now) {
+      const p    = Math.min((now - t0) / dur, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      el.textContent = (num * ease).toFixed(decimals) + suffix;
+      if (p < 1) requestAnimationFrame(tick);
+    })(t0);
   });
 
-  // ── ANIMATE DONUT STROKE ──
-  const donutCircle = document.querySelector(".donut-svg circle:last-child");
-  if (donutCircle) {
-    const target = donutCircle.getAttribute("stroke-dasharray");
-    donutCircle.setAttribute("stroke-dasharray", "0 226");
+  // ── ANIMATE GAUGE ON RESULT PAGE ─────────────────────────────────────────
+  const gaugeArc = document.getElementById("gaugeArc");
+  if (gaugeArc) {
+    const total  = 251.2;
+    const target = parseFloat(gaugeArc.getAttribute("stroke-dashoffset"));
+    gaugeArc.setAttribute("stroke-dashoffset", total.toString());
     setTimeout(() => {
-      donutCircle.setAttribute("stroke-dasharray", target);
+      gaugeArc.style.transition = "stroke-dashoffset 1.2s cubic-bezier(.16,1,.3,1)";
+      gaugeArc.setAttribute("stroke-dashoffset", target.toString());
     }, 300);
   }
 
-  // ── STAT COUNTER ANIMATION ──
-  document.querySelectorAll(".stat-value").forEach(el => {
-    const text = el.textContent.trim();
-    const num  = parseFloat(text.replace(/[^0-9.]/g, ""));
-    if (isNaN(num)) return;
-
-    const suffix = text.replace(/[0-9.]/g, "");
-    const duration = 1200;
-    const start = performance.now();
-
-    function tick(now) {
-      const progress = Math.min((now - start) / duration, 1);
-      const ease = 1 - Math.pow(1 - progress, 3);
-      el.textContent = (num * ease).toFixed(text.includes(".") ? 2 : 0) + suffix;
-      if (progress < 1) requestAnimationFrame(tick);
-    }
-    requestAnimationFrame(tick);
-  });
-
-  // ── LIVE INPUT DEBT-TO-INCOME HINT ──
-  const incomeInput = document.querySelector('[name="income"]');
-  const loanInput   = document.querySelector('[name="loan_amount"]');
-  const emiInput    = document.querySelector('[name="existing_emi"]');
-
-  function updateDTI() {
-    if (!incomeInput || !loanInput) return;
-    const income = parseFloat(incomeInput.value) || 0;
-    const loan   = parseFloat(loanInput.value)   || 0;
-    const emi    = parseFloat(emiInput?.value)    || 0;
-
-    let hint = incomeInput.closest(".form-group")?.querySelector(".form-hint");
-    if (!hint) return;
-
-    if (income > 0 && loan > 0) {
-      const monthly = income / 12;
-      const estEMI  = loan / 36 + emi; // rough approximation
-      const dti     = estEMI / monthly;
-      const label   = dti < 0.4 ? "✅ Healthy" : dti < 0.6 ? "⚡ Moderate" : "⚠️ High";
-      hint.textContent = `Estimated DTI: ${(dti * 100).toFixed(1)}% — ${label}`;
-    } else {
-      hint.textContent = "Gross annual income before taxes";
-    }
-  }
-
-  [incomeInput, loanInput, emiInput].forEach(el => el?.addEventListener("input", updateDTI));
+  // ── FIELD ERROR HIGHLIGHT ────────────────────────────────────────────────
+  const style = document.createElement("style");
+  style.textContent = `.field-error { border-color: #ef4444 !important; box-shadow: 0 0 0 3px rgba(239,68,68,.18) !important; }`;
+  document.head.appendChild(style);
 
 });

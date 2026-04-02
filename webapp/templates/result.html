@@ -1,84 +1,134 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Prediction Result — AegisBank</title>
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='css/style.css') }}"
-    />
-  </head>
-  <body>
-    <nav class="nav">
-      <a class="nav-brand" href="/">
-        <div class="nav-logo">A</div>
-        <span class="nav-name">AegisBank</span>
-      </a>
-    </nav>
+{% extends "base.html" %} {% block title %}Assessment Result{% endblock %} {%
+block content %}
+<div class="hero hero--result">
+  <div class="hero-inner">
+    <div class="hero-pill">✅ Assessment Complete</div>
+    <h1 class="hero-h1">Risk Analysis<br /><em>Result</em></h1>
+  </div>
+</div>
 
-    <div class="page-wrapper">
-      <div class="hero-strip">
-        <div class="hero-eyebrow">✅ Assessment Complete</div>
-        <h1 class="hero-title">Risk Analysis Result</h1>
+<div class="result-shell">
+  <!-- ── MAIN VERDICT CARD ───────────────────────────────────────────────── -->
+  <div class="verdict-card" style="--risk-color: {{ record.color }}">
+    <div class="verdict-header">
+      <div class="verdict-name">
+        {{ record.borrower if record.borrower != 'Anonymous' else 'Loan
+        Applicant' }}
+      </div>
+      <time class="verdict-ts">{{ record.timestamp[:10] }}</time>
+    </div>
+
+    <div class="verdict-body">
+      <!-- Probability Gauge -->
+      <div class="gauge-wrap">
+        <svg
+          class="gauge-svg"
+          viewBox="0 0 200 120"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <!-- Track arc -->
+          <path
+            d="M 20 100 A 80 80 0 0 1 180 100"
+            fill="none"
+            stroke="rgba(255,255,255,0.08)"
+            stroke-width="14"
+            stroke-linecap="round"
+          />
+          <!-- Value arc -->
+          <path
+            id="gaugeArc"
+            d="M 20 100 A 80 80 0 0 1 180 100"
+            fill="none"
+            stroke="{{ record.color }}"
+            stroke-width="14"
+            stroke-linecap="round"
+            stroke-dasharray="251.2"
+            stroke-dashoffset="{{ 251.2 - (record.probability / 100 * 251.2) }}"
+            style="
+              transition: stroke-dashoffset 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+            "
+          />
+          <!-- Center text -->
+          <text
+            x="100"
+            y="88"
+            text-anchor="middle"
+            font-family="Syne"
+            font-weight="700"
+            font-size="28"
+            fill="{{ record.color }}"
+          >
+            {{ record.probability }}%
+          </text>
+          <text
+            x="100"
+            y="108"
+            text-anchor="middle"
+            font-family="DM Sans"
+            font-size="10"
+            fill="rgba(255,255,255,0.45)"
+            letter-spacing="1.5"
+          >
+            DEFAULT PROB.
+          </text>
+        </svg>
       </div>
 
-      <div class="content-area" style="max-width: 600px; margin: 0 auto">
-        <div
-          class="card"
-          style="border: 3px solid {{ color }}; background: rgba(0,0,0,0.02);"
-        >
-          <div style="text-align: center; padding: 40px 20px">
-            <div style="font-size: 72px; margin-bottom: 20px">
-              {{ risk_level }}
-            </div>
+      <!-- Risk badge -->
+      <div
+        class="risk-badge"
+        style="color: {{ record.color }}; border-color: {{ record.color }}20; background: {{ record.color }}12"
+      >
+        {% if record.prediction == 0 %}✅{% else %}⚠️{% endif %} {{
+        record.risk_level }}
+      </div>
 
-            <div style="margin: 30px 0">
-              <div style="font-size: 14px; color: #666; margin-bottom: 10px">
-                DEFAULT PROBABILITY
-              </div>
-              <div
-                style="font-size: 48px; font-weight: bold; color: {{ color }};"
-              >
-                {{ probability }}%
-              </div>
-            </div>
-
-            <div
-              style="
-                margin: 30px 0;
-                padding: 20px;
-                background: rgba(0, 0, 0, 0.05);
-                border-radius: 8px;
-              "
-            >
-              <div style="font-size: 14px; color: #666; margin-bottom: 5px">
-                PREDICTION
-              </div>
-              <div style="font-size: 24px; font-weight: bold">
-                {% if prediction == 0 %} ✅ LIKELY TO REPAY {% else %} ⚠️
-                DEFAULT RISK {% endif %}
-              </div>
-            </div>
-
-            <div
-              style="
-                margin-top: 40px;
-                display: flex;
-                gap: 10px;
-                justify-content: center;
-              "
-            >
-              <a
-                href="/"
-                class="btn-submit"
-                style="text-decoration: none; display: inline-block"
-                >← New Assessment</a
-              >
-            </div>
-          </div>
-        </div>
+      <!-- Verdict line -->
+      <div
+        class="verdict-line {% if record.prediction == 0 %}verdict-safe{% else %}verdict-risk{% endif %}"
+      >
+        {% if record.prediction == 0 %} Likely to Repay — Recommended for
+        Approval {% else %} Default Risk Detected — Review Recommended {% endif
+        %}
       </div>
     </div>
-  </body>
-</html>
+  </div>
+
+  <!-- ── DETAILS GRID ────────────────────────────────────────────────────── -->
+  <div class="detail-grid">
+    <div class="detail-card">
+      <div class="dc-label">Loan Amount</div>
+      <div class="dc-value">${{ "{:,.0f}".format(record.loan_amnt) }}</div>
+    </div>
+    <div class="detail-card">
+      <div class="dc-label">Annual Income</div>
+      <div class="dc-value">${{ "{:,.0f}".format(record.annual_inc) }}</div>
+    </div>
+    <div class="detail-card">
+      <div class="dc-label">Interest Rate</div>
+      <div class="dc-value">{{ record.int_rate }}%</div>
+    </div>
+    <div class="detail-card">
+      <div class="dc-label">FICO Score</div>
+      <div class="dc-value">{{ record.fico | int }}</div>
+    </div>
+    <div class="detail-card">
+      <div class="dc-label">Purpose</div>
+      <div class="dc-value">{{ record.purpose.replace('_',' ').title() }}</div>
+    </div>
+    <div class="detail-card">
+      <div class="dc-label">Grade</div>
+      <div class="dc-value">{{ record.grade }}</div>
+    </div>
+  </div>
+
+  <!-- ── ACTIONS ─────────────────────────────────────────────────────────── -->
+  <div class="result-actions">
+    <a href="/" class="btn btn-ghost">← New Assessment</a>
+    <a href="/reports/{{ record.id }}" class="btn btn-outline"
+      >View Full Report</a
+    >
+    <a href="/history" class="btn btn-ghost">History</a>
+  </div>
+</div>
+{% endblock %}

@@ -1,154 +1,187 @@
-# ==========================================
-# Loan Default Prediction
-# Data Preprocessing + Feature Engineering
-# ==========================================
+# src/data_preprocessing.py
+"""
+Loan Default Prediction — Data Preprocessing & Feature Engineering
 
-# Import libraries
+Pipeline:
+  1. Load raw CSV
+  2. Clean (dedup, fill nulls)
+  3. Engineer domain features
+  4. Encode categoricals
+  5. Split → Scale → SMOTE
+  6. Save processed data
+"""
+
 import os
-import pandas as pd
+import sys
+import re
+import logging
+from pathlib import Path
+
 import numpy as np
-
+import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-from imblearn.over_sampling import SMOTE
+from sklearn.preprocessing import StandardScaler
+
+# ── ensure project root on path ──────────────────────────────────────────────
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from utils.config import RAW_DATA_PATH, PROCESSED_DATA_PATH, TARGET_COLUMN, TEST_SIZE, RANDOM_STATE
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
+log = logging.getLogger(__name__)
 
 
-# ------------------------------------------
-# 1. Define Project Paths
-# ------------------------------------------
-
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
-data_path = os.path.join(BASE_DIR, "data", "raw", "loan_dataset.csv")
-
-print("Looking for dataset at:", data_path)
-
-if not os.path.exists(data_path):
-    raise FileNotFoundError(f"Dataset not found at: {data_path}")
+# ── OPTIONAL DEPENDENCY (imblearn) ────────────────────────────────────────────
+try:
+    from imblearn.over_sampling import SMOTE
+    HAS_SMOTE = True
+except ImportError:
+    HAS_SMOTE = False
+    log.warning("imbalanced-learn not installed — SMOTE step will be skipped.")
 
 
-# ------------------------------------------
-# 2. Load Dataset
-# ------------------------------------------
+# ─────────────────────────────────────────────────────────────────────────────
+# 1. LOAD
+# ─────────────────────────────────────────────────────────────────────────────
 
-df = pd.read_csv(data_path)
-
-print("Dataset Loaded Successfully")
-print("Dataset Shape:", df.shape)
-
-
-# ------------------------------------------
-# 3. Basic Data Cleaning
-# ------------------------------------------
-
-df = df.drop_duplicates()
-
-num_cols = df.select_dtypes(include=['int64', 'float64']).columns
-cat_cols = df.select_dtypes(include=['object']).columns
-
-# Fill missing numerical values
-for col in num_cols:
-    df[col] = df[col].fillna(df[col].median())
-
-# Fill missing categorical values
-for col in cat_cols:
-    df[col] = df[col].fillna(df[col].mode()[0])
+def load_raw_data(path: str = RAW_DATA_PATH) -> pd.DataFrame:
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Dataset not found: {path}")
+    df = pd.read_csv(path)
+    log.info("Loaded dataset: %s rows × %s cols", *df.shape)
+    return df
 
 
-# ------------------------------------------
-# 4. Feature Engineering
-# ------------------------------------------
+# ─────────────────────────────────────────────────────────────────────────────
+# 2. CLEAN
+# ─────────────────────────────────────────────────────────────────────────────
 
-print("\nPerforming Feature Engineering...")
+def clean_data(df: pd.DataFrame) -> pd.DataFrame:
+    before = len(df)
+    df = df.drop_duplicates()
+    log.info("Dropped %d duplicate rows", before - len(df))
 
-# Example: Debt to Income Ratio
-if "loan_amount" in df.columns and "income" in df.columns:
-    df["debt_to_income_ratio"] = df["loan_amount"] / (df["income"] + 1)
+    num_cols = df.select_dtypes(include=["int64", "float64"]).columns
+    cat_cols = df.select_dtypes(include=["object"]).columns
 
-# Example: Loan to Income Ratio
-if "loan_amount" in df.columns and "income" in df.columns:
-    df["loan_income_ratio"] = df["loan_amount"] / (df["income"] + 1)
+    for col in num_cols:
+        df[col] = df[col].fillna(df[col].median())
+    for col in cat_cols:
+        df[col] = df[col].fillna(df[col].mode()[0])
 
-# Example: Credit Utilization
-if "credit_limit" in df.columns and "credit_used" in df.columns:
-    df["credit_utilization"] = df["credit_used"] / (df["credit_limit"] + 1)
+    log.info("Nulls filled — numeric: median, categorical: mode")
+    return df
 
-# Example: Employment Stability Feature
-if "years_employed" in df.columns:
-    df["employment_stability"] = df["years_employed"] / (df["age"] + 1)
 
-# Example: Income Category
-if "income" in df.columns:
-    df["income_category"] = pd.cut(
-        df["income"],
-        bins=[0, 30000, 60000, 100000, np.inf],
-        labels=[0, 1, 2, 3]
+# ─────────────────────────────────────────────────────────────────────────────
+# 3. FEATURE ENGINEERING
+# ─────────────────────────────────────────────────────────────────────────────
+
+def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Add domain-specific derived features (safe: only if source cols exist)."""
+
+    def safe_ratio(num_col, den_col, new_col):
+        if num_col in df.columns and den_col in df.columns:
+            df[new_col] = df[num_col] / (df[den_col].replace(0, np.nan) + 1)
+
+    # LendingClub-style derived features
+    safe_ratio("loan_amnt",    "annual_inc",   "loan_income_ratio")
+    safe_ratio("revol_bal",    "annual_inc",   "revol_income_ratio")
+    safe_ratio("open_acc",     "total_acc",    "open_acc_ratio")
+    safe_ratio("installment",  "annual_inc",   "installment_income_ratio")
+
+    if "fico_range_low" in df.columns and "fico_range_high" in df.columns:
+        df["fico_avg"] = (df["fico_range_low"] + df["fico_range_high"]) / 2
+
+    if "int_rate" in df.columns and "dti" in df.columns:
+        df["risk_score"] = df["int_rate"] * df["dti"]
+
+    log.info("Feature engineering complete")
+    return df
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 4. ENCODE
+# ─────────────────────────────────────────────────────────────────────────────
+
+def encode_categoricals(df: pd.DataFrame) -> pd.DataFrame:
+    """One-hot encode all object columns (drop_first to avoid multicollinearity)."""
+    cat_cols = df.select_dtypes(include=["object"]).columns.tolist()
+    if cat_cols:
+        df = pd.get_dummies(df, columns=cat_cols, drop_first=True)
+        log.info("One-hot encoded %d categorical columns", len(cat_cols))
+    return df
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 5. SPLIT + SCALE
+# ─────────────────────────────────────────────────────────────────────────────
+
+def split_and_scale(df: pd.DataFrame):
+    if TARGET_COLUMN not in df.columns:
+        raise ValueError(f"Target column '{TARGET_COLUMN}' not in dataframe.")
+
+    X = df.drop(columns=[TARGET_COLUMN])
+    y = df[TARGET_COLUMN]
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y,
+        test_size=TEST_SIZE,
+        random_state=RANDOM_STATE,
+        stratify=y,
     )
+    log.info("Train: %s  |  Test: %s", X_train.shape, X_test.shape)
+
+    scaler = StandardScaler()
+    X_train_sc = scaler.fit_transform(X_train)
+    X_test_sc  = scaler.transform(X_test)
+
+    # Handle class imbalance
+    if HAS_SMOTE:
+        smote = SMOTE(random_state=RANDOM_STATE)
+        X_train_res, y_train_res = smote.fit_resample(X_train_sc, y_train)
+        log.info("SMOTE applied — resampled shape: %s", X_train_res.shape)
+    else:
+        X_train_res, y_train_res = X_train_sc, y_train
+        log.info("SMOTE skipped — using raw split")
+
+    return X_train_res, X_test_sc, y_train_res, y_test, X.columns.tolist()
 
 
-# ------------------------------------------
-# 5. Encode Categorical Variables
-# ------------------------------------------
+# ─────────────────────────────────────────────────────────────────────────────
+# 6. SAVE PROCESSED DATA
+# ─────────────────────────────────────────────────────────────────────────────
 
-label_encoder = LabelEncoder()
-
-for col in cat_cols:
-    df[col] = label_encoder.fit_transform(df[col])
-
-
-# ------------------------------------------
-# 6. Define Features and Target
-# ------------------------------------------
-
-target_column = "loan_status"
-
-if target_column not in df.columns:
-    raise ValueError(f"Target column '{target_column}' not found")
-
-X = df.drop(target_column, axis=1)
-y = df[target_column]
+def save_processed(df: pd.DataFrame, path: str = PROCESSED_DATA_PATH) -> None:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    df.to_csv(path, index=False)
+    log.info("Processed data saved → %s", path)
 
 
-# ------------------------------------------
-# 7. Train-Test Split
-# ------------------------------------------
+# ─────────────────────────────────────────────────────────────────────────────
+# MAIN
+# ─────────────────────────────────────────────────────────────────────────────
 
-X_train, X_test, y_train, y_test = train_test_split(
-    X,
-    y,
-    test_size=0.2,
-    random_state=42,
-    stratify=y
-)
+def run_preprocessing() -> None:
+    df = load_raw_data()
+    df = clean_data(df)
+    df = engineer_features(df)
 
-print("Train Size:", X_train.shape)
-print("Test Size:", X_test.shape)
+    # Fill any NaN values introduced by feature engineering (before scaling/SMOTE)
+    num_cols = df.select_dtypes(include=["int64", "float64"]).columns
+    for col in num_cols:
+        if df[col].isna().any():
+            df[col] = df[col].fillna(df[col].median())
 
+    # Save lightly-cleaned version for model training (keep target)
+    save_processed(df)
 
-# ------------------------------------------
-# 8. Feature Scaling
-# ------------------------------------------
+    # Full pipeline report
+    df_enc = encode_categoricals(df.copy())
+    X_train, X_test, y_train, y_test, features = split_and_scale(df_enc)
 
-scaler = StandardScaler()
-
-X_train = scaler.fit_transform(X_train)
-X_test = scaler.transform(X_test)
-
-
-# ------------------------------------------
-# 9. Handle Class Imbalance
-# ------------------------------------------
-
-smote = SMOTE(random_state=42)
-
-X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
+    log.info("Preprocessing complete.")
+    log.info("Final train shape: %s | test shape: %s", X_train.shape, X_test.shape)
 
 
-# ------------------------------------------
-# 10. Final Output
-# ------------------------------------------
-
-print("\nPreprocessing Completed Successfully")
-
-print("Original Training Shape:", X_train.shape)
-print("Resampled Training Shape:", X_train_resampled.shape)
-print("Testing Shape:", X_test.shape)
+if __name__ == "__main__":
+    run_preprocessing()
