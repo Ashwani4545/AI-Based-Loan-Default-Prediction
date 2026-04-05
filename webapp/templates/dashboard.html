@@ -1,0 +1,205 @@
+{% extends "base.html" %} {% block title %}Dashboard{% endblock %} {% block
+content %}
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-pill">📊 Live Analytics</div>
+    <h1 class="hero-h1">Model<br /><em>Dashboard</em></h1>
+    <p class="hero-sub">
+      Real-time performance metrics from the trained XGBoost classifier.
+    </p>
+  </div>
+</div>
+
+<div class="dash-shell">
+  <!-- ── METRIC TILES ──────────────────────────────────────────────────── -->
+  <div class="tile-row">
+    {% set tiles = [ ("🎯", "Accuracy", metrics.accuracy, "#c9a84c"), ("✓",
+    "Precision", metrics.precision, "#22c55e"), ("↗", "Recall", metrics.recall,
+    "#3b82f6"), ("⚡", "F1 Score", metrics.f1_score, "#a78bfa"), ] %} {% for
+    icon, label, val, color in tiles %}
+    <div class="metric-tile fade-in" style="--accent: {{ color }}">
+      <div class="mt-icon">{{ icon }}</div>
+      <div class="mt-value">
+        {{ "%.1f"|format(val * 100) }}<span class="mt-unit">%</span>
+      </div>
+      <div class="mt-label">{{ label }}</div>
+      <div class="mt-bar">
+        <div
+          class="mt-fill"
+          style="width: {{ val*100 }}%; background: {{ color }}"
+        ></div>
+      </div>
+    </div>
+    {% endfor %}
+
+    <!-- ROC-AUC (separate tile) -->
+    <div class="metric-tile fade-in" style="--accent: #f97316">
+      <div class="mt-icon">📈</div>
+      <div class="mt-value">{{ "%.3f"|format(metrics.roc_auc) }}</div>
+      <div class="mt-label">ROC-AUC</div>
+      <div class="mt-bar">
+        <div
+          class="mt-fill"
+          style="width: {{ metrics.roc_auc*100 }}%; background: #f97316"
+        ></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CONFUSION MATRIX + ACCURACY CHART ─────────────────────────────── -->
+  <div class="dash-grid-2">
+    <!-- Confusion Matrix -->
+    <div class="dash-card">
+      <div class="dash-card-header">
+        <span class="dash-card-title">Confusion Matrix</span>
+        <span class="dash-card-sub">Full dataset evaluation</span>
+      </div>
+      {% set cm = metrics.confusion_matrix %} {% set total = cm.tn + cm.fp +
+      cm.fn + cm.tp %}
+      <div class="cm-grid">
+        <div class="cm-cell cm-tn">
+          <div class="cm-num">{{ "{:,}".format(cm.tn) }}</div>
+          <div class="cm-pct">
+            {{ "%.1f"|format(cm.tn / total * 100 if total else 0) }}%
+          </div>
+          <div class="cm-lbl">True Negatives</div>
+          <div class="cm-sub">Correctly predicted Repay</div>
+        </div>
+        <div class="cm-cell cm-fp">
+          <div class="cm-num">{{ "{:,}".format(cm.fp) }}</div>
+          <div class="cm-pct">
+            {{ "%.1f"|format(cm.fp / total * 100 if total else 0) }}%
+          </div>
+          <div class="cm-lbl">False Positives</div>
+          <div class="cm-sub">Repay predicted as Default</div>
+        </div>
+        <div class="cm-cell cm-fn">
+          <div class="cm-num">{{ "{:,}".format(cm.fn) }}</div>
+          <div class="cm-pct">
+            {{ "%.1f"|format(cm.fn / total * 100 if total else 0) }}%
+          </div>
+          <div class="cm-lbl">False Negatives</div>
+          <div class="cm-sub">Default predicted as Repay</div>
+        </div>
+        <div class="cm-cell cm-tp">
+          <div class="cm-num">{{ "{:,}".format(cm.tp) }}</div>
+          <div class="cm-pct">
+            {{ "%.1f"|format(cm.tp / total * 100 if total else 0) }}%
+          </div>
+          <div class="cm-lbl">True Positives</div>
+          <div class="cm-sub">Correctly predicted Default</div>
+        </div>
+      </div>
+      <div class="cm-legend">
+        <div class="cm-axis-x">Predicted →</div>
+        <div class="cm-axis-y">Actual ↓</div>
+      </div>
+    </div>
+
+    <!-- Performance Radar via canvas -->
+    <div class="dash-card">
+      <div class="dash-card-header">
+        <span class="dash-card-title">Performance Overview</span>
+        <span class="dash-card-sub">All key metrics</span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="radarChart" width="360" height="280"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PREDICTION DISTRIBUTION ───────────────────────────────────────── -->
+  <div class="dash-card mt-20">
+    <div class="dash-card-header">
+      <span class="dash-card-title">Class Distribution</span>
+      <span class="dash-card-sub">From confusion matrix totals</span>
+    </div>
+    <div class="dist-row">
+      {% set cm = metrics.confusion_matrix %} {% set total_actual_neg = cm.tn +
+      cm.fp %} {% set total_actual_pos = cm.fn + cm.tp %} {% set grand =
+      total_actual_neg + total_actual_pos %}
+      <div class="dist-item">
+        <div class="dist-label">Non-Default (Repay)</div>
+        <div class="dist-bar-wrap">
+          <div
+            class="dist-bar"
+            style="width: {{ (total_actual_neg / grand * 100) if grand else 0 }}%; background: #22c55e"
+          ></div>
+        </div>
+        <div class="dist-pct">
+          {{ "%.1f"|format(total_actual_neg / grand * 100 if grand else 0) }}%
+        </div>
+      </div>
+      <div class="dist-item">
+        <div class="dist-label">Default</div>
+        <div class="dist-bar-wrap">
+          <div
+            class="dist-bar"
+            style="width: {{ (total_actual_pos / grand * 100) if grand else 0 }}%; background: #ef4444"
+          ></div>
+        </div>
+        <div class="dist-pct">
+          {{ "%.1f"|format(total_actual_pos / grand * 100 if grand else 0) }}%
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+  const metrics = {
+    accuracy:  {{ metrics.accuracy }},
+    precision: {{ metrics.precision }},
+    recall:    {{ metrics.recall }},
+    f1:        {{ metrics.f1_score }},
+    roc_auc:   {{ metrics.roc_auc }},
+  };
+
+  const ctx = document.getElementById("radarChart").getContext("2d");
+  new Chart(ctx, {
+    type: "radar",
+    data: {
+      labels: ["Accuracy", "Precision", "Recall", "F1 Score", "ROC-AUC"],
+      datasets: [{
+        label: "Model",
+        data: [
+          metrics.accuracy * 100,
+          metrics.precision * 100,
+          metrics.recall * 100,
+          metrics.f1 * 100,
+          metrics.roc_auc * 100,
+        ],
+        backgroundColor: "rgba(201,168,76,0.15)",
+        borderColor:     "#c9a84c",
+        pointBackgroundColor: "#c9a84c",
+        pointBorderColor: "#0a0f1e",
+        pointRadius: 5,
+        borderWidth: 2,
+      }],
+    },
+    options: {
+      responsive: false,
+      scales: {
+        r: {
+          min: 0, max: 100,
+          ticks: { stepSize: 25, color: "rgba(255,255,255,0.4)", font: { size: 10 } },
+          grid:  { color: "rgba(255,255,255,0.07)" },
+          pointLabels: { color: "rgba(255,255,255,0.7)", font: { size: 12, family: "DM Sans" } },
+          angleLines: { color: "rgba(255,255,255,0.07)" },
+        },
+      },
+      plugins: {
+        legend: { display: false },
+      },
+    },
+  });
+
+  // Animate metric bars on load
+  document.querySelectorAll(".mt-fill").forEach(el => {
+    const w = el.style.width;
+    el.style.width = "0";
+    setTimeout(() => { el.style.width = w; el.style.transition = "width 1s cubic-bezier(.16,1,.3,1)"; }, 100);
+  });
+</script>
+{% endblock %}
