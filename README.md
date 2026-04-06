@@ -18,6 +18,7 @@ AI techniques - Flask-based web application
 
 This creates a complete intelligent credit risk assessment platform.
 
+---> Can I use RNN
 ------------------------------------------------------------------------
 
 ## Problem Statement
