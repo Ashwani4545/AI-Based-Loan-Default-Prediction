@@ -97,7 +97,7 @@ The system follows a multi-layer architecture:
 5.  Deployment Layer
     -   Flask application
     -   Prediction API
-
+    -   WebApp
 ------------------------------------------------------------------------
 
 ## Technology Stack
@@ -111,7 +111,7 @@ Data Processing: - Pandas - NumPy - Matplotlib - Seaborn
 
 Web Development: - Flask - HTML - CSS - Bootstrap - JS
 
-Deployment: - GitHub - Render / Heroku / AWS
+Deployment: - GitHub - AWS(optional)
 
 ------------------------------------------------------------------------
 
