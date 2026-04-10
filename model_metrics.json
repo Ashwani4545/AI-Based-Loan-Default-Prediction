@@ -1,13 +1,15 @@
 {
-    "accuracy": 0.8139,
-    "precision": 0.6346,
-    "recall": 0.163,
-    "f1_score": 0.2594,
-    "roc_auc": 0.763,
+    "accuracy": 0.6868,
+    "precision": 0.3478,
+    "recall": 0.6477,
+    "f1_score": 0.4525,
+    "roc_auc": 0.7406,
+    "profit": -5371902.5,
     "confusion_matrix": {
-        "tn": 117201,
-        "fp": 2815,
-        "fn": 25096,
-        "tp": 4888
-    }
+        "tn": 16719,
+        "fp": 7284,
+        "fn": 2113,
+        "tp": 3884
+    },
+    "model_name": "xgboost"
 }

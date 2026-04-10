@@ -20,6 +20,7 @@ import importlib.util
 from pathlib import Path
 
 import joblib
+import numpy as np
 import pandas as pd
 import matplotlib
 matplotlib.use("Agg")          # non-interactive backend — safe for servers
@@ -62,12 +63,30 @@ class LoanModelExplainer:
         self.model = joblib.load(model_path)
 
         spec = importlib.util.find_spec("shap")
-        if spec is None:
-            raise ImportError("Install shap: pip install shap")
-        self.shap = importlib.import_module("shap")
+        self.has_shap = spec is not None
+        self.shap = importlib.import_module("shap") if self.has_shap else None
 
-        self.explainer = self.shap.Explainer(self.model)
-        log.info("SHAP explainer initialised ✅")
+        if self.has_shap:
+            self.explainer = self.shap.Explainer(self.model)
+            log.info("SHAP explainer initialised ✅")
+        else:
+            self.explainer = None
+            log.warning("SHAP is not installed; using feature-importance fallback for explanations.")
+
+    def _fallback_importances(self, columns: pd.Index) -> np.ndarray:
+        try:
+            if hasattr(self.model, "feature_importances_"):
+                importances = np.asarray(self.model.feature_importances_, dtype=float)
+                if len(importances) == len(columns):
+                    return importances
+            if hasattr(self.model, "get_booster"):
+                booster = self.model.get_booster()
+                score_map = booster.get_score(importance_type="weight")
+                return np.asarray([float(score_map.get(col, 0.0)) for col in columns], dtype=float)
+        except Exception:
+            pass
+
+        return np.zeros(len(columns), dtype=float)
 
     # ── DATA LOADING ─────────────────────────────────────────────────────────
 
@@ -108,14 +127,21 @@ class LoanModelExplainer:
     # ── SHAP ─────────────────────────────────────────────────────────────────
 
     def generate_shap_values(self, X: pd.DataFrame):
+        if not self.has_shap:
+            log.info("SHAP unavailable; returning no SHAP values.")
+            return None
+
         log.info("Computing SHAP values for %d samples …", len(X))
         return self.explainer(X)
 
     def explain_single(self, input_df: pd.DataFrame):
-        shap_values = self.explainer(input_df)
-        
+        if self.has_shap:
+            shap_values = self.explainer(input_df)
+            importance = np.abs(shap_values.values[0])
+        else:
+            importance = np.abs(self._fallback_importances(input_df.columns))
+
         # Get top 5 important features
-        importance = abs(shap_values.values[0])
         feature_names = input_df.columns
         
         top_idx = importance.argsort()[-5:][::-1]
@@ -130,6 +156,10 @@ class LoanModelExplainer:
         return explanation
 
     def save_summary_plot(self, shap_values, X: pd.DataFrame, output_dir: str) -> None:
+        if not self.has_shap or shap_values is None:
+            log.info("Skipping SHAP summary plot because SHAP is unavailable.")
+            return
+
         plt.figure(figsize=(10, 6))
         self.shap.summary_plot(shap_values, X, show=False)
         plt.tight_layout()
@@ -139,6 +169,10 @@ class LoanModelExplainer:
         log.info("SHAP summary plot → %s", path)
 
     def save_force_plot(self, shap_values, index: int, output_dir: str) -> None:
+        if not self.has_shap or shap_values is None:
+            log.info("Skipping SHAP force plot because SHAP is unavailable.")
+            return
+
         force = self.shap.plots.force(shap_values[index])
         path  = os.path.join(output_dir, "shap_force_plot.html")
         self.shap.save_html(path, force)

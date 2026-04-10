@@ -16,6 +16,11 @@ def build_feedback_dataset():
 
     df = pd.DataFrame(history)
 
+    # Convert prediction labels to numeric if needed
+    if "prediction" in df.columns and df["prediction"].dtype == object:
+        mapping = {"Repay": 0, "Default": 1}
+        df["prediction"] = df["prediction"].map(mapping)
+
     # Extract features
     features = [
         "loan_amnt", "int_rate", "annual_inc", "fico",

@@ -1,5 +1,6 @@
 {% extends "base.html" %} {% block title %}Assessment Result{% endblock %} {%
 block content %}
+{% set risk_color = '#22c55e' if risk == 'LOW RISK' else ('#f59e0b' if risk == 'MEDIUM RISK' else '#f97316') %}
 <div class="hero hero--result">
   <div class="hero-inner">
     <div class="hero-pill">✅ Assessment Complete</div>
@@ -9,13 +10,10 @@ block content %}
 
 <div class="result-shell">
   <!-- ── MAIN VERDICT CARD ───────────────────────────────────────────────── -->
-  <div class="verdict-card" style="--risk-color: {{ record.color }}">
+  <div class="verdict-card" style="--risk-color: {{ risk_color }}">
     <div class="verdict-header">
-      <div class="verdict-name">
-        {{ record.borrower if record.borrower != 'Anonymous' else 'Loan
-        Applicant' }}
-      </div>
-      <time class="verdict-ts">{{ record.timestamp[:10] }}</time>
+      <div class="verdict-name">Loan Applicant</div>
+      <time class="verdict-ts">Instant Assessment</time>
     </div>
 
     <div class="verdict-body">
@@ -39,11 +37,11 @@ block content %}
             id="gaugeArc"
             d="M 20 100 A 80 80 0 0 1 180 100"
             fill="none"
-            stroke="{{ record.color }}"
+            stroke="{{ risk_color }}"
             stroke-width="14"
             stroke-linecap="round"
             stroke-dasharray="251.2"
-            stroke-dashoffset="{{ 251.2 - (record.probability / 100 * 251.2) }}"
+            stroke-dashoffset="{{ 251.2 - (prob * 251.2) }}"
             style="
               transition: stroke-dashoffset 1.2s cubic-bezier(0.16, 1, 0.3, 1);
             "
@@ -56,9 +54,9 @@ block content %}
             font-family="Syne"
             font-weight="700"
             font-size="28"
-            fill="{{ record.color }}"
+            fill="{{ risk_color }}"
           >
-            {{ record.probability }}%
+            {{ (prob * 100) | round(2) }}%
           </text>
           <text
             x="100"
@@ -77,19 +75,18 @@ block content %}
       <!-- Risk badge -->
       <div
         class="risk-badge"
-        style="color: {{ record.color }}; border-color: {{ record.color }}20; background: {{ record.color }}12"
+        style="color: var(--risk-color); border-color: color-mix(in srgb, var(--risk-color) 20%, transparent); background: color-mix(in srgb, var(--risk-color) 12%, transparent)"
       >
-        {% if record.prediction == 0 %}✅{% else %}⚠️{% endif %} {{
-        record.risk_level }}
+        {% if show_warning %}⚠️{% else %}✅{% endif %} {{ risk }}
       </div>
 
       <!-- Verdict line -->
-      <div
-        class="verdict-line {% if record.prediction == 0 %}verdict-safe{% else %}verdict-risk{% endif %}"
-      >
-        {% if record.prediction == 0 %} Likely to Repay — Recommended for
-        Approval {% else %} Default Risk Detected — Review Recommended {% endif
-        %}
+      <div class="verdict-line {% if show_warning %}verdict-risk{% else %}verdict-safe{% endif %}">
+        {% if show_warning %}
+        Default Risk Detected — Enhanced Review Required
+        {% else %}
+        Safe Borrower — No Immediate Risk
+        {% endif %}
       </div>
     </div>
   </div>
@@ -97,37 +94,26 @@ block content %}
   <!-- ── DETAILS GRID ────────────────────────────────────────────────────── -->
   <div class="detail-grid">
     <div class="detail-card">
-      <div class="dc-label">Loan Amount</div>
-      <div class="dc-value">${{ "{:,.0f}".format(record.loan_amnt) }}</div>
+      <div class="dc-label">Probability of Default</div>
+      <div class="dc-value">{{ (prob * 100) | round(2) }}%</div>
     </div>
     <div class="detail-card">
-      <div class="dc-label">Annual Income</div>
-      <div class="dc-value">${{ "{:,.0f}".format(record.annual_inc) }}</div>
+      <div class="dc-label">Risk Category</div>
+      <div class="dc-value">{{ risk }}</div>
     </div>
     <div class="detail-card">
-      <div class="dc-label">Interest Rate</div>
-      <div class="dc-value">{{ record.int_rate }}%</div>
+      <div class="dc-label">Warning State</div>
+      <div class="dc-value">{{ "Review Needed" if show_warning else "No Warning" }}</div>
     </div>
     <div class="detail-card">
-      <div class="dc-label">FICO Score</div>
-      <div class="dc-value">{{ record.fico | int }}</div>
-    </div>
-    <div class="detail-card">
-      <div class="dc-label">Purpose</div>
-      <div class="dc-value">{{ record.purpose.replace('_',' ').title() }}</div>
-    </div>
-    <div class="detail-card">
-      <div class="dc-label">Grade</div>
-      <div class="dc-value">{{ record.grade }}</div>
+      <div class="dc-label">Recommendation</div>
+      <div class="dc-value">{{ verdict }}</div>
     </div>
   </div>
 
   <!-- ── ACTIONS ─────────────────────────────────────────────────────────── -->
   <div class="result-actions">
     <a href="/" class="btn btn-ghost">← New Assessment</a>
-    <a href="/reports/{{ record.id }}" class="btn btn-outline"
-      >View Full Report</a
-    >
     <a href="/history" class="btn btn-ghost">History</a>
   </div>
 </div>

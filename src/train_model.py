@@ -16,13 +16,14 @@ import os
 import re
 import json
 import logging
+from collections import Counter
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import joblib
 
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score,
     f1_score, roc_auc_score, confusion_matrix, classification_report,
@@ -118,7 +119,9 @@ def _load_alternative_data(df: pd.DataFrame) -> pd.DataFrame:
     Load alternative credit data for credit-invisible users.
     Supports both real and synthetic data sources.
     """
-    if USE_REAL_ALTERNATIVE_DATA:
+    use_real_alternative_data = USE_REAL_ALTERNATIVE_DATA
+
+    if use_real_alternative_data:
         try:
             alt_df = pd.read_csv(ALTERNATIVE_DATA_PATH)
             log.info("Loaded real alternative data: %s rows", len(alt_df))
@@ -129,13 +132,13 @@ def _load_alternative_data(df: pd.DataFrame) -> pd.DataFrame:
                 df = df.merge(alt_df, on="id", how="left")
             else:
                 log.warning("Cannot merge alternative data — no common ID column. Using synthetic fallback.")
-                USE_REAL_ALTERNATIVE_DATA = False
+                use_real_alternative_data = False
         except FileNotFoundError:
             log.warning("Alternative data file not found at %s. Falling back to synthetic data.", ALTERNATIVE_DATA_PATH)
-            USE_REAL_ALTERNATIVE_DATA = False
+            use_real_alternative_data = False
     
     # Use synthetic as fallback or primary
-    if not USE_REAL_ALTERNATIVE_DATA:
+    if not use_real_alternative_data:
         log.info("Using synthetic alternative features for credit-invisible users")
         df["mobile_usage_score"] = np.random.randint(1, 100, len(df))
         df["digital_txn_count"] = np.random.randint(1, 50, len(df))
@@ -148,6 +151,16 @@ def _load_alternative_data(df: pd.DataFrame) -> pd.DataFrame:
 def load_and_preprocess():
     df = pd.read_csv(PROCESSED_DATA_PATH)
     log.info("Loaded data: %s rows × %s cols", *df.shape)
+
+    # Economic context features (static demo values)
+    df["inflation_rate"] = 0.06
+    df["interest_rate_env"] = 0.08
+    df["unemployment_rate"] = 0.07
+    df["economic_stress"] = (
+        df["inflation_rate"] * 0.4 +
+        df["unemployment_rate"] * 0.4 +
+        df["interest_rate_env"] * 0.2
+    )
 
     # Load alternative credit data (real or synthetic)
     df = _load_alternative_data(df)
@@ -180,15 +193,51 @@ def split(X, y):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def train_all(X_train, y_train) -> dict:
+    try:
+        from imblearn.over_sampling import SMOTE
+    except ImportError:
+        SMOTE = None
+
+    if SMOTE is not None:
+        smote = SMOTE(random_state=RANDOM_STATE)
+        X_train_res, y_train_res = smote.fit_resample(X_train, y_train)
+        log.info("SMOTE applied: %d -> %d samples", len(X_train), len(X_train_res))
+    else:
+        X_train_res, y_train_res = X_train, y_train
+        log.warning("imblearn not installed; training without SMOTE.")
+
+    counter = Counter(y_train_res)
+    scale_pos_weight = counter[0] / counter[1]
+
+    xgb_base = XGBClassifier(
+        scale_pos_weight=scale_pos_weight,
+        eval_metric="aucpr",  # BEST for imbalance
+    )
+    xgb_param_grid = {
+        "n_estimators": [150, 200],
+        "max_depth": [4, 6],
+        "learning_rate": [0.05, 0.1],
+    }
+    xgb_grid = GridSearchCV(
+        estimator=xgb_base,
+        param_grid=xgb_param_grid,
+        scoring="recall",
+        cv=3,
+        n_jobs=-1,
+        verbose=0,
+    )
+    xgb_grid.fit(X_train_res, y_train_res)
+    log.info("Best XGBoost params (recall): %s", xgb_grid.best_params_)
+
     candidates = {
         "logistic_regression": LogisticRegression(max_iter=5000, solver="saga", random_state=RANDOM_STATE),
         "random_forest":       RandomForestClassifier(n_estimators=100, random_state=RANDOM_STATE, n_jobs=-1),
-        "xgboost":             XGBClassifier(**XGB_PARAMS),
+        "xgboost":             xgb_grid.best_estimator_,
     }
     trained = {}
     for name, model in candidates.items():
         log.info("Training %s …", name)
-        model.fit(X_train, y_train)
+        model.fit(X_train_res, y_train_res)
         trained[name] = model
     return trained
 
@@ -222,7 +271,7 @@ def evaluate_all(models: dict, X_test, y_test) -> tuple[dict, dict]:
             },
         }
 
-        log.info("%-22s  acc=%.4f  roc=%.4f", name, metrics["accuracy"], metrics["roc_auc"])
+        log.info("%-22s  recall=%.4f  f1=%.4f", name, metrics["recall"], metrics["f1_score"])
         log.info("\n%s", classification_report(y_test, preds))
 
         all_metrics[name] = metrics

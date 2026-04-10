@@ -22,7 +22,7 @@ import pickle
 import re
 import sys
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import joblib
@@ -30,13 +30,18 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 from flask import Flask, jsonify, render_template, request, abort
-from retrain import retrain_model
+
+try:
+    from .retrain import retrain_model
+except ImportError:
+    from retrain import retrain_model
 
 # ── project imports ─────────────────────────────────────────────────────────
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from utils.config import MODEL_PATH, FEATURES_PATH, METRICS_PATH, HISTORY_PATH, get_risk_level, PROCESSED_DATA_PATH
 from feedback_loop import build_feedback_dataset, update_training_data
+from governance import log_decision
 from src.shap_explainer import LoanModelExplainer
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
@@ -199,6 +204,19 @@ def create_features_live(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def add_economic_features(df):
+    df["inflation_rate"] = 0.06
+    df["interest_rate_env"] = 0.08
+    df["unemployment_rate"] = 0.07
+
+    df["economic_stress"] = (
+        df["inflation_rate"] * 0.4 +
+        df["unemployment_rate"] * 0.4 +
+        df["interest_rate_env"] * 0.2
+    )
+    return df
+
+
 def preprocess_input(form_data: dict) -> pd.DataFrame:
     """
     Convert raw form POST data into a 1-row DataFrame aligned to model features.
@@ -273,6 +291,93 @@ def _validate_input(form_data: dict) -> list:
     return errors
 
 
+def generate_explanation(record):
+    return f"""
+    Loan Decision Report:
+    - Probability of Default: {record['probability']}%
+    - Decision: {record['prediction']}
+    - Risk Level: {record['risk_level']}
+    - Key Factors: {[f['feature'] for f in record['top_features']]}
+    """
+
+
+def calculate_lgd(loan_amount, fico):
+    # Simple heuristic
+    if fico > 700:
+        return 0.2
+    elif fico > 600:
+        return 0.4
+    else:
+        return 0.6
+
+
+def generate_risk_report(record):
+    report = f"""
+    ===== Loan Risk Report =====
+    
+    Borrower: {record['borrower']}
+    Loan Amount: {record['loan_amnt']}
+    
+    Probability of Default (PD): {record['probability']}%
+    Risk Level: {record['risk_level']}
+    
+    Decision: {record.get('decision', 'N/A')}
+    
+    Key Factors:
+    """
+    
+    for f in record.get("explanation", []):
+        report += f"\n - {f['feature']}: impact {f['impact']}"
+    
+    return report
+
+
+def save_report(report, record_id):
+    path = f"reports/{record_id}.txt"
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as f:
+        f.write(report)
+    return path
+
+
+def credit_policy(pd):
+    if pd > 0.6:
+        return "Reject - High Risk"
+    elif pd > 0.4:
+        return "Manual Review"
+    else:
+        return "Approve"
+
+
+def get_risk_category(prob):
+    if prob < 0.2:
+        return "LOW RISK", False
+    elif prob < 0.4:
+        return "MEDIUM RISK", True
+    elif prob < 0.6:
+        return "HIGH RISK", True
+    else:
+        return "VERY HIGH RISK", True
+
+
+def get_risk_info(prob):
+    if prob < 0.3:
+        return "LOW RISK", False
+    elif prob < 0.6:
+        return "MEDIUM RISK", True
+    else:
+        return "HIGH RISK", True
+
+
+def get_decision(prob):
+    if prob < 0.3:
+        return "LOW RISK", "Repay", False
+    elif prob < 0.6:
+        return "MEDIUM RISK", "Review", True
+    else:
+        return "HIGH RISK", "Default", True
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # ROUTES
 # ─────────────────────────────────────────────────────────────────────────────
@@ -297,6 +402,8 @@ def predict():
     try:
         input_df = preprocess_input(form_data)
         input_df = create_features_live(input_df)
+        input_df = add_economic_features(input_df)
+        input_df = input_df.reindex(columns=MODEL_FEATURES, fill_value=0.0)
 
         # Explain prediction
         explanation = EXPLAINER.explain_single(input_df)
@@ -306,19 +413,31 @@ def predict():
         bias_flag = EXPLAINER.check_group_bias(form_data)
         sensitive_warning = EXPLAINER.validate_sensitive_features(form_data)
 
-        # Inference via XGBoost DMatrix (avoids sklearn API inconsistencies)
-        dmatrix     = xgb.DMatrix(input_df)
-        probability = float(MODEL.get_booster().predict(dmatrix)[0])
-        loan_amount = float(form_data.get("loan_amnt", 0) or 0)
-        expected_profit = loan_amount * (1 - probability) * 0.1 - loan_amount * probability
-        if probability > 0.6:
-            decision = "Reject"
-        elif probability > 0.4:
-            decision = "Manual Review"
-        else:
-            decision = "Approve"
+        # Inference using class probability for default risk (PD)
+        prob = float(MODEL.predict_proba(input_df)[0][1])
+        probability = prob
 
-        risk = get_risk_level(probability)
+        pd_value = probability
+        loan_amount = float(form_data.get("loan_amnt", 0) or 0)
+        fico_for_lgd = float(form_data.get("fico_range_low", 0) or 0)
+        lgd = calculate_lgd(loan_amount, fico_for_lgd)
+        ead = loan_amount
+        expected_loss = pd_value * lgd * ead
+        expected_profit = loan_amount * (1 - probability) * 0.1 - loan_amount * probability
+        risk_label, verdict, show_warning = get_decision(prob)
+        prediction = verdict
+        decision = verdict
+        policy_decision = verdict
+        risk_color_map = {
+            "LOW RISK": "#22c55e",
+            "MEDIUM RISK": "#f59e0b",
+            "HIGH RISK": "#f97316",
+            "VERY HIGH RISK": "#ef4444",
+        }
+        if show_warning:
+            message = "Default Risk Detected — Review Recommended"
+        else:
+            message = "Safe Borrower — No Immediate Risk"
 
         # Check if credit invisible (no FICO score)
         fico = float(form_data.get("fico_range_low", 0) or 0)
@@ -330,7 +449,8 @@ def predict():
         # Build history record
         record = {
             "id":          str(uuid.uuid4()),
-            "timestamp":   datetime.utcnow().isoformat() + "Z",
+            "trace_id":    str(uuid.uuid4()),
+            "timestamp":   datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "borrower":    form_data.get("borrower_name", "Anonymous"),
             "loan_amnt":   float(form_data.get("loan_amnt", 0) or 0),
             "int_rate":    float(form_data.get("int_rate", 0) or 0),
@@ -339,11 +459,25 @@ def predict():
             "purpose":     form_data.get("purpose", ""),
             "grade":       form_data.get("grade", ""),
             "prediction":  prediction,
+            "verdict":     verdict,
             "decision":    decision,
+            "policy_decision": policy_decision,
             "probability": round(probability * 100, 2),
+            "PD": round(pd_value, 4),
+            "LGD": round(lgd, 2),
+            "EAD": round(ead, 2),
+            "expected_loss": round(expected_loss, 2),
             "expected_profit": round(expected_profit, 2),
-            "risk_level":  risk["label"],
-            "color":       risk["color"],
+            "model_version": "v1.0",
+            "decision_threshold": 0.3,
+            "features_used": list(input_df.columns),
+            "top_features": explanation,
+            "fairness_check": fairness_flag,
+            "drift_status": "checked",
+            "risk_level":  risk_label,
+            "show_warning": show_warning,
+            "message":     message,
+            "color":       risk_color_map.get(risk_label, "#6b7280"),
             "risk_note":   risk_note,
             "raw_input":   form_data,
             "explanation": explanation,
@@ -351,7 +485,13 @@ def predict():
             "bias_check": bias_flag,
             "sensitive_warning": sensitive_warning,
         }
+
+        report = generate_risk_report(record)
+        report_path = save_report(report, record["id"])
+        record["report_path"] = report_path
+
         _append_to_history(record)
+        log_decision(record)
 
         # Feedback loop
         feedback_data = build_feedback_dataset()
@@ -359,8 +499,6 @@ def predict():
         if feedback_data is not None:
             update_training_data(feedback_data)
             log.info("🔁 Feedback data added to training set")
-
-            from retrain import retrain_model
             retrain_model()
             reload_model()
 
@@ -384,7 +522,10 @@ def predict():
 
         return render_template(
             "result.html",
-            record=record,
+            risk=risk_label,
+            show_warning=show_warning,
+            prob=prob,
+            verdict=verdict,
         )
 
     except Exception as exc:
