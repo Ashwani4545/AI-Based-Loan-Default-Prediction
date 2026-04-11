@@ -3,7 +3,9 @@
 ## Overview
 
 The AI Loan Default Prediction System is a machine learning–based web application that helps financial institutions assess the risk of loan applicants. It predicts the likelihood of loan default using borrower and loan data. 
+
 Unlike traditional credit scoring systems that rely on limited static records, this system uses an XGBoost-based model to capture complex patterns and improve prediction accuracy. It also incorporates Explainable AI (XAI) to provide transparency in decision-making. 
+
 The system is deployed through a Flask web interface, enabling real-time predictions and making it a complete intelligent credit risk assessment solution.
 
 ## Problem Statement
