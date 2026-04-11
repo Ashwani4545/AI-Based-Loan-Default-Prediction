@@ -2,22 +2,11 @@
 
 ## Overview
 
-The AI Loan Default Prediction System is a machine learning--based web
-application designed to help financial institutions evaluate the risk of
-loan applicants. The system predicts whether a borrower is likely to
-default on a loan by analyzing historical borrower and loan data using
-machine learning models.
+The AI Loan Default Prediction System is a machine learning–based web application that helps financial institutions assess the risk of loan applicants. It predicts the likelihood of loan default using borrower and loan data.
 
-Traditional credit scoring systems rely heavily on static financial
-records and often exclude individuals with limited credit history. This
-project introduces an AI‑driven approach that improves prediction
-accuracy while ensuring transparency and explainability.
+Unlike traditional credit scoring systems that rely on limited static records, this system uses an XGBoost-based model to capture complex patterns and improve prediction accuracy. It also incorporates Explainable AI (XAI) to provide transparency in decision-making.
 
-The system integrates: - XGBoost-based predictive modeling - Explainable
-AI techniques - Flask-based web application
-
-This creates a complete intelligent credit risk assessment platform.
-
+The system is deployed through a Flask web interface, enabling real-time predictions and making it a complete intelligent credit risk assessment solution.
 ------------------------------------------------------------------------
 
 ## Problem Statement
@@ -48,32 +37,19 @@ loan default prediction system.
 
 ------------------------------------------------------------------------
 
-## Key Features
-
+## 🚀 Key Features
 ### AI-Based Risk Prediction
-
-Predicts whether a borrower will default using machine learning.
-
-### Explainable AI
-
-Provides insights into why a prediction was made using SHAP.
-
-### Data Preprocessing Pipeline
-
-Handles missing values, encoding, and feature scaling.
-
-### Class Imbalance Handling
-
-SMOTE is used to improve prediction accuracy for rare default cases.
-
-### Web-Based Interface
-
-Users can input borrower details and receive predictions through a Flask
-web app.
-
+Predicts loan default probability using an XGBoost-based machine learning model.
+### Explainable AI (XAI)
+Uses SHAP to provide clear insights into factors influencing each prediction.
+### Robust Data Processing
+Handles missing values, encoding, and feature scaling for reliable model input.
+### Imbalance Handling
+Applies SMOTE to improve detection of rare default cases.
+### Web-Based Application
+Interactive Flask interface for real-time loan risk prediction.
 ### Model Monitoring
-
-Includes mechanisms for detecting model drift.
+Detects data drift to ensure long-term model stability and performance.
 
 ------------------------------------------------------------------------
 
