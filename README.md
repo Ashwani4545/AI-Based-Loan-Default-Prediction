@@ -1,4 +1,4 @@
-# AI Loan Default Prediction System
+# AegisBank — Loan Default Prediction System
 
 ## Overview
 
@@ -150,19 +150,48 @@ AI_Loan_Default_Predictor/
 ```
 ------------------------------------------------------------------------
 
-## Installation
+## Setup & Usage
 
-Clone the repository
-
-git clone https://github.com/yourusername/AI-Loan-Default-Prediction.git
-
-Navigate to project folder
-
-cd AI-Loan-Default-Prediction
-
-Install dependencies
-
+### 1. Install dependencies
+```bash
 pip install -r requirements.txt
+```
+
+### 2. Place your dataset
+Put your LendingClub-format CSV at:
+```
+data/raw/loan_data.csv
+```
+Required target column: `loan_status`
+
+### 3. Preprocess data
+```bash
+python -m src.data_preprocessing
+```
+
+### 4. Train models
+```bash
+python -m src.train_model
+```
+This trains Logistic Regression, Random Forest, and XGBoost.  
+Best model (by ROC-AUC) is saved to `models/loan_default_model.pkl`.  
+Metrics are saved to `model_metrics.json`.
+
+### 5. Save feature list (required for Flask app)
+```bash
+python -m utils.preprocessor
+```
+
+### 6. (Optional) Evaluate standalone
+```bash
+python -m src.evaluate_model
+```
+
+### 7. Run the web app
+```bash
+python app.py
+```
+Open http://127.0.0.1:5000
 
 ------------------------------------------------------------------------
 
