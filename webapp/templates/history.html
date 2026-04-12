@@ -73,7 +73,7 @@ block content %}
             <div class="prob-bar-wrap">
               <div
                 class="prob-bar"
-                style="width:{{ r.probability }}%; background: {{ r.color }}"
+                style="width: {{ r.probability|default(0) }}%; background: {{ r.color }}"
               ></div>
             </div>
             <span>{{ r.probability }}%</span>
@@ -81,7 +81,7 @@ block content %}
           <td>
             <span
               class="risk-pill"
-              style="color:{{ r.color }}; border-color:{{ r.color }}30; background:{{ r.color }}10"
+              style="color:{{ r.color }}; border-color:{{ r.color }}; background:{{ r.color }}"
             >
               {{ r.risk_level }}
             </span>
