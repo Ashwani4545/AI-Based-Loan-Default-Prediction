@@ -121,9 +121,15 @@ AI_Loan_Default_Predictor/
 │
 ├── webapp/
 │   ├── app.py                → Main Flask backend
+│   ├── retrain.py
+│   ├── model_training.ipynb          
 │   ├── templates/            → HTML pages (UI)
 │   │    ├── index.html        → Input form (user enters data)
 │   │    ├── result.html       → Prediction result page
+│   │    ├── base.html
+│   │    ├── history.html      → Storing the history page
+│   │    ├── reports.html      → Generating the reports page
+│   │    ├── report_detail.html
 │   │    └── dashboard.html    → Admin/analytics page
 │   ├── static/               → Frontend assets
 │       ├── css/style.css     → Styling
