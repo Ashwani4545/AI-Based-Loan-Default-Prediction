@@ -100,24 +100,34 @@ AI_Loan_Default_Predictor/
 │   └── processed/
 │       └── cleaned_data.csv
 │
-├── notebooks/
-│   └── EDA.ipynb
+├── explainability/
+│   └── shap_explainer.py
 │
-├── src/
-│   ├── data_preprocessing.py
-│   ├── feature_engineering.py
-│   ├── train_model.py
-│   ├── evaluate_model.py
-│   ├── predict.py
+├── logs/
 │
 ├── models/
 │   └── loan_default_model.pkl
 │
-├── explainability/
-│   └── shap_explainer.py
-│
 ├── monitoring/
 │   └── drift_detection.py
+│
+├── notebooks/
+│   └── EDA.ipynb
+│
+├── outputs/
+│
+├── reports/
+│
+├── src/
+│   ├── data_preprocessing.py
+│   ├── generate_performance.py
+│   ├── train_model.py
+│   ├── evaluate_model.py
+│   └── predict.py
+│
+├── utils/
+│   ├── preprocessor.py
+│   └── config.py
 │
 ├── webapp/
 │   ├── app.py                → Main Flask backend
@@ -134,9 +144,6 @@ AI_Loan_Default_Predictor/
 │   ├── static/               → Frontend assets
 │       ├── css/style.css     → Styling
 │       └── js/script.js      → JS logic (optional)
-│
-├── utils/
-│   └── config.py
 │
 ├── .dockerignore
 ├── .gitignore
@@ -209,6 +216,18 @@ Enter borrower information to receive loan default prediction results.
 
 ------------------------------------------------------------------------
 
+## Data Flow
+
+```
+Raw CSV → data_preprocessing.py → cleaned_data.csv
+         → train_model.py       → model.pkl + metrics.json + features.pkl
+         → app.py               → /predict → history.json
+                                          → result.html
+```
+------------------------------------------------------------------------
+
+The dashboard displays metrics from `model_metrics.json` — the exact same
+values produced during training. No divergence between training and UI.
 ## Future Scope
 
 The system can be expanded into a fintech platform offering:
