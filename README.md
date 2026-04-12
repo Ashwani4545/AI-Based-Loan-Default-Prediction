@@ -224,10 +224,11 @@ Raw CSV → data_preprocessing.py → cleaned_data.csv
          → app.py               → /predict → history.json
                                           → result.html
 ```
-------------------------------------------------------------------------
-
 The dashboard displays metrics from `model_metrics.json` — the exact same
 values produced during training. No divergence between training and UI.
+
+------------------------------------------------------------------------
+
 ## Future Scope
 
 The system can be expanded into a fintech platform offering:
