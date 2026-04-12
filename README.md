@@ -132,8 +132,14 @@ AI_Loan_Default_Predictor/
 ├── utils/
 │   └── config.py
 │
+├── .dockerignore
+├── .gitignore
+├── docker-compose.yml
+├── Dockerfile
+├── feedback_loop.py
+├── governance.py
+├── structure.txt
 ├── requirements.txt
-│
 └── README.md
 ```
 ------------------------------------------------------------------------
