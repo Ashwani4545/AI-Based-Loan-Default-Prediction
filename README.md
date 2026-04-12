@@ -216,6 +216,24 @@ Enter borrower information to receive loan default prediction results.
 
 ------------------------------------------------------------------------
 
+## Pages
+
+| URL | Description |
+|-----|-------------|
+| `/` | Loan assessment form |
+| `/predict` | POST — runs model, saves to history |
+| `/dashboard` | Model metrics, confusion matrix, radar chart |
+| `/history` | Filterable prediction log |
+| `/reports` | Borrower report cards |
+| `/reports/<id>` | Individual printable report |
+| `/api/metrics` | JSON metrics |
+| `/api/history` | JSON history (supports `?q=` search) |
+| `/health` | Healthcheck |
+
+---
+
+------------------------------------------------------------------------
+
 ## Data Flow
 
 ```
@@ -226,6 +244,16 @@ Raw CSV → data_preprocessing.py → cleaned_data.csv
 ```
 The dashboard displays metrics from `model_metrics.json` — the exact same
 values produced during training. No divergence between training and UI.
+
+------------------------------------------------------------------------
+
+## Key Design Decisions
+
+- **Model selection by ROC-AUC** (not accuracy) — better for imbalanced classes
+- **Feature alignment** — model features extracted at training time and saved to `model_features.pkl`; inference always aligns to this list to prevent feature mismatch
+- **Column sanitization** — XGBoost-safe column names (no `[]<>` chars) applied identically in training and inference
+- **History** — JSON file (swap for SQLite/Postgres in production)
+- **Print-ready reports** — `report_detail.html` has `@media print` styles
 
 ------------------------------------------------------------------------
 
