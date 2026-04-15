@@ -459,9 +459,12 @@ def predict():
         expected_loss = pd_value * lgd * ead
         expected_profit = loan_amount * (1 - probability) * 0.1 - loan_amount * probability
         income = float(form_data.get("annual_inc", 0) or 0)
+        override_triggered = income > 0 and loan_amount > 5 * income
+        print(f"Decision debug -> prob={prob:.4f}, threshold={threshold:.2f}, override={override_triggered}")
+        log.info("Decision debug -> prob=%.4f threshold=%.2f override=%s", prob, threshold, override_triggered)
 
         # Risk bands (business-friendly labels)
-        if income > 0 and loan_amount > 5 * income:
+        if override_triggered:
             risk = "High Risk (Override)"
             verdict = "High Risk (Override)"
             show_warning = True
@@ -477,6 +480,13 @@ def predict():
             verdict = "Review"
             show_warning = True
         else:
+            risk = "Low Risk"
+            verdict = "Repay"
+            show_warning = False
+
+        # Consistency guard: below threshold must not be flagged medium/high
+        # unless the explicit override rule is active.
+        if not override_triggered and prob < threshold:
             risk = "Low Risk"
             verdict = "Repay"
             show_warning = False
