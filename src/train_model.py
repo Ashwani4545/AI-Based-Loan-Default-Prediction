@@ -27,6 +27,7 @@ from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score,
     f1_score, roc_auc_score, confusion_matrix, classification_report,
+    mean_squared_error, mean_absolute_error, r2_score, roc_curve,
 )
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
@@ -254,16 +255,50 @@ def evaluate_all(models: dict, X_test, y_test) -> tuple[dict, dict]:
     for name, model in models.items():
         preds = model.predict(X_test)
         probs = model.predict_proba(X_test)[:, 1]
+        y_prob = probs
+
+        # ROC curve threshold tuning
+        fpr, tpr, thresholds = roc_curve(y_test, y_prob)
+        best_threshold = thresholds[(tpr - fpr).argmax()]
+        print(f"Best Threshold: {best_threshold:.6f}")
+
+        # Classification metrics
+        recall = recall_score(y_test, preds, zero_division=0)
+        f1 = f1_score(y_test, preds, zero_division=0)
+        roc_auc = roc_auc_score(y_test, y_prob)
+
+        print(f"\n{name} - Classification Metrics")
+        print(f"Recall: {recall:.4f}")
+        print(f"F1 Score: {f1:.4f}")
+        print(f"ROC-AUC: {roc_auc:.4f}")
+
+        # Regression-style probability error metrics
+        mse = mean_squared_error(y_test, y_prob)
+        rmse = np.sqrt(mse)
+        mae = mean_absolute_error(y_test, y_prob)
+        mape = np.mean(np.abs((y_test - y_prob) / (y_test + 1e-10))) * 100
+        r2 = r2_score(y_test, y_prob)
+
+        print(f"{name} - Regression Metrics")
+        print(f"RMSE: {rmse:.6f}")
+        print(f"MAE: {mae:.6f}")
+        print(f"MAPE: {mape:.4f}")
+        print(f"R2: {r2:.6f}")
 
         tn, fp, fn, tp = confusion_matrix(y_test, preds).ravel()
         loan_amounts = X_test["loan_amnt"]
         profit = calculate_profit(y_test, preds, loan_amounts)
         metrics = {
             "accuracy":  round(float(accuracy_score(y_test, preds)),            4),
-            "precision": round(float(precision_score(y_test, preds,  zero_division=0)), 4),
-            "recall":    round(float(recall_score(y_test, preds,     zero_division=0)), 4),
-            "f1_score":  round(float(f1_score(y_test, preds,         zero_division=0)), 4),
-            "roc_auc":   round(float(roc_auc_score(y_test, probs)),              4),
+            "precision": round(float(precision_score(y_test, preds, zero_division=0)), 4),
+            "recall":    round(float(recall), 4),
+            "f1_score":  round(float(f1), 4),
+            "roc_auc":   round(float(roc_auc), 4),
+            "mse":       round(float(mse), 6),
+            "rmse":      round(float(rmse), 6),
+            "mae":       round(float(mae), 6),
+            "mape":      round(float(mape), 4),
+            "r2":        round(float(r2), 6),
             "profit":    round(float(profit), 2),
             "confusion_matrix": {
                 "tn": int(tn), "fp": int(fp),

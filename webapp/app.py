@@ -65,6 +65,20 @@ def _load_model():
         return None
 
 
+def _load_scaler():
+    scaler_path = Path(MODEL_PATH).with_name("scaler.pkl")
+    try:
+        s = joblib.load(scaler_path)
+        log.info("Scaler loaded ✅  (%s)", scaler_path)
+        return s
+    except FileNotFoundError:
+        log.info("Scaler not found at %s — using unscaled inputs", scaler_path)
+        return None
+    except Exception as e:
+        log.warning("Scaler load failed: %s — using unscaled inputs", e)
+        return None
+
+
 def _load_features() -> list:
     try:
         with open(FEATURES_PATH, "rb") as f:
@@ -107,10 +121,12 @@ def _load_metrics() -> dict:
 
 
 MODEL         = _load_model()
+SCALER        = _load_scaler()
 
 def reload_model():
-    global MODEL
+    global MODEL, SCALER
     MODEL = _load_model()
+    SCALER = _load_scaler()
     log.info("🔄 Model reloaded after retraining")
 
 
@@ -224,13 +240,18 @@ def preprocess_input(form_data: dict) -> pd.DataFrame:
     if not MODEL_FEATURES:
         raise RuntimeError("Model feature list is empty — run utils/preprocessor.py first.")
 
+    # Fill critical numeric fields when left blank in the form.
+    normalized_form_data = dict(form_data)
+    normalized_form_data["dti"] = normalized_form_data.get("dti") or 20
+    normalized_form_data["revol_util"] = normalized_form_data.get("revol_util") or 50
+
     row = {feat: 0.0 for feat in MODEL_FEATURES}
 
     # Numeric fields
     for field in _NUMERIC_FIELDS:
         if field in row:
             try:
-                val = float(form_data.get(field, 0) or 0)
+                val = float(normalized_form_data.get(field, 0) or 0)
                 row[field] = max(val, 0.0)
             except (ValueError, TypeError):
                 row[field] = 0.0
@@ -246,7 +267,7 @@ def preprocess_input(form_data: dict) -> pd.DataFrame:
 
     # Categorical → one-hot
     for cat in _CATEGORICAL_FIELDS:
-        value = form_data.get(cat, "")
+        value = normalized_form_data.get(cat, "")
         if not value:
             continue
         # Naming convention used by pd.get_dummies: "<col>_<value>"
@@ -403,7 +424,9 @@ def predict():
         input_df = preprocess_input(form_data)
         input_df = create_features_live(input_df)
         input_df = add_economic_features(input_df)
-        input_df = input_df.reindex(columns=MODEL_FEATURES, fill_value=0.0)
+        # Keep exact same column order as training.
+        columns = MODEL_FEATURES
+        input_df = input_df.reindex(columns=columns, fill_value=0.0)
 
         # Explain prediction
         explanation = EXPLAINER.explain_single(input_df)
@@ -414,8 +437,19 @@ def predict():
         sensitive_warning = EXPLAINER.validate_sensitive_features(form_data)
 
         # Inference using class probability for default risk (PD)
-        prob = float(MODEL.predict_proba(input_df)[0][1])
+        input_data = input_df
+        if SCALER is not None:
+            input_data = SCALER.transform(input_data)
+            print("Scaler applied: True")
+        else:
+            print("Scaler applied: False")
+
+        prob = float(MODEL.predict_proba(input_data)[0][1])
+        print("Probability:", prob)
+        if prob < 0.3:
+            print("Warning: prob < 0.3 — possible feature issue")
         probability = prob
+        threshold = 0.4
 
         pd_value = probability
         loan_amount = float(form_data.get("loan_amnt", 0) or 0)
@@ -424,14 +458,38 @@ def predict():
         ead = loan_amount
         expected_loss = pd_value * lgd * ead
         expected_profit = loan_amount * (1 - probability) * 0.1 - loan_amount * probability
-        risk_label, verdict, show_warning = get_decision(prob)
+        income = float(form_data.get("annual_inc", 0) or 0)
+
+        # Risk bands (business-friendly labels)
+        if income > 0 and loan_amount > 5 * income:
+            risk = "High Risk (Override)"
+            verdict = "High Risk (Override)"
+            show_warning = True
+            print("Override triggered: loan_amount > 5 * annual_inc")
+            log.warning("Override triggered for borrower=%s (loan_amount=%.2f, annual_inc=%.2f)",
+                        form_data.get("borrower_name", "Anonymous"), loan_amount, income)
+        elif prob > 0.6:
+            risk = "High Risk"
+            verdict = "Default"
+            show_warning = True
+        elif prob > 0.4:
+            risk = "Medium Risk"
+            verdict = "Review"
+            show_warning = True
+        else:
+            risk = "Low Risk"
+            verdict = "Repay"
+            show_warning = False
+
         prediction = verdict
         decision = verdict
-        policy_decision = verdict
+        policy_decision = "Default" if prob > threshold else "Repay"
+        risk_label = risk.upper()
         risk_color_map = {
             "LOW RISK": "#22c55e",
             "MEDIUM RISK": "#f59e0b",
             "HIGH RISK": "#f97316",
+            "HIGH RISK (OVERRIDE)": "#dc2626",
             "VERY HIGH RISK": "#ef4444",
         }
         if show_warning:
@@ -469,7 +527,7 @@ def predict():
             "expected_loss": round(expected_loss, 2),
             "expected_profit": round(expected_profit, 2),
             "model_version": "v1.0",
-            "decision_threshold": 0.3,
+            "decision_threshold": threshold,
             "features_used": list(input_df.columns),
             "top_features": explanation,
             "fairness_check": fairness_flag,
