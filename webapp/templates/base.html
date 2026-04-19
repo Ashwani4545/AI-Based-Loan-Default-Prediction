@@ -54,6 +54,11 @@
         <li><a href="/batch" class="{% if request.endpoint=='batch' %}active{% endif %}">Batch Upload</a></li>
         {% endif %}
 
+        {# Audit Logs — compliance & admin only #}
+        {% if role in ['compliance', 'admin'] %}
+        <li><a href="/audit" class="{% if request.endpoint=='audit' %}active{% endif %}">📜 Audit Logs</a></li>
+        {% endif %}
+
         {# Admin Panel — admin only #}
         {% if role == 'admin' %}
         <li><a href="/admin" class="{% if request.endpoint=='admin_panel' %}active{% endif %}" style="color:var(--gold)">⚙ Admin</a></li>
