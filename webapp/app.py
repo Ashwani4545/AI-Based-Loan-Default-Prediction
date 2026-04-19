@@ -1016,6 +1016,8 @@ def handle_prediction(form_data):
             "id":          str(uuid.uuid4()),
             "trace_id":    str(uuid.uuid4()),
             "timestamp":   datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "user_email":  current_user.email if hasattr(current_user, 'email') else "system/api",
+            "user_role":   current_user.role if hasattr(current_user, 'role') else "system",
             "borrower":    form_data.get("borrower_name", "Anonymous"),
             "addr_state":  form_data.get("addr_state", ""),
             "loan_amnt":   float(form_data.get("loan_amnt", 0) or 0),
@@ -1287,6 +1289,15 @@ def api_borrower_names():
 
 # ── GEOGRAPHIC HEATMAP ───────────────────────────────────────────────────────
 
+@app.route("/audit")
+@role_required("compliance", "admin")
+def audit():
+    records = _load_history()
+    # Sort newest first
+    records.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+    return render_template("audit.html", records=records)
+
+
 @app.route("/heatmap")
 @login_required
 def heatmap():
@@ -1430,6 +1441,8 @@ if __name__ == "__main__":
         db.create_all()          # Create tables if they don't exist
         _seed_default_users()    # Insert demo accounts (idempotent)
         log.info("✅ Database ready at %s", DB_PATH)
+    
+    log.info("🚀 Server running on http://127.0.0.1:5000")
     socketio.run(app, debug=False, host="127.0.0.1", port=5000)
 
 
