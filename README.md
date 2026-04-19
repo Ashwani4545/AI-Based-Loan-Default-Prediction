@@ -151,7 +151,7 @@ Each SHAP value tells you: *"How much did this feature push the probability of d
 ---
 
 ## 🏗️ System Architecture
-
+```
 Browser (User)
     │
     │  GET /  →  index.html (loan assessment form)
