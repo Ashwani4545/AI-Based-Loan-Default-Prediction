@@ -335,6 +335,7 @@ Open: **http://localhost:5000**
 
 ## 🌐 Web Application Pages
 
+```
 | `/` | GET | Loan assessment input form |
 | `/audit` | GET | **Compliance Log Viewer** (immutable decision trail) |
 | `/api/docs` | GET | **Swagger UI** (interactive REST API documentation) |
