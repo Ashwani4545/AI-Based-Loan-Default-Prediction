@@ -1,0 +1,162 @@
+{% extends "base.html" %} {% block title %}Report — {{ record.borrower }}{%
+endblock %} {% block content %}
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-pill">📄 Borrower Report</div>
+    <h1 class="hero-h1">Loan Risk<br /><em>Report</em></h1>
+  </div>
+</div>
+
+<div class="rpt-shell" id="reportContent">
+  <!-- ── REPORT HEADER ──────────────────────────────────────────────────── -->
+  <div class="rpt-header">
+    <div class="rpt-brand">
+      <div class="rpt-logo">A</div>
+      <div>
+        <div class="rpt-bank">AegisBank</div>
+        <div class="rpt-sub">AI Risk Engine v2.4</div>
+      </div>
+    </div>
+    <div class="rpt-meta">
+      <div class="rpt-meta-row">
+        <span>Report ID:</span><code>{{ record.id[:8].upper() }}</code>
+      </div>
+      <div class="rpt-meta-row">
+        <span>Generated:</span>{{ record.timestamp[:10] }}
+      </div>
+    </div>
+  </div>
+
+  <!-- ── BORROWER SUMMARY ───────────────────────────────────────────────── -->
+  <div class="rpt-section">
+    <h2 class="rpt-section-title">Borrower Summary</h2>
+    <div class="rpt-grid-3">
+      <div class="rpt-field">
+        <label>Full Name</label><span>{{ record.borrower }}</span>
+      </div>
+      <div class="rpt-field">
+        <label>Assessment Date</label><span>{{ record.timestamp[:10] }}</span>
+      </div>
+      <div class="rpt-field">
+        <label>Purpose</label
+        ><span>{{ record.purpose.replace('_',' ').title() }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── LOAN DETAILS ───────────────────────────────────────────────────── -->
+  <div class="rpt-section">
+    <h2 class="rpt-section-title">Loan Details</h2>
+    <div class="rpt-grid-3">
+      <div class="rpt-field">
+        <label>Loan Amount</label
+        ><span>${{ "{:,.0f}".format(record.loan_amnt) }}</span>
+      </div>
+      <div class="rpt-field">
+        <label>Interest Rate</label><span>{{ record.int_rate }}%</span>
+      </div>
+      <div class="rpt-field">
+        <label>Annual Income</label
+        ><span>${{ "{:,.0f}".format(record.annual_inc) }}</span>
+      </div>
+      <div class="rpt-field">
+        <label>FICO Score</label><span>{{ record.fico | int }}</span>
+      </div>
+      <div class="rpt-field">
+        <label>Grade</label><span>{{ record.grade }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── RISK ASSESSMENT ────────────────────────────────────────────────── -->
+  <div
+    class="rpt-section rpt-risk-section"
+    style="border-color: {{ record.color }}30"
+  >
+    <h2 class="rpt-section-title">Risk Assessment</h2>
+    <div class="rpt-risk-body">
+      <div class="rpt-prob-big" style="color: {{ record.color }}">
+        {{ record.probability }}%
+        <span class="rpt-prob-label">Default Probability</span>
+      </div>
+      <div class="rpt-risk-detail">
+        <div
+          class="rpt-risk-badge"
+          style="color:{{ record.color }}; background:{{ record.color }}12; border-color:{{ record.color }}30"
+        >
+          {{ record.risk_level }}
+        </div>
+        <div
+          class="rpt-verdict {% if record.prediction == 0 %}rpt-safe{% else %}rpt-risk{% endif %}"
+        >
+          {% if record.prediction == 0 %} ✅ Likely to Repay — Recommended for
+          Approval {% else %} ⚠️ Default Risk Detected — Enhanced Review
+          Required {% endif %}
+        </div>
+        <div class="rpt-risk-bar-wrap">
+          <div
+            class="rpt-risk-bar"
+            style="width: {{ record.probability }}%; background: {{ record.color }}"
+          ></div>
+        </div>
+        <div class="rpt-risk-scale">
+          <span>0% (No Risk)</span><span>50%</span
+          ><span>100% (Certain Default)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FULL INPUT FEATURES ────────────────────────────────────────────── -->
+  {% if record.raw_input %}
+  <div class="rpt-section">
+    <h2 class="rpt-section-title">Full Application Data</h2>
+    <div class="rpt-features">
+      {% for key, val in record.raw_input.items() %} {% if key not in
+      ['borrower_name'] and val %}
+      <div class="rpt-feat-row">
+        <span class="rf-key">{{ key.replace('_',' ').title() }}</span>
+        <span class="rf-val">{{ val }}</span>
+      </div>
+      {% endif %} {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── DISCLAIMER ─────────────────────────────────────────────────────── -->
+  <div class="rpt-disclaimer">
+    This report is generated automatically by the AegisBank AI Risk Engine and
+    is intended for internal review purposes only. It does not constitute a
+    formal credit decision. All lending decisions must be reviewed and approved
+    by a qualified credit officer in accordance with applicable regulations.
+  </div>
+
+  <!-- ── ACTIONS ────────────────────────────────────────────────────────── -->
+  <div class="rpt-actions">
+    <button onclick="window.print()" class="btn btn-outline">
+      🖨 Print Report
+    </button>
+    <a href="/reports" class="btn btn-ghost">← All Reports</a>
+    <a href="/" class="btn btn-ghost">New Assessment</a>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<style>
+  @media print {
+    .nav,
+    .rpt-actions,
+    .hero {
+      display: none !important;
+    }
+    .rpt-shell {
+      margin: 0;
+      padding: 20px;
+      max-width: 100%;
+    }
+    body {
+      background: white;
+      color: black;
+    }
+  }
+</style>
+{% endblock %}

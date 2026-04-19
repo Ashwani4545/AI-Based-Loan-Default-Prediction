@@ -1,0 +1,18 @@
+
+    ===== Loan Risk Report =====
+    
+    Borrower: df
+    Loan Amount: 100000.0
+    
+    Probability of Default (PD): 18.14%
+    Risk Level: LOW RISK
+    
+    Decision: Repay
+    
+    Key Factors:
+    
+ - int_rate: impact 0.3616
+ - installment_income_ratio: impact 0.3371
+ - term__60_months: impact 0.2832
+ - credit_stress: impact 0.279
+ - revol_income_ratio: impact 0.243
