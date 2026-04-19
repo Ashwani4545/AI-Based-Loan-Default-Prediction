@@ -49,6 +49,21 @@ canvas { max-width:100%; }
 
 <div class="dash-shell">
 
+  <!-- ── DEVELOPER API KEYS ── -->
+  <div class="chart-card" style="margin-bottom: 24px; display: flex; flex-direction: column; gap: 10px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+      <div>
+        <div class="chart-card-title">Developer API Access</div>
+        <div class="chart-card-sub" style="margin-bottom:0;">Generate an API key to access the risk engine programmatically.</div>
+      </div>
+      <a href="/api/docs" class="btn-ghost" style="padding: 8px 16px; text-decoration: none; border: 1px solid var(--border); border-radius: 8px;" target="_blank">📄 View API Docs</a>
+    </div>
+    <div style="display:flex; gap: 12px; margin-top: 10px; flex-wrap:wrap;">
+      <button onclick="generateApiKey()" class="btn-ghost" style="background: var(--gold-dim); border: 1px solid var(--gold-border); color: var(--gold); padding: 10px 20px; border-radius: 8px; font-weight:700; cursor:pointer;">Generate New Key</button>
+      <input type="text" id="apiKeyDisplay" readonly placeholder="API Key will appear here..." style="flex:1; min-width:200px; background: var(--navy-2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--tx-1); font-family: 'DM Mono', monospace; font-size: 13px; outline:none; cursor:pointer;" onclick="this.select()" title="Click to select all">
+    </div>
+  </div>
+
   <!-- ── MODEL HEALTH MONITOR ── -->
   <div style="margin-bottom:8px;font-family:'DM Mono',monospace;font-size:11px;color:var(--tx-3);text-transform:uppercase;letter-spacing:.1em">Model Health</div>
   <div class="model-health">
@@ -182,6 +197,21 @@ canvas { max-width:100%; }
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
+async function generateApiKey() {
+  try {
+    const res = await fetch('/api/v1/keys/generate', {method: 'POST'});
+    const data = await res.json();
+    if (res.ok) {
+      document.getElementById('apiKeyDisplay').value = data.api_key;
+      alert(data.message);
+    } else {
+      alert("Error: " + data.error);
+    }
+  } catch (e) {
+    alert("Failed to generate API key.");
+  }
+}
+
 const metrics = {
   accuracy:  {{ metrics.accuracy }},
   precision: {{ metrics.precision }},

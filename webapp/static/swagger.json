@@ -1,0 +1,210 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "AegisBank AI Risk Engine API",
+    "description": "REST API for integrating the AegisBank Loan Default Prediction model into B2B workflows.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Current Environment"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
+      },
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApiKeyAuth": []
+    },
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/predict": {
+      "post": {
+        "summary": "Run a Loan Assessment",
+        "description": "Submits borrower financial data to the AI model and returns the default probability, risk tier, and SHAP explanations.",
+        "tags": ["Prediction"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "loan_amnt", "term", "int_rate", "purpose", "annual_inc", 
+                  "fico_range_low", "grade"
+                ],
+                "properties": {
+                  "loan_amnt": {
+                    "type": "number",
+                    "description": "The requested loan amount",
+                    "example": 15000
+                  },
+                  "term": {
+                    "type": "string",
+                    "enum": ["36_months", "60_months"],
+                    "example": "36_months"
+                  },
+                  "int_rate": {
+                    "type": "number",
+                    "description": "Interest rate on the loan (%)",
+                    "example": 10.5
+                  },
+                  "installment": {
+                    "type": "number",
+                    "description": "Monthly payment owed",
+                    "example": 350.5
+                  },
+                  "grade": {
+                    "type": "string",
+                    "example": "B"
+                  },
+                  "sub_grade": {
+                    "type": "string",
+                    "example": "B2"
+                  },
+                  "emp_length": {
+                    "type": "string",
+                    "example": "5_years"
+                  },
+                  "home_ownership": {
+                    "type": "string",
+                    "enum": ["MORTGAGE", "OWN", "RENT", "OTHER"],
+                    "example": "MORTGAGE"
+                  },
+                  "annual_inc": {
+                    "type": "number",
+                    "description": "Annual income",
+                    "example": 75000
+                  },
+                  "verification_status": {
+                    "type": "string",
+                    "example": "Verified"
+                  },
+                  "purpose": {
+                    "type": "string",
+                    "example": "debt_consolidation"
+                  },
+                  "addr_state": {
+                    "type": "string",
+                    "example": "CA"
+                  },
+                  "dti": {
+                    "type": "number",
+                    "description": "Debt-to-income ratio",
+                    "example": 15.2
+                  },
+                  "delinq_2yrs": {
+                    "type": "integer",
+                    "example": 0
+                  },
+                  "fico_range_low": {
+                    "type": "integer",
+                    "description": "FICO score (low bound)",
+                    "example": 720
+                  },
+                  "fico_range_high": {
+                    "type": "integer",
+                    "description": "FICO score (high bound)",
+                    "example": 724
+                  },
+                  "inq_last_6mths": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "open_acc": {
+                    "type": "integer",
+                    "example": 8
+                  },
+                  "pub_rec": {
+                    "type": "integer",
+                    "example": 0
+                  },
+                  "revol_bal": {
+                    "type": "number",
+                    "example": 5000
+                  },
+                  "revol_util": {
+                    "type": "number",
+                    "description": "Revolving line utilization rate",
+                    "example": 35.5
+                  },
+                  "total_acc": {
+                    "type": "integer",
+                    "example": 15
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Prediction",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "record_id": {
+                      "type": "string",
+                      "example": "a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                    },
+                    "prediction": {
+                      "type": "object",
+                      "properties": {
+                        "risk_level": {
+                          "type": "string",
+                          "example": "LOW RISK"
+                        },
+                        "probability": {
+                          "type": "number",
+                          "example": 0.125
+                        },
+                        "verdict": {
+                          "type": "string",
+                          "example": "Repay"
+                        },
+                        "expected_loss": {
+                          "type": "number",
+                          "example": 843.75
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request (Validation Error)"
+          },
+          "401": {
+            "description": "Unauthorized (Missing API Key)"
+          },
+          "403": {
+            "description": "Forbidden (Invalid API Key)"
+          }
+        }
+      }
+    }
+  }
+}
