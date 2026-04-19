@@ -217,32 +217,27 @@ AI-Based-Loan-Default-Prediction-main/
 │   └── model_features.pkl            ← Auto-generated list of model feature names
 │
 ├── webapp/
-│   ├── app.py                        ← Main Flask application (all routes)
-│   ├── retrain.py                    ← Triggers retraining as subprocess
-│   ├── model_training.ipynb          ← Jupyter notebook for exploratory training
+│   ├── app.py                        ← Main Flask application (WebSockets + REST API)
+│   ├── retrain.py                    ← Triggers model retraining
+│   ├── aegisbank.db                  ← SQLite Database (Users, Roles, API Keys)
 │   ├── templates/
-│   │   ├── signin.html               ← All user signin
-│   │   ├── signup.html               ← All user signup
-│   │   ├── welcome.html              ← Main page of our software
-│   │   ├── signup.html               ← All user signup
-│   │   ├── base.html                 ← Shared navigation + layout
-│   │   ├── index.html                ← Loan assessment input form
-│   │   ├── result.html               ← Prediction result page
-│   │   ├── dashboard.html            ← Model metrics + confusion matrix
-│   │   ├── history.html              ← Searchable prediction log
-│   │   ├── reports.html              ← All borrower report cards
-│   │   └── report_detail.html        ← Individual printable report
-│   │
+│   │   ├── base.html                 ← Shared layout & Premium Navigation
+│   │   ├── index.html                ← Real-time assessment with progress modal
+│   │   ├── dashboard.html            ← Metrics, Drift, and API Key management
+│   │   ├── audit.html                ← Compliance Audit Trail Log
+│   │   ├── timeline.html             ← Borrower risk history visualization
+│   │   ├── heatmap.html              ← Geographic risk distribution map
+│   │   ├── compare.html              ← Side-by-side borrower comparison
+│   │   ├── batch.html                ← Mass loan processing portal
+│   │   ├── admin.html                ← User management & System settings
+│   │   ├── history.html              ← Searchable global prediction history
+│   │   ├── reports.html              ← All borrower risk report cards
+│   │   └── result.html               ← Detailed results with SHAP & Fairness cards
 │   │
 │   └── static/
-│       ├── css/style.css             ← Application styling
-│       ├── js/script.js              ← Frontend JavaScript logic
-│       └── swagger.json              ← OpenAPI 3.0 Specification
-│
-│   └── templates/
-│       ├── audit.html                ← Compliance Audit Log Viewer
-│       ├── timeline.html             ← Interactive risk timeline
-│       ├── ... (other templates)
+│       ├── css/style.css             ← Glassmorphism & Premium UI styling
+│       ├── js/script.js              ← WebSocket handlers & Chart logic
+│       └── swagger.json              ← OpenAPI 3.0 REST API Specification
 │
 ├── monitoring/
 │   └── drift_detection.py            ← PSI-based feature drift monitor
