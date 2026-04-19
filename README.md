@@ -423,7 +423,7 @@ Screenshots
 
 Homepage - <img src="images/screenshot.png" width="400">
 Dashboard - <img src="images/screenshot.png" width="400">
-History - 
+History - <img src="images/screenshot.png" width="400">
 Reports - 
 ---
 
