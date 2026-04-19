@@ -421,7 +421,10 @@ webapp/retrain.py              → triggers src.train_model if drift found
 
 Screenshots
 
-
+Homepage - <img src="images/screenshot.png" width="400">
+Dashboard - 
+History - 
+Reports - 
 ---
 
 ## 📄 License
