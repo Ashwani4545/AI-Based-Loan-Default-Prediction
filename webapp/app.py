@@ -1442,7 +1442,9 @@ if __name__ == "__main__":
         _seed_default_users()    # Insert demo accounts (idempotent)
         log.info("✅ Database ready at %s", DB_PATH)
     
-    log.info("🚀 Server running on http://127.0.0.1:5000")
+    print(" * Serving Flask app 'webapp.app'")
+    print(" * Debug mode: off")
+    print(" * Running on http://127.0.0.1:5000")
     socketio.run(app, debug=False, host="127.0.0.1", port=5000)
 
 
