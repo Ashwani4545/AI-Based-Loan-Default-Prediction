@@ -345,7 +345,7 @@ Open: **http://localhost:5000**
 | `/reports` | GET | All borrower report cards |
 | `/api/v1/predict` | POST | **REST API** endpoint for B2B integrations |
 | `/health` | GET | Healthcheck endpoint |
-
+```
 ---
 
 ## 🔄 Data Flow
