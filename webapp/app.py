@@ -22,6 +22,8 @@ import pickle
 import re
 import sys
 import uuid
+import time
+import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -39,6 +41,8 @@ from flask_login import (
 )
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
+from flask_socketio import SocketIO, emit
+from flask_swagger_ui import get_swaggerui_blueprint
 
 try:
     from .retrain import retrain_model
@@ -59,6 +63,17 @@ log = logging.getLogger(__name__)
 app = Flask(__name__)
 app.config["JSON_SORT_KEYS"] = False
 app.secret_key = os.environ.get("AEGIS_SECRET_KEY", "aegisbank-dev-secret-key-change-in-prod")
+socketio = SocketIO(app, async_mode='eventlet')
+
+# ── SWAGGER UI CONFIG ─────────────────────────────────────────────────────
+SWAGGER_URL = '/api/docs'
+API_URL = '/static/swagger.json'
+swaggerui_blueprint = get_swaggerui_blueprint(
+    SWAGGER_URL,
+    API_URL,
+    config={'app_name': "AegisBank Risk Engine API"}
+)
+app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 
 # ── DATABASE CONFIG ───────────────────────────────────────────────────────
 DB_PATH = Path(__file__).resolve().parent / "aegisbank.db"
@@ -112,6 +127,26 @@ class User(UserMixin, db.Model):
 
     def __repr__(self):
         return f"<User {self.email} [{self.role}]>"
+
+
+class ApiKey(db.Model):
+    __tablename__ = "api_keys"
+
+    id         = db.Column(db.Integer, primary_key=True)
+    user_id    = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    key_hash   = db.Column(db.String(256), unique=True, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user       = db.relationship('User', backref=db.backref('api_keys', lazy=True))
+
+    def set_key(self, raw_key: str):
+        self.key_hash = generate_password_hash(raw_key)
+
+    def check_key(self, raw_key: str) -> bool:
+        return check_password_hash(self.key_hash, raw_key)
+        
+    def __repr__(self):
+        return f"<ApiKey user_id={self.user_id}>"
 
 
 @login_manager.user_loader
@@ -861,29 +896,37 @@ def compare():
                            form_a=form_a, form_b=form_b)
 
 
-@app.route("/predict", methods=["POST"])
-@role_required("analyst", "risk_manager", "admin")
-def predict():
+@socketio.on("submit_prediction")
+def handle_prediction(form_data):
     if MODEL is None:
-        return jsonify({"error": "Model not loaded — run train_model.py first."}), 503
+        emit('prediction_error', {"error": "Model not loaded — run train_model.py first."})
+        return
 
-    form_data = request.form.to_dict()
+    emit('progress', {'step': 'Validating inputs...', 'percent': 10})
+    time.sleep(0.6)
 
-    # Validation
     errors = _validate_input(form_data)
     if errors:
-        return render_template("index.html", errors=errors, form_data=form_data)
+        emit('prediction_error', {"error": "\n".join(errors)})
+        return
+
+    emit('progress', {'step': 'Running XGBoost model...', 'percent': 40})
+    time.sleep(0.6)
 
     try:
         input_df = preprocess_input(form_data)
         input_df = create_features_live(input_df)
         input_df = add_economic_features(input_df)
-        # Keep exact same column order as training.
         columns = MODEL_FEATURES
         input_df = input_df.reindex(columns=columns, fill_value=0.0)
 
+        emit('progress', {'step': 'Computing SHAP values...', 'percent': 60})
+        time.sleep(0.6)
         # Explain prediction
         explanation = EXPLAINER.explain_single(input_df)
+
+        emit('progress', {'step': 'Checking fairness...', 'percent': 80})
+        time.sleep(0.6)
 
         # Fairness checks
         fairness_flag = EXPLAINER.check_individual_fairness(form_data)
@@ -1043,17 +1086,32 @@ def predict():
             retrain_model()
             reload_model()
 
-        return render_template(
-            "result.html",
-            risk=risk_label,
-            show_warning=show_warning,
-            prob=prob,
-            verdict=verdict,
-        )
+        emit('progress', {'step': 'Decision ready ✓', 'percent': 100})
+        time.sleep(0.6)
+
+        emit('prediction_complete', {'record_id': record['id']})
 
     except Exception as exc:
         log.exception("Prediction error")
-        return render_template("index.html", errors=[f"Prediction failed: {exc}"], form_data=form_data)
+        emit('prediction_error', {"error": f"Prediction failed: {exc}"})
+
+
+@app.route("/result/<record_id>")
+@fl_login_required
+def prediction_result(record_id):
+    records = _load_history()
+    record = next((r for r in records if r.get("id") == record_id), None)
+    if not record:
+        abort(404)
+        
+    return render_template(
+        "result.html",
+        risk=record["risk_level"],
+        show_warning=record["show_warning"],
+        prob=record["probability"] / 100.0,
+        verdict=record["verdict"],
+        record=record
+    )
 
 
 @app.route("/dashboard")
@@ -1282,6 +1340,85 @@ def api_geo_risk():
     return jsonify(result)
 
 
+# ── API ENDPOINTS & DECORATOR ─────────────────────────────────────────────
+def require_api_key(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        api_key = request.headers.get("X-API-Key")
+        if not api_key:
+            auth_header = request.headers.get("Authorization")
+            if auth_header and auth_header.startswith("Bearer "):
+                api_key = auth_header.split(" ")[1]
+        
+        if not api_key:
+            return jsonify({"error": "Missing API Key. Provide via X-API-Key or Authorization Bearer header."}), 401
+            
+        all_keys = ApiKey.query.all()
+        valid_user = None
+        for key_record in all_keys:
+            if key_record.check_key(api_key):
+                valid_user = key_record.user
+                break
+                
+        if not valid_user:
+            return jsonify({"error": "Invalid API Key."}), 403
+            
+        return f(*args, **kwargs)
+    return decorated
+
+
+@app.route("/api/v1/keys/generate", methods=["POST"])
+@fl_login_required
+def generate_api_key():
+    raw_key = secrets.token_urlsafe(32)
+    new_key = ApiKey(user_id=current_user.id)
+    new_key.set_key(raw_key)
+    
+    # Allow 1 key per user for simplicity
+    ApiKey.query.filter_by(user_id=current_user.id).delete()
+    
+    db.session.add(new_key)
+    db.session.commit()
+    
+    return jsonify({
+        "message": "API key generated successfully.",
+        "api_key": raw_key
+    })
+
+
+@app.route("/api/v1/predict", methods=["POST"])
+@require_api_key
+def api_predict():
+    if MODEL is None:
+        return jsonify({"error": "Model not loaded"}), 503
+        
+    form_data = request.json
+    if not form_data:
+        return jsonify({"error": "Invalid JSON payload"}), 400
+        
+    errors = _validate_input(form_data)
+    if errors:
+        return jsonify({"error": "Validation failed", "details": errors}), 400
+        
+    try:
+        result = _score_borrower(form_data)
+        records = _load_history()
+        record = next((r for r in records if r.get("id") == result["record_id"]), None)
+        
+        return jsonify({
+            "status": "success",
+            "prediction": {
+                "risk_level": result["risk"],
+                "probability": result["prob"],
+                "verdict": result["verdict"],
+                "expected_loss": record.get("expected_loss") if record else None
+            },
+            "record_id": result["record_id"]
+        })
+    except Exception as exc:
+        log.exception("API Prediction error")
+        return jsonify({"error": str(exc)}), 500
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1293,7 +1430,7 @@ if __name__ == "__main__":
         db.create_all()          # Create tables if they don't exist
         _seed_default_users()    # Insert demo accounts (idempotent)
         log.info("✅ Database ready at %s", DB_PATH)
-    app.run(debug=False, host="127.0.0.1", port=5000)
+    socketio.run(app, debug=False, host="127.0.0.1", port=5000)
 
 
 #System Works Like This

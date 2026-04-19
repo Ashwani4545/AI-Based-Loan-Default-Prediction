@@ -306,4 +306,59 @@
 
   </form>
 </div>
+
+<!-- ── PROCESSING MODAL ── -->
+<div id="processingModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(13,21,38,0.9); z-index:9999; flex-direction:column; align-items:center; justify-content:center; backdrop-filter: blur(4px);">
+  <div style="background:var(--card); border:1px solid var(--border); padding:40px; border-radius:12px; text-align:center; max-width:400px; width:100%; box-shadow: 0 20px 40px rgba(0,0,0,0.4);">
+    <div style="display: inline-block; width: 36px; height: 36px; border: 3px solid rgba(201,168,76,.2); border-top-color: var(--gold); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
+    <h3 style="font-family:'Syne',sans-serif; color:var(--tx-1); margin-bottom:10px;">AI Risk Analysis</h3>
+    <div id="progressStep" style="font-family:'DM Mono',monospace; color:var(--gold); font-size:14px; margin-bottom:24px; min-height: 20px;">Initializing...</div>
+    <div style="width:100%; height:4px; background:rgba(255,255,255,0.05); border-radius:2px; overflow:hidden;">
+      <div id="progressBar" style="width:0%; height:100%; background:var(--gold); transition:width 0.4s ease;"></div>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+  const socket = io();
+  const form = document.getElementById('loanForm');
+  const modal = document.getElementById('processingModal');
+  const progressStep = document.getElementById('progressStep');
+  const progressBar = document.getElementById('progressBar');
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    modal.style.display = 'flex';
+    progressStep.innerText = 'Connecting to AI Engine...';
+    progressBar.style.width = '5%';
+
+    const formData = new FormData(form);
+    const data = {};
+    formData.forEach((value, key) => { data[key] = value; });
+
+    socket.emit('submit_prediction', data);
+  });
+
+  socket.on('progress', function(data) {
+    progressStep.innerText = data.step;
+    progressBar.style.width = data.percent + '%';
+  });
+
+  socket.on('prediction_complete', function(data) {
+    window.location.href = '/result/' + data.record_id;
+  });
+
+  socket.on('prediction_error', function(data) {
+    modal.style.display = 'none';
+    alert("Error: " + (data.error || 'An error occurred during prediction.'));
+  });
+</script>
 {% endblock %}
