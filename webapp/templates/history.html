@@ -1,0 +1,149 @@
+{% extends "base.html" %} {% block title %}Prediction History{% endblock %} {%
+block content %}
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-pill">📋 Prediction Log</div>
+    <h1 class="hero-h1">Assessment<br /><em>History</em></h1>
+    <p class="hero-sub">
+      All past loan assessments — searchable and filterable.
+    </p>
+  </div>
+</div>
+
+<div class="hist-shell">
+  <!-- ── SEARCH & FILTER BAR ───────────────────────────────────────────── -->
+  <div class="filter-bar">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input
+        type="text"
+        id="searchInput"
+        placeholder="Search by name, purpose, risk level…"
+        class="search-input"
+      />
+    </div>
+    <div class="filter-chips" id="filterChips">
+      <button class="chip chip-active" data-filter="all">All</button>
+      <button class="chip" data-filter="LOW RISK">Low Risk</button>
+      <button class="chip" data-filter="MEDIUM RISK">Medium Risk</button>
+      <button class="chip" data-filter="HIGH RISK">High Risk</button>
+      <button class="chip" data-filter="VERY HIGH RISK">Very High Risk</button>
+    </div>
+    <div class="count-label" id="countLabel">
+      {{ records|length }} record{% if records|length != 1 %}s{% endif %}
+    </div>
+  </div>
+
+  <!-- ── TABLE ─────────────────────────────────────────────────────────── -->
+  {% if records %}
+  <div class="table-wrap">
+    <table class="hist-table" id="histTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Borrower</th>
+          <th>Date</th>
+          <th>Loan Amt</th>
+          <th>Int. Rate</th>
+          <th>FICO</th>
+          <th>Purpose</th>
+          <th>Grade</th>
+          <th>Probability</th>
+          <th>Risk Level</th>
+          <th>Verdict</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="histBody">
+        {% for r in records %}
+        <tr
+          class="hist-row"
+          data-search="{{ r.borrower|lower }} {{ r.purpose|lower }} {{ r.risk_level|lower }}"
+          data-risk="{{ r.risk_level }}"
+        >
+          <td class="td-idx">{{ loop.index }}</td>
+          <td class="td-name">{{ r.borrower }}</td>
+          <td class="td-date">{{ r.timestamp[:10] }}</td>
+          <td class="td-num">${{ "{:,.0f}".format(r.loan_amnt) }}</td>
+          <td class="td-num">{{ r.int_rate }}%</td>
+          <td class="td-num">{{ r.fico | int }}</td>
+          <td class="td-purpose">{{ r.purpose.replace('_',' ').title() }}</td>
+          <td class="td-grade">{{ r.grade }}</td>
+          <td class="td-prob">
+            <div class="prob-bar-wrap">
+              <div
+                class="prob-bar"
+                style="width: {{ r.probability|default(0) }}%; background: {{ r.color }}"
+              ></div>
+            </div>
+            <span>{{ r.probability }}%</span>
+          </td>
+          <td>
+            <span
+              class="risk-pill"
+              style="color:{{ r.color }}; border-color:{{ r.color }}; background:{{ r.color }}"
+            >
+              {{ r.risk_level }}
+            </span>
+          </td>
+          <td>
+            <span
+              class="verdict-dot {% if r.prediction == 0 %}dot-safe{% else %}dot-risk{% endif %}"
+            >
+              {% if r.prediction == 0 %}Repay{% else %}Default{% endif %}
+            </span>
+          </td>
+          <td>
+            <a href="/reports/{{ r.id }}" class="tbl-link">Report →</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="es-icon">📭</div>
+    <div class="es-title">No assessments yet</div>
+    <div class="es-sub">
+      Run your first loan assessment to see results here.
+    </div>
+    <a href="/" class="btn btn-outline">Start Assessment</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  const searchInput = document.getElementById("searchInput");
+  const filterChips = document.querySelectorAll(".chip");
+  const rows = document.querySelectorAll(".hist-row");
+  const countLabel = document.getElementById("countLabel");
+
+  let activeFilter = "all";
+
+  function filterTable() {
+    const q = searchInput.value.toLowerCase();
+    let count = 0;
+    rows.forEach((row) => {
+      const matchSearch = !q || row.dataset.search.includes(q);
+      const matchFilter =
+        activeFilter === "all" || row.dataset.risk === activeFilter;
+      const show = matchSearch && matchFilter;
+      row.style.display = show ? "" : "none";
+      if (show) count++;
+    });
+    countLabel.textContent = count + " record" + (count !== 1 ? "s" : "");
+  }
+
+  searchInput.addEventListener("input", filterTable);
+
+  filterChips.forEach((chip) => {
+    chip.addEventListener("click", () => {
+      filterChips.forEach((c) => c.classList.remove("chip-active"));
+      chip.classList.add("chip-active");
+      activeFilter = chip.dataset.filter;
+      filterTable();
+    });
+  });
+</script>
+{% endblock %}
