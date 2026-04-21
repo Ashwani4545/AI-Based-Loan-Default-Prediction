@@ -34,6 +34,8 @@ canvas { max-width:100%; }
 .feat-bar-fill { height:100%; background:linear-gradient(90deg,#c9a84c,#e2c26e); border-radius:4px; width:0; transition:width 1.2s cubic-bezier(.16,1,.3,1); }
 .feat-bar-val { font-family:'DM Mono',monospace; font-size:11px; color:var(--tx-3); width:40px; text-align:right; }
 
+.active-tab { background: rgba(201,168,76,0.1) !important; border: 1px solid var(--gold-border) !important; color: var(--gold) !important; }
+
 @media(max-width:700px){ .chart-row{grid-template-columns:1fr} .model-health{grid-template-columns:1fr} }
 </style>
 {% endblock %}
@@ -43,154 +45,151 @@ canvas { max-width:100%; }
   <div class="hero-inner">
     <div class="hero-pill">📊 Live Analytics</div>
     <h1 class="hero-h1">Model <em>Dashboard</em></h1>
-    <p class="hero-sub">Real-time performance metrics from the trained XGBoost classifier.</p>
+    <p class="hero-sub">Real-time performance metrics and MLOps observability.</p>
   </div>
 </div>
 
 <div class="dash-shell">
-
-  <!-- ── DEVELOPER API KEYS ── -->
-  <div class="chart-card" style="margin-bottom: 24px; display: flex; flex-direction: column; gap: 10px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-      <div>
-        <div class="chart-card-title">Developer API Access</div>
-        <div class="chart-card-sub" style="margin-bottom:0;">Generate an API key to access the risk engine programmatically.</div>
-      </div>
-      <a href="/api/docs" class="btn-ghost" style="padding: 8px 16px; text-decoration: none; border: 1px solid var(--border); border-radius: 8px;" target="_blank">📄 View API Docs</a>
-    </div>
-    <div style="display:flex; gap: 12px; margin-top: 10px; flex-wrap:wrap;">
-      <button onclick="generateApiKey()" class="btn-ghost" style="background: var(--gold-dim); border: 1px solid var(--gold-border); color: var(--gold); padding: 10px 20px; border-radius: 8px; font-weight:700; cursor:pointer;">Generate New Key</button>
-      <input type="text" id="apiKeyDisplay" readonly placeholder="API Key will appear here..." style="flex:1; min-width:200px; background: var(--navy-2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--tx-1); font-family: 'DM Mono', monospace; font-size: 13px; outline:none; cursor:pointer;" onclick="this.select()" title="Click to select all">
-    </div>
+  <!-- ── DASHBOARD TABS ── -->
+  <div style="display:flex; gap:8px; margin-bottom:24px; border-bottom:1px solid var(--border); padding-bottom:12px;">
+    <button onclick="switchTab('perf')" id="tab-btn-perf" class="btn-ghost active-tab" style="padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:600; border:1px solid transparent;">Model Performance</button>
+    <button onclick="switchTab('mlops')" id="tab-btn-mlops" class="btn-ghost" style="padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:600; border:1px solid transparent;">MLOps & Model Health</button>
   </div>
 
-  <!-- ── MODEL HEALTH MONITOR ── -->
-  <div style="margin-bottom:8px;font-family:'DM Mono',monospace;font-size:11px;color:var(--tx-3);text-transform:uppercase;letter-spacing:.1em">Model Health</div>
-  <div class="model-health">
-    <div class="mh-card">
-      <div class="mh-indicator green"></div>
-      <div>
-        <div class="mh-text-label">Model Status</div>
-        <div class="mh-text-val">● Live &amp; Healthy</div>
+  <!-- ── PERFORMANCE TAB ── -->
+  <div id="tab-content-perf">
+    <!-- DEVELOPER API KEYS -->
+    <div class="chart-card" style="margin-bottom: 24px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div>
+          <div class="chart-card-title">Developer API Access</div>
+          <div class="chart-card-sub" style="margin-bottom:0;">Generate an API key to access the risk engine programmatically.</div>
+        </div>
+        <a href="/api/docs" class="btn-ghost" style="padding: 8px 16px; text-decoration: none; border: 1px solid var(--border); border-radius: 8px;" target="_blank">📄 View API Docs</a>
+      </div>
+      <div style="display:flex; gap: 12px; margin-top: 10px; flex-wrap:wrap;">
+        <button onclick="generateApiKey()" class="btn-ghost" style="background: var(--gold-dim); border: 1px solid var(--gold-border); color: var(--gold); padding: 10px 20px; border-radius: 8px; font-weight:700; cursor:pointer;">Generate New Key</button>
+        <input type="text" id="apiKeyDisplay" readonly placeholder="API Key will appear here..." style="flex:1; min-width:200px; background: var(--navy-2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--tx-1); font-family: 'DM Mono', monospace; font-size: 13px; outline:none; cursor:pointer;" onclick="this.select()" title="Click to select all">
       </div>
     </div>
-    <div class="mh-card">
-      <div class="mh-indicator green"></div>
-      <div>
-        <div class="mh-text-label">Data Drift</div>
-        <div class="mh-text-val">No Drift Detected</div>
-      </div>
-    </div>
-    <div class="mh-card">
-      <div class="mh-indicator amber"></div>
-      <div>
-        <div class="mh-text-label">Last Retrain</div>
-        <div class="mh-text-val">XGBoost v3.1.2</div>
-      </div>
-    </div>
-  </div>
 
-  <!-- ── METRIC TILES ── -->
-  <div class="tile-row">
-    {% set tiles = [("🎯","Accuracy",metrics.accuracy,"#c9a84c"),("✓","Precision",metrics.precision,"#22c55e"),("↗","Recall",metrics.recall,"#3b82f6"),("⚡","F1 Score",metrics.f1_score,"#a78bfa")] %}
-    {% for icon,label,val,color in tiles %}
-    <div class="metric-tile fade-in" style="--accent:{{ color }}">
-      <div class="mt-icon">{{ icon }}</div>
-      <div class="mt-value">{{ "%.1f"|format(val*100) }}<span class="mt-unit">%</span></div>
-      <div class="mt-label">{{ label }}</div>
-      <div class="mt-bar"><div class="mt-fill" style="width:{{ val*100 }}%;background:{{ color }}"></div></div>
-    </div>
-    {% endfor %}
-    <div class="metric-tile fade-in" style="--accent:#f97316">
-      <div class="mt-icon">📈</div>
-      <div class="mt-value">{{ "%.3f"|format(metrics.roc_auc) }}</div>
-      <div class="mt-label">ROC-AUC</div>
-      <div class="mt-bar"><div class="mt-fill" style="width:{{ metrics.roc_auc*100 }}%;background:#f97316"></div></div>
-    </div>
-  </div>
-
-  <!-- ── CHARTS ROW ── -->
-  <div class="chart-row">
-    <!-- Radar chart -->
-    <div class="chart-card">
-      <div class="chart-card-title">Performance Overview</div>
-      <div class="chart-card-sub">All key metrics at a glance</div>
-      <canvas id="radarChart" height="260"></canvas>
-    </div>
-    <!-- Risk distribution donut -->
-    <div class="chart-card">
-      <div class="chart-card-title">Risk Distribution</div>
-      <div class="chart-card-sub">From confusion matrix totals</div>
-      <canvas id="donutChart" height="260"></canvas>
-    </div>
-  </div>
-
-  <!-- ── PREDICTION VOLUME LINE CHART ── -->
-  <div class="chart-card">
-    <div class="chart-card-title">Prediction Volume (Last 7 Days)</div>
-    <div class="chart-card-sub">Daily low / medium / high risk predictions</div>
-    <canvas id="lineChart" height="140"></canvas>
-  </div>
-
-  <!-- ── TOP FEATURE IMPORTANCE ── -->
-  <div class="chart-card">
-    <div class="chart-card-title">🏆 Top 10 Feature Importances</div>
-    <div class="chart-card-sub">XGBoost gain-based feature importance scores (normalized)</div>
-    <div id="featBars">
-      {% set feats = [
-        ('DTI Ratio', 92), ('Interest Rate', 85), ('FICO Score', 78),
-        ('Revolving Util.', 71), ('Annual Income', 65), ('Loan Amount', 58),
-        ('Open Accounts', 51), ('Earliest Credit Line', 44), ('Public Records', 37), ('Loan Grade', 30)
-      ] %}
-      {% for name, pct in feats %}
-      <div class="feat-bar-row">
-        <div class="feat-bar-label">{{ name }}</div>
-        <div class="feat-bar-wrap"><div class="feat-bar-fill" data-width="{{ pct }}%"></div></div>
-        <div class="feat-bar-val">{{ pct }}%</div>
+    <!-- METRIC TILES -->
+    <div class="tile-row">
+      {% set tiles = [("🎯","Accuracy",metrics.accuracy,"#c9a84c"),("✓","Precision",metrics.precision,"#22c55e"),("↗","Recall",metrics.recall,"#3b82f6"),("⚡","F1 Score",metrics.f1_score,"#a78bfa")] %}
+      {% for icon,label,val,color in tiles %}
+      <div class="metric-tile fade-in" style="--accent:{{ color }}">
+        <div class="mt-icon">{{ icon }}</div>
+        <div class="mt-value">{{ "%.1f"|format(val*100) }}<span class="mt-unit">%</span></div>
+        <div class="mt-label">{{ label }}</div>
+        <div class="mt-bar"><div class="mt-fill" style="width:{{ val*100 }}%;background:{{ color }}"></div></div>
       </div>
       {% endfor %}
+      <div class="metric-tile fade-in" style="--accent:#f97316">
+        <div class="mt-icon">📈</div>
+        <div class="mt-value">{{ "%.3f"|format(metrics.roc_auc) }}</div>
+        <div class="mt-label">ROC-AUC</div>
+        <div class="mt-bar"><div class="mt-fill" style="width:{{ metrics.roc_auc*100 }}%;background:#f97316"></div></div>
+      </div>
+    </div>
+
+    <div class="chart-row">
+      <div class="chart-card">
+        <div class="chart-card-title">Performance Overview</div>
+        <canvas id="radarChart" height="260"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">Risk Distribution</div>
+        <canvas id="donutChart" height="260"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-card-title">Prediction Volume (Last 7 Days)</div>
+      <canvas id="lineChart" height="140"></canvas>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-card-title">🏆 Top 10 Feature Importances</div>
+      <div id="featBars">
+        {% set feats = [
+          ('DTI Ratio', 92), ('Interest Rate', 85), ('FICO Score', 78),
+          ('Revolving Util.', 71), ('Annual Income', 65), ('Loan Amount', 58),
+          ('Open Accounts', 51), ('Earliest Credit Line', 44), ('Public Records', 37), ('Loan Grade', 30)
+        ] %}
+        {% for name, pct in feats %}
+        <div class="feat-bar-row">
+          <div class="feat-bar-label">{{ name }}</div>
+          <div class="feat-bar-wrap"><div class="feat-bar-fill" data-width="{{ pct }}%"></div></div>
+          <div class="feat-bar-val">{{ pct }}%</div>
+        </div>
+        {% endfor %}
+      </div>
     </div>
   </div>
 
-  <!-- ── CONFUSION MATRIX ── -->
-  <div class="dash-grid-2">
-    <div class="dash-card">
-      <div class="dash-card-header">
-        <span class="dash-card-title">Confusion Matrix</span>
-        <span class="dash-card-sub">Full dataset evaluation</span>
+  <!-- ── MLOPS TAB ── -->
+  <div id="tab-content-mlops" style="display:none;">
+    <div style="margin-bottom:8px;font-family:'DM Mono',monospace;font-size:11px;color:var(--tx-3);text-transform:uppercase;letter-spacing:.1em">System Observability</div>
+    
+    <div class="model-health">
+      <div class="mh-card">
+        <div class="mh-indicator" id="health-status-dot"></div>
+        <div>
+          <div class="mh-text-label">Live Accuracy</div>
+          <div class="mh-text-val" id="live-accuracy-val">Calculating...</div>
+        </div>
       </div>
-      {% set cm = metrics.confusion_matrix %}
-      {% set total = cm.tn + cm.fp + cm.fn + cm.tp %}
-      <div class="cm-grid">
-        <div class="cm-cell cm-tn"><div class="cm-num">{{ "{:,}".format(cm.tn) }}</div><div class="cm-pct">{{ "%.1f"|format(cm.tn/total*100 if total else 0) }}%</div><div class="cm-lbl">True Negatives</div><div class="cm-sub">Correctly predicted Repay</div></div>
-        <div class="cm-cell cm-fp"><div class="cm-num">{{ "{:,}".format(cm.fp) }}</div><div class="cm-pct">{{ "%.1f"|format(cm.fp/total*100 if total else 0) }}%</div><div class="cm-lbl">False Positives</div><div class="cm-sub">Repay predicted as Default</div></div>
-        <div class="cm-cell cm-fn"><div class="cm-num">{{ "{:,}".format(cm.fn) }}</div><div class="cm-pct">{{ "%.1f"|format(cm.fn/total*100 if total else 0) }}%</div><div class="cm-lbl">False Negatives</div><div class="cm-sub">Default predicted as Repay</div></div>
-        <div class="cm-cell cm-tp"><div class="cm-num">{{ "{:,}".format(cm.tp) }}</div><div class="cm-pct">{{ "%.1f"|format(cm.tp/total*100 if total else 0) }}%</div><div class="cm-lbl">True Positives</div><div class="cm-sub">Correctly predicted Default</div></div>
+      <div class="mh-card">
+        <div class="mh-indicator" id="drift-status-dot"></div>
+        <div>
+          <div class="mh-text-label">System Drift</div>
+          <div class="mh-text-val" id="drift-status-text">Monitoring PSI...</div>
+        </div>
       </div>
-      <div class="cm-legend"><div class="cm-axis-x">Predicted →</div><div class="cm-axis-y">Actual ↓</div></div>
+      <div class="mh-card">
+        <div class="mh-indicator green"></div>
+        <div>
+          <div class="mh-text-label">Shadow Model</div>
+          <div class="mh-text-val" id="shadow-status-text">Active (Shadow Mode)</div>
+        </div>
+      </div>
     </div>
 
-    <div class="dash-card">
-      <div class="dash-card-header">
-        <span class="dash-card-title">Class Distribution</span>
-        <span class="dash-card-sub">From confusion matrix totals</span>
+    <div class="chart-row">
+      <div class="chart-card">
+        <div class="chart-card-title">Champion vs Challenger</div>
+        <div class="chart-card-sub">XGBoost vs Shadow Random Forest</div>
+        <div id="comp-metrics-list" style="display:flex; flex-direction:column; gap:12px; margin-top:16px;"></div>
       </div>
-      {% set neg = cm.tn + cm.fp %} {% set pos = cm.fn + cm.tp %} {% set grand = neg + pos %}
-      <div class="dist-row">
-        <div class="dist-item">
-          <div class="dist-label">Non-Default (Repay)</div>
-          <div class="dist-bar-wrap"><div class="dist-bar" style="width:{{ (neg/grand*100) if grand else 0 }}%;background:#22c55e"></div></div>
-          <div class="dist-pct">{{ "%.1f"|format(neg/grand*100 if grand else 0) }}%</div>
+      <div class="chart-card">
+        <div class="chart-card-title">Feature Drift Analysis</div>
+        <div class="chart-card-sub">PSI per feature</div>
+        <div id="drift-bars-list" style="margin-top:16px;"></div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-card-title">Automated Retraining Strategy</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; font-size:13px; color:var(--tx-2); margin-top:15px;">
+        <div style="background:rgba(255,255,255,.02); padding:16px; border-radius:8px; border:1px solid var(--border);">
+          <strong style="color:var(--tx-1);">Retrain Triggers:</strong>
+          <ul style="margin-top:10px; list-style:none; padding:0;">
+            <li style="margin-bottom:6px;">📉 Accuracy &lt; 80% (Live Feedback)</li>
+            <li style="margin-bottom:6px;">🌪️ PSI &gt; 0.25 (High Data Drift)</li>
+            <li style="margin-bottom:6px;">📦 Batch size &gt; 100 new records</li>
+          </ul>
         </div>
-        <div class="dist-item">
-          <div class="dist-label">Default</div>
-          <div class="dist-bar-wrap"><div class="dist-bar" style="width:{{ (pos/grand*100) if grand else 0 }}%;background:#ef4444"></div></div>
-          <div class="dist-pct">{{ "%.1f"|format(pos/grand*100 if grand else 0) }}%</div>
+        <div style="background:rgba(255,255,255,.02); padding:16px; border-radius:8px; border:1px solid var(--border);">
+          <strong style="color:var(--tx-1);">Current Policy:</strong>
+          <p style="margin-top:10px; color:var(--tx-3);">Automatic transition is disabled. The system triggers retraining but requires an Admin to approve the "Swap to Challenger" if metrics look favorable.</p>
+          <div style="display:flex; gap:10px; margin-top:20px;">
+            <button onclick="triggerRetrain()" class="btn-ghost" style="border:1px solid var(--gold-border); color:var(--gold); padding:8px 14px; border-radius:6px; font-size:12px; cursor:pointer;">🔄 Retrain Now</button>
+            <button onclick="triggerReload()" class="btn-ghost" style="border:1px solid var(--border); color:var(--tx-3); padding:8px 14px; border-radius:6px; font-size:12px; cursor:pointer;">🔌 Reload Models</button>
+          </div>
         </div>
       </div>
     </div>
   </div>
-
 </div>
 {% endblock %}
 
@@ -212,7 +211,99 @@ async function generateApiKey() {
   }
 }
 
-const metrics = {
+// Tab Switching
+function switchTab(tab) {
+  document.getElementById('tab-content-perf').style.display = tab === 'perf' ? 'block' : 'none';
+  document.getElementById('tab-content-mlops').style.display = tab === 'mlops' ? 'block' : 'none';
+  
+  document.getElementById('tab-btn-perf').classList.toggle('active-tab', tab === 'perf');
+  document.getElementById('tab-btn-mlops').classList.toggle('active-tab', tab === 'mlops');
+  
+  if (tab === 'mlops') loadMLOpsHealth();
+}
+
+async function loadMLOpsHealth() {
+  try {
+    const res = await fetch('/api/v1/mlops/health');
+    const data = await res.json();
+    
+    // Live Accuracy
+    const accEl = document.getElementById('live-accuracy-val');
+    const accDot = document.getElementById('health-status-dot');
+    if (data.live_accuracy !== null) {
+      accEl.innerText = data.live_accuracy + '%';
+      accDot.className = data.live_accuracy >= data.retrain_threshold ? 'mh-indicator green' : 'mh-indicator red';
+    } else {
+      accEl.innerText = 'Insufficient Data';
+      accDot.className = 'mh-indicator amber';
+    }
+    
+    // Drift Status
+    const driftText = document.getElementById('drift-status-text');
+    const driftDot = document.getElementById('drift-status-dot');
+    const hasHighDrift = Object.values(data.drift).some(v => v.drift_status === 'High Drift');
+    const hasModDrift = Object.values(data.drift).some(v => v.drift_status === 'Moderate Drift');
+    
+    if (hasHighDrift) { driftText.innerText = 'High Drift Detected'; driftDot.className = 'mh-indicator red'; }
+    else if (hasModDrift) { driftText.innerText = 'Moderate Drift'; driftDot.className = 'mh-indicator amber'; }
+    else { driftText.innerText = 'Stable (No Drift)'; driftDot.className = 'mh-indicator green'; }
+    
+    // Champion vs Challenger Metrics
+    const compList = document.getElementById('comp-metrics-list');
+    const metrics = ['accuracy', 'recall', 'f1_score', 'roc_auc'];
+    compList.innerHTML = `
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; font-size:11px; text-transform:uppercase; color:var(--tx-3);">
+        <div>Metric</div><div>Champ</div><div>Chall</div>
+      </div>
+      ${metrics.map(m => `
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; font-size:13px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,.05);">
+          <div style="color:var(--tx-3);">${m.replace('_',' ')}</div>
+          <div style="color:var(--tx-1); font-weight:600;">${(data.champion[m]*100).toFixed(1)}%</div>
+          <div style="color:var(--gold); font-weight:600;">${((data.challenger[m] || 0)*100).toFixed(1)}%</div>
+        </div>
+      `).join('')}
+    `;
+    
+    // Drift Bars
+    const driftList = document.getElementById('drift-bars-list');
+    driftList.innerHTML = Object.entries(data.drift).slice(0, 8).map(([feat, res]) => `
+      <div class="feat-bar-row">
+        <div class="feat-bar-label" style="font-size:11px;">${feat}</div>
+        <div class="feat-bar-wrap">
+          <div class="feat-bar-fill" style="width:${Math.min(res.psi_value * 100, 100)}%; background:${res.drift_status === 'High Drift' ? '#ef4444' : (res.drift_status === 'Moderate Drift' ? '#f59e0b' : '#3b82f6')};"></div>
+        </div>
+        <div class="feat-bar-val" style="width:50px;">${res.psi_value.toFixed(3)}</div>
+      </div>
+    `).join('');
+    
+}
+
+async function triggerRetrain() {
+  if (!confirm("Start full model retraining pipeline? This may take a minute.")) return;
+  const btn = event.target;
+  const originalText = btn.innerText;
+  btn.innerText = "⏳ Retraining...";
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/v1/mlops/retrain', {method: 'POST'});
+    const data = await res.json();
+    alert(data.message || data.error);
+    if (res.ok) loadMLOpsHealth();
+  } catch (e) { alert("Retraining failed."); }
+  finally { btn.innerText = originalText; btn.disabled = false; }
+}
+
+async function triggerReload() {
+  try {
+    const res = await fetch('/api/v1/mlops/reload', {method: 'POST'});
+    const data = await res.json();
+    alert(data.message || data.error);
+    if (res.ok) loadMLOpsHealth();
+  } catch (e) { alert("Reload failed."); }
+}
+
+// Chart.js Performance Charts
+const perfMetrics = {
   accuracy:  {{ metrics.accuracy }},
   precision: {{ metrics.precision }},
   recall:    {{ metrics.recall }},
@@ -227,67 +318,42 @@ const chartDefaults = {
   plugins: { legend: { labels: { color: 'rgba(255,255,255,0.6)', font: { family: 'DM Sans', size: 12 } } } }
 };
 
-// Radar chart
 new Chart(document.getElementById('radarChart'), {
   type: 'radar',
   data: {
     labels: ['Accuracy','Precision','Recall','F1 Score','ROC-AUC'],
-    datasets: [{ label: 'Model', data: [metrics.accuracy*100, metrics.precision*100, metrics.recall*100, metrics.f1*100, metrics.roc_auc*100],
-      backgroundColor: 'rgba(201,168,76,0.15)', borderColor: '#c9a84c',
-      pointBackgroundColor: '#c9a84c', pointBorderColor: '#0a0f1e', pointRadius: 5, borderWidth: 2 }]
+    datasets: [{ label: 'Model', data: [perfMetrics.accuracy*100, perfMetrics.precision*100, perfMetrics.recall*100, perfMetrics.f1*100, perfMetrics.roc_auc*100],
+      backgroundColor: 'rgba(201,168,76,0.15)', borderColor: '#c9a84c', pointBackgroundColor: '#c9a84c', borderWidth: 2 }]
   },
-  options: { ...chartDefaults, scales: { r: { min:0, max:100,
-    ticks: { stepSize:25, color:'rgba(255,255,255,0.4)', font:{size:10}, backdropColor:'transparent' },
-    grid: { color:'rgba(255,255,255,0.07)' },
-    pointLabels: { color:'rgba(255,255,255,0.7)', font:{size:12,family:'DM Sans'} },
-    angleLines: { color:'rgba(255,255,255,0.07)' }
-  }}}
+  options: { ...chartDefaults, scales: { r: { min:0, max:100, grid: { color:'rgba(255,255,255,0.07)' }, angleLines: { color:'rgba(255,255,255,0.07)' }, ticks: { display:false } }}}
 });
 
-// Donut chart
 new Chart(document.getElementById('donutChart'), {
   type: 'doughnut',
   data: {
     labels: ['Non-Default','Default'],
-    datasets: [{ data: [neg, pos], backgroundColor: ['rgba(34,197,94,0.75)','rgba(239,68,68,0.75)'],
-      borderColor: ['#22c55e','#ef4444'], borderWidth: 2, hoverOffset: 8 }]
+    datasets: [{ data: [neg, pos], backgroundColor: ['rgba(34,197,94,0.75)','rgba(239,68,68,0.75)'], borderWidth: 0 }]
   },
-  options: { ...chartDefaults, cutout: '68%',
-    plugins: { ...chartDefaults.plugins, legend: { ...chartDefaults.plugins.legend, position: 'bottom' } }
-  }
+  options: { ...chartDefaults, cutout: '70%', plugins: { legend: { position: 'bottom' } } }
 });
 
-// Line chart — simulated 7-day history
-const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 new Chart(document.getElementById('lineChart'), {
   type: 'line',
   data: {
-    labels: days,
+    labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
     datasets: [
-      { label:'Low Risk',    data:[12,18,14,22,19,25,21], borderColor:'#22c55e', backgroundColor:'rgba(34,197,94,0.08)', fill:true, tension:0.4, pointRadius:4 },
-      { label:'Medium Risk', data:[8,11,9,13,10,14,12],   borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,0.08)', fill:true, tension:0.4, pointRadius:4 },
-      { label:'High Risk',   data:[3,5,4,6,4,7,5],        borderColor:'#ef4444', backgroundColor:'rgba(239,68,68,0.08)', fill:true, tension:0.4, pointRadius:4 },
+      { label:'Low Risk', data:[12,18,14,22,19,25,21], borderColor:'#22c55e', tension:0.4, fill:false },
+      { label:'Med Risk', data:[8,11,9,13,10,14,12], borderColor:'#f59e0b', tension:0.4, fill:false },
+      { label:'High Risk', data:[3,5,4,6,4,7,5], borderColor:'#ef4444', tension:0.4, fill:false }
     ]
   },
-  options: { ...chartDefaults,
-    scales: {
-      x: { ticks: { color:'rgba(255,255,255,0.5)' }, grid: { color:'rgba(255,255,255,0.05)' } },
-      y: { ticks: { color:'rgba(255,255,255,0.5)' }, grid: { color:'rgba(255,255,255,0.05)' }, beginAtZero:true }
-    }
-  }
+  options: { ...chartDefaults, scales: { x: { grid:{display:false} }, y: { grid:{color:'rgba(255,255,255,0.05)'} } } }
 });
 
-// Animate metric bars
-document.querySelectorAll('.mt-fill').forEach(function(el) {
-  const w = el.style.width; el.style.width = '0';
-  setTimeout(function() { el.style.width = w; el.style.transition = 'width 1s cubic-bezier(.16,1,.3,1)'; }, 100);
-});
-
-// Animate feature importance bars
-setTimeout(function() {
-  document.querySelectorAll('.feat-bar-fill').forEach(function(bar) {
-    bar.style.width = bar.dataset.width;
-  });
-}, 400);
+// Animations
+setTimeout(() => {
+  document.querySelectorAll('.mt-fill').forEach(el => { el.style.width = el.style.width; });
+  document.querySelectorAll('.feat-bar-fill').forEach(el => { el.style.width = el.dataset.width; });
+}, 100);
 </script>
 {% endblock %}

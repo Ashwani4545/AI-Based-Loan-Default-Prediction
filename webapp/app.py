@@ -52,7 +52,10 @@ except ImportError:
 # ── project imports ─────────────────────────────────────────────────────────
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from utils.config import MODEL_PATH, FEATURES_PATH, METRICS_PATH, HISTORY_PATH, get_risk_level, PROCESSED_DATA_PATH
+from utils.config import (
+    CHAMPION_MODEL_PATH, CHALLENGER_MODEL_PATH, MODEL_PATH, FEATURES_PATH, METRICS_PATH, 
+    HISTORY_PATH, get_risk_level, PROCESSED_DATA_PATH
+)
 from feedback_loop import build_feedback_dataset, update_training_data
 from governance import log_decision
 from src.shap_explainer import LoanModelExplainer
@@ -63,7 +66,7 @@ log = logging.getLogger(__name__)
 app = Flask(__name__)
 app.config["JSON_SORT_KEYS"] = False
 app.secret_key = os.environ.get("AEGIS_SECRET_KEY", "aegisbank-dev-secret-key-change-in-prod")
-socketio = SocketIO(app, async_mode='eventlet')
+socketio = SocketIO(app, async_mode='threading')
 
 # ── SWAGGER UI CONFIG ─────────────────────────────────────────────────────
 SWAGGER_URL = '/api/docs'
@@ -232,13 +235,13 @@ def role_required(*allowed_roles):
 # STARTUP: load model artefacts
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _load_model():
+def _load_model(path):
     try:
-        m = joblib.load(MODEL_PATH)
-        log.info("Model loaded ✅  (%s)", MODEL_PATH)
+        m = joblib.load(path)
+        log.info("Model loaded ✅  (%s)", path)
         return m
     except Exception as e:
-        log.error("Model load failed: %s", e)
+        log.error("Model load failed from %s: %s", path, e)
         return None
 
 
@@ -297,14 +300,22 @@ def _load_metrics() -> dict:
         return defaults
 
 
-MODEL         = _load_model()
-SCALER        = _load_scaler()
+# Load models with fallbacks
+MODEL = _load_model(CHAMPION_MODEL_PATH)
+if MODEL is None:
+    # Fallback to general model if champion is missing
+    fallback_path = Path(CHAMPION_MODEL_PATH).with_name("loan_default_model.pkl")
+    MODEL = _load_model(str(fallback_path))
+
+CHALLENGER_MODEL = _load_model(CHALLENGER_MODEL_PATH)
+SCALER           = _load_scaler()
 
 def reload_model():
-    global MODEL, SCALER
-    MODEL = _load_model()
-    SCALER = _load_scaler()
-    log.info("🔄 Model reloaded after retraining")
+    global MODEL, CHALLENGER_MODEL, SCALER
+    MODEL            = _load_model(CHAMPION_MODEL_PATH)
+    CHALLENGER_MODEL = _load_model(CHALLENGER_MODEL_PATH)
+    SCALER           = _load_scaler()
+    log.info("🔄 Models reloaded after retraining")
 
 
 MODEL_FEATURES = _load_features()
@@ -547,33 +558,7 @@ def credit_policy(pd):
         return "Approve"
 
 
-def get_risk_category(prob):
-    if prob < 0.2:
-        return "LOW RISK", False
-    elif prob < 0.4:
-        return "MEDIUM RISK", True
-    elif prob < 0.6:
-        return "HIGH RISK", True
-    else:
-        return "VERY HIGH RISK", True
 
-
-def get_risk_info(prob):
-    if prob < 0.3:
-        return "LOW RISK", False
-    elif prob < 0.6:
-        return "MEDIUM RISK", True
-    else:
-        return "HIGH RISK", True
-
-
-def get_decision(prob):
-    if prob < 0.3:
-        return "LOW RISK", "Repay", False
-    elif prob < 0.6:
-        return "MEDIUM RISK", "Review", True
-    else:
-        return "HIGH RISK", "Default", True
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -848,15 +833,19 @@ def _score_borrower(form_data: dict) -> dict:
         lgd          = calculate_lgd(loan_amount, fico)
         expected_loss = prob * lgd * loan_amount
 
-        if prob > 0.6:
-            risk, verdict, color = "High Risk",   "Decline", "#ef4444"
-        elif prob > 0.4:
-            risk, verdict, color = "Medium Risk", "Review",  "#f59e0b"
-        else:
-            risk, verdict, color = "Low Risk",    "Approve", "#22c55e"
+        # Shadow Model Inference (MLOps: A/B Testing)
+        challenger_prob = 0.0
+        if CHALLENGER_MODEL:
+            challenger_prob = float(CHALLENGER_MODEL.predict_proba(input_data)[0][1])
+
+        risk_info = get_risk_level(prob)
+        risk    = risk_info["label"].title()
+        verdict = risk_info["verdict"]
+        color   = risk_info["color"]
 
         return {
             "prob":           round(prob * 100, 1),
+            "challenger_prob": round(challenger_prob * 100, 1),
             "risk":           risk,
             "verdict":        verdict,
             "color":          color,
@@ -942,11 +931,17 @@ def handle_prediction(form_data):
             print("Scaler applied: False")
 
         prob = float(MODEL.predict_proba(input_data)[0][1])
+        
+        # Shadow Model Inference (MLOps: A/B Testing)
+        challenger_prob = 0.0
+        if CHALLENGER_MODEL:
+            challenger_prob = float(CHALLENGER_MODEL.predict_proba(input_data)[0][1])
+            
         print("Probability:", prob)
+        print("Challenger Probability:", challenger_prob)
         if prob < 0.3:
             print("Warning: prob < 0.3 — possible feature issue")
         probability = prob
-        threshold = 0.4
 
         pd_value = probability
         loan_amount = float(form_data.get("loan_amnt", 0) or 0)
@@ -957,40 +952,28 @@ def handle_prediction(form_data):
         expected_profit = loan_amount * (1 - probability) * 0.1 - loan_amount * probability
         income = float(form_data.get("annual_inc", 0) or 0)
         override_triggered = income > 0 and loan_amount > 5 * income
-        print(f"Decision debug -> prob={prob:.4f}, threshold={threshold:.2f}, override={override_triggered}")
-        log.info("Decision debug -> prob=%.4f threshold=%.2f override=%s", prob, threshold, override_triggered)
+        print(f"Decision debug -> prob={prob:.4f}, override={override_triggered}")
+        log.info("Decision debug -> prob=%.4f override=%s", prob, override_triggered)
 
         # Risk bands (business-friendly labels)
+        # Use centralized risk logic from config.py
+        risk_info = get_risk_level(prob)
+        
         if override_triggered:
             risk = "High Risk (Override)"
-            verdict = "High Risk (Override)"
+            verdict = "Decline" # Override usually means decline
             show_warning = True
             print("Override triggered: loan_amount > 5 * annual_inc")
             log.warning("Override triggered for borrower=%s (loan_amount=%.2f, annual_inc=%.2f)",
                         form_data.get("borrower_name", "Anonymous"), loan_amount, income)
-        elif prob > 0.6:
-            risk = "High Risk"
-            verdict = "Default"
-            show_warning = True
-        elif prob > 0.4:
-            risk = "Medium Risk"
-            verdict = "Review"
-            show_warning = True
         else:
-            risk = "Low Risk"
-            verdict = "Repay"
-            show_warning = False
-
-        # Consistency guard: below threshold must not be flagged medium/high
-        # unless the explicit override rule is active.
-        if not override_triggered and prob < threshold:
-            risk = "Low Risk"
-            verdict = "Repay"
-            show_warning = False
+            risk = risk_info["label"].title()
+            verdict = risk_info["verdict"]
+            show_warning = prob > 0.3 # Show warning for non-low risk
 
         prediction = verdict
         decision = verdict
-        policy_decision = "Default" if prob > threshold else "Repay"
+        policy_decision = verdict
         risk_label = risk.upper()
         risk_color_map = {
             "LOW RISK": "#22c55e",
@@ -1052,6 +1035,8 @@ def handle_prediction(form_data):
             "fairness": fairness_flag,
             "bias_check": bias_flag,
             "sensitive_warning": sensitive_warning,
+            "challenger_prob": round(challenger_prob * 100, 2),
+            "actual_outcome": None,  # Ground truth placeholder
         }
 
         report = generate_risk_report(record)
@@ -1287,6 +1272,46 @@ def api_borrower_names():
 
 
 
+@app.route("/api/history/confirm", methods=["POST"])
+@login_required
+def confirm_outcome():
+    data = request.json
+    record_id = data.get("id")
+    outcome = data.get("outcome")  # 0 for Repay, 1 for Default
+    
+    if record_id is None or outcome is None:
+        return jsonify({"error": "Missing ID or outcome"}), 400
+        
+    try:
+        with open(HISTORY_PATH, "r") as f:
+            history = json.load(f)
+            
+        updated = False
+        for entry in history:
+            if entry.get("id") == record_id:
+                entry["actual_outcome"] = outcome
+                updated = True
+                break
+                
+        if updated:
+            with open(HISTORY_PATH, "w") as f:
+                json.dump(history, f, indent=4)
+            
+            # After confirmation, check model health
+            try:
+                from monitoring.model_health import monitor_health
+                monitor_health()
+            except ImportError:
+                pass
+                
+            return jsonify({"status": "success", "message": "Outcome confirmed"})
+        else:
+            return jsonify({"error": "Record not found"}), 404
+            
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # ── GEOGRAPHIC HEATMAP ───────────────────────────────────────────────────────
 
 @app.route("/audit")
@@ -1397,6 +1422,65 @@ def generate_api_key():
     })
 
 
+@app.route("/api/v1/mlops/health")
+@role_required("admin", "risk_manager")
+def api_mlops_health():
+    try:
+        from monitoring.drift_detection import run_monitoring
+        drift_results = run_monitoring()
+        
+        with open(METRICS_PATH) as f:
+            champion_metrics = json.load(f)
+            
+        challenger_metrics = {}
+        if os.path.exists(CHALLENGER_METRICS_PATH):
+            with open(CHALLENGER_METRICS_PATH) as f:
+                challenger_metrics = json.load(f)
+                
+        # Calculate live accuracy if possible
+        live_accuracy = None
+        if os.path.exists(HISTORY_PATH):
+            with open(HISTORY_PATH) as f:
+                history = json.load(f)
+                df = pd.DataFrame(history)
+                if "actual_outcome" in df.columns:
+                    valid = df.dropna(subset=["actual_outcome"])
+                    if len(valid) > 0:
+                        live_accuracy = round(float((valid["actual_outcome"] == valid["verdict"]).mean() * 100), 2)
+
+        return jsonify({
+            "drift": drift_results,
+            "champion": champion_metrics,
+            "challenger": challenger_metrics,
+            "live_accuracy": live_accuracy,
+            "retrain_threshold": 80.0
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/v1/mlops/retrain", methods=["POST"])
+@role_required("admin")
+def api_mlops_retrain():
+    try:
+        from retrain import retrain_model
+        retrain_model()
+        reload_model()
+        return jsonify({"status": "success", "message": "Retraining complete and models reloaded."})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/v1/mlops/reload", methods=["POST"])
+@role_required("admin")
+def api_mlops_reload():
+    try:
+        reload_model()
+        return jsonify({"status": "success", "message": "Models reloaded from disk."})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/v1/predict", methods=["POST"])
 @require_api_key
 def api_predict():
@@ -1445,7 +1529,7 @@ if __name__ == "__main__":
     print(" * Serving Flask app 'webapp.app'")
     print(" * Debug mode: off")
     print(" * Running on http://127.0.0.1:5000")
-    socketio.run(app, debug=False, host="127.0.0.1", port=5000)
+    socketio.run(app, debug=False, host="127.0.0.1", port=5000, allow_unsafe_werkzeug=True)
 
 
 #System Works Like This

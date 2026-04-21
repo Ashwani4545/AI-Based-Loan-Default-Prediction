@@ -14,9 +14,12 @@ RAW_DATA_PATH       = os.path.join(BASE_DIR, "data", "raw",       "loan_dataset.
 PROCESSED_DATA_PATH = os.path.join(BASE_DIR, "data", "processed", "cleaned_data.csv")
 
 # ── MODEL ARTIFACTS ──────────────────────────────────────────────────────────
-MODEL_PATH         = os.path.join(BASE_DIR, "models", "loan_default_model.pkl")
-FEATURES_PATH      = os.path.join(BASE_DIR, "utils",  "model_features.pkl")
-METRICS_PATH       = os.path.join(BASE_DIR, "model_metrics.json")
+CHAMPION_MODEL_PATH    = os.path.join(BASE_DIR, "models", "champion_model.pkl")
+CHALLENGER_MODEL_PATH  = os.path.join(BASE_DIR, "models", "challenger_model.pkl")
+MODEL_PATH             = CHAMPION_MODEL_PATH  # Compatibility
+FEATURES_PATH          = os.path.join(BASE_DIR, "utils",  "model_features.pkl")
+METRICS_PATH           = os.path.join(BASE_DIR, "model_metrics.json")
+CHALLENGER_METRICS_PATH = os.path.join(BASE_DIR, "challenger_metrics.json")
 
 # ── PREDICTION HISTORY ───────────────────────────────────────────────────────
 HISTORY_PATH       = os.path.join(BASE_DIR, "outputs", "prediction_history.json")
@@ -43,15 +46,15 @@ XGB_PARAMS = {
 
 # ── RISK THRESHOLDS ──────────────────────────────────────────────────────────
 RISK_LEVELS = [
-    (0.30, "LOW RISK",       "#22c55e"),
-    (0.50, "MEDIUM RISK",    "#f59e0b"),
-    (0.70, "HIGH RISK",      "#f97316"),
-    (1.01, "VERY HIGH RISK", "#ef4444"),
+    (0.30, "LOW RISK",       "Approve", "#22c55e"),
+    (0.50, "MEDIUM RISK",    "Review",  "#f59e0b"),
+    (0.70, "HIGH RISK",      "Decline", "#f97316"),
+    (1.01, "VERY HIGH RISK", "Decline", "#ef4444"),
 ]
 
 def get_risk_level(probability: float) -> dict:
-    """Return risk label and color for a given probability (0–1)."""
-    for threshold, label, color in RISK_LEVELS:
+    """Return risk label, verdict, and color for a given probability (0–1)."""
+    for threshold, label, verdict, color in RISK_LEVELS:
         if probability < threshold:
-            return {"label": label, "color": color}
-    return {"label": "VERY HIGH RISK", "color": "#ef4444"}
+            return {"label": label, "verdict": verdict, "color": color}
+    return {"label": "VERY HIGH RISK", "verdict": "Decline", "color": "#ef4444"}
