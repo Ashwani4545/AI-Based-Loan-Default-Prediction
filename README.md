@@ -194,6 +194,10 @@ AI-Based-Loan-Default-Prediction-main/
 │   └── processed/
 │       └── cleaned_data.csv          ← Auto-generated after preprocessing
 │
+├── github/
+│   ├── workflows/
+│   │   └── ci-cd.yml          ← Place your LendingClub CSV here
+│ 
 ├── models/
 │   └── loan_default_model.pkl        ← Saved best model (XGBoost)
 │
