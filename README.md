@@ -194,7 +194,7 @@ AI-Based-Loan-Default-Prediction-main/
 │   └── processed/
 │       └── cleaned_data.csv          ← Auto-generated after preprocessing
 │
-├── github/
+├── .github/
 │   ├── workflows/
 │   │   └── ci-cd.yml                 ← Continuous Integration and Continuous Development
 │ 
