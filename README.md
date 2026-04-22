@@ -196,7 +196,7 @@ AI-Based-Loan-Default-Prediction-main/
 │
 ├── github/
 │   ├── workflows/
-│   │   └── ci-cd.yml          ← Place your LendingClub CSV here
+│   │   └── ci-cd.yml                 ← Continuous Integration and Continuous Development
 │ 
 ├── models/
 │   └── loan_default_model.pkl        ← Saved best model (XGBoost)
