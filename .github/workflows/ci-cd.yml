@@ -55,5 +55,5 @@ jobs:
     # Build & Push Image
     - name: Build and Push Docker Image
       run: |
-        docker build -t ${{ secrets.DOCKER_USERNAME }}/loan-default-app:latest .
-        docker push ${{ secrets.DOCKER_USERNAME }}/loan-default-app:latest
+        docker build -t ${{ secrets.Ashwani454545 }}/loan-default-app:latest .
+        docker push ${{ secrets.Ashwani454545 }}/loan-default-app:latest
