@@ -31,7 +31,7 @@ import joblib
 import numpy as np
 import pandas as pd
 import xgboost as xgb
-from flask import Flask, jsonify, render_template, request, abort, redirect, url_for, session, flash
+from flask import Flask, jsonify, render_template, request, abort, redirect, url_for, session, flash, get_flashed_messages
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from flask_sqlalchemy import SQLAlchemy
@@ -597,7 +597,8 @@ def signin():
         else:
             flash("Invalid email or password. Please try again.", "error")
 
-    return render_template("signin.html")
+    flashed_messages = get_flashed_messages(with_categories=True)
+    return render_template("signin.html", flashed_messages=flashed_messages)
 
 
 @app.route("/signup", methods=["GET", "POST"])
