@@ -21,13 +21,14 @@ def build_feedback_dataset():
         mapping = {"Repay": 0, "Default": 1}
         df["prediction"] = df["prediction"].map(mapping)
 
-    # Extract features
+    # FIX: rename first so the column name matches what we select below
+    df = df.rename(columns={"fico": "fico_range_low"})
+
+    # Extract features (using fico_range_low after rename)
     features = [
-        "loan_amnt", "int_rate", "annual_inc", "fico",
+        "loan_amnt", "int_rate", "annual_inc", "fico_range_low",
         "dti", "open_acc", "revol_bal", "total_acc"
     ]
-
-    df = df.rename(columns={"fico": "fico_range_low"})
 
     df = df[features + ["prediction"]].dropna()
 

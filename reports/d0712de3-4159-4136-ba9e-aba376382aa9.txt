@@ -1,0 +1,18 @@
+
+    ===== Loan Risk Report =====
+    
+    Borrower: John
+    Loan Amount: 1234567890.0
+    
+    Probability of Default (PD): 32.41%
+    Risk Level: HIGH RISK (OVERRIDE)
+    
+    Decision: High Risk (Override)
+    
+    Key Factors:
+    
+ - int_rate: impact 0.47
+ - installment_income_ratio: impact 0.2897
+ - revol_income_ratio: impact 0.2642
+ - term__60_months: impact 0.212
+ - risk_score: impact 0.1851

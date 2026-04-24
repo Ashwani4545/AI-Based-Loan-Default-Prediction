@@ -67,8 +67,14 @@ class LoanModelExplainer:
         self.shap = importlib.import_module("shap") if self.has_shap else None
 
         if self.has_shap:
-            self.explainer = self.shap.Explainer(self.model)
-            log.info("SHAP explainer initialised ✅")
+            # Use TreeExplainer for tree-based models (XGBoost, RF) — much faster
+            # than the generic shap.Explainer which may use slow KernelSHAP.
+            try:
+                self.explainer = self.shap.TreeExplainer(self.model)
+                log.info("SHAP TreeExplainer initialised ✅ (fast path)")
+            except Exception:
+                self.explainer = self.shap.Explainer(self.model)
+                log.info("SHAP generic Explainer initialised ✅ (fallback)")
         else:
             self.explainer = None
             log.warning("SHAP is not installed; using feature-importance fallback for explanations.")
@@ -215,17 +221,23 @@ class LoanModelExplainer:
 
     def check_group_bias(self, input_data: dict):
         """
-        Check bias using sensitive attributes like gender, state, etc.
+        Check potential bias patterns using available financial data.
+        FIX Bug 10: removed 'gender' check — gender is never collected in the
+        form so that branch was permanently dead code. Using income/loan ratio
+        as a proxy for financially-vulnerable group detection instead.
         """
+        income    = float(input_data.get("annual_inc", 0) or 0)
+        loan      = float(input_data.get("loan_amnt",  0) or 0)
+        fico      = float(input_data.get("fico_range_low", 0) or 0)
 
-        gender = input_data.get("gender", None)
-        income = float(input_data.get("annual_inc", 0))
+        # Flag applicants who are low-income AND have no credit history —
+        # a proxy for financially-excluded / vulnerable groups.
+        if income < 30000 and fico == 0:
+            return "⚠️ Potentially credit-invisible low-income applicant — alternative data used"
+        if income > 0 and loan / income > 4:
+            return "⚠️ High loan-to-income ratio — elevated risk for financial distress"
 
-        # Example bias rule
-        if gender == "Female" and income < 20000:
-            return "⚠️ Potential bias risk: low-income female group"
-
-        return "✅ No bias detected"
+        return "✅ No bias pattern detected"
 
     def validate_sensitive_features(self, input_data: dict):
         sensitive_fields = ["gender", "race", "religion"]

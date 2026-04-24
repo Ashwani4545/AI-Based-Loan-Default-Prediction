@@ -141,11 +141,16 @@ def _load_alternative_data(df: pd.DataFrame) -> pd.DataFrame:
     
     # Use synthetic as fallback or primary
     if not use_real_alternative_data:
-        log.info("Using synthetic alternative features for credit-invisible users")
-        df["mobile_usage_score"] = np.random.randint(1, 100, len(df))
-        df["digital_txn_count"] = np.random.randint(1, 50, len(df))
-        df["utility_payment_score"] = np.random.randint(1, 100, len(df))
-        df["employment_stability"] = np.random.randint(1, 10, len(df))
+        log.info("Using placeholder (0) for alternative features — no real alternative data available.")
+        log.info("FIX Bug 8: previously used np.random noise here which trained the model on garbage.")
+        log.info("Now using 0 consistently — matches what inference sends when these fields are absent.")
+        # NOTE: To properly use these features, collect them in the web form
+        # (mobile_usage_score, digital_txn_count, utility_payment_score, employment_stability)
+        # and provide real data. Until then, 0 is the honest placeholder.
+        df["mobile_usage_score"]    = 0
+        df["digital_txn_count"]     = 0
+        df["utility_payment_score"] = 0
+        df["employment_stability"]  = 0
     
     return df
 

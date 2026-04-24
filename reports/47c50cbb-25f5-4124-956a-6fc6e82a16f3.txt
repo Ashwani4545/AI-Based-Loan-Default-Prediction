@@ -1,0 +1,18 @@
+
+    ===== Loan Risk Report =====
+    
+    Borrower: Test
+    Loan Amount: 15000.0
+    
+    Probability of Default (PD): 49.44%
+    Risk Level: MEDIUM RISK
+    
+    Decision: Review
+    
+    Key Factors:
+    
+ - term__60_months: impact 0.2244
+ - avg_cur_bal: impact 0.1797
+ - int_rate: impact 0.0931
+ - digital_txn_count: impact 0.0593
+ - home_ownership_MORTGAGE: impact 0.0485
