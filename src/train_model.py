@@ -37,7 +37,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from utils.config import (
     PROCESSED_DATA_PATH, TARGET_COLUMN,
     TEST_SIZE, RANDOM_STATE,
-    MODEL_PATH, FEATURES_PATH, METRICS_PATH, XGB_PARAMS,
+    CHAMPION_MODEL_PATH, CHALLENGER_MODEL_PATH, FEATURES_PATH, 
+    METRICS_PATH, CHALLENGER_METRICS_PATH, XGB_PARAMS,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
@@ -320,13 +321,24 @@ def evaluate_all(models: dict, X_test, y_test) -> tuple[dict, dict]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def save_artifacts(models: dict, all_metrics: dict, scores: dict, feature_names: list) -> None:
-    best_name = max(all_metrics, key=lambda m: all_metrics[m]["profit"])
-    best_model = models[best_name]
-    log.info("Best model: %s  (profit=%.2f)", best_name, all_metrics[best_name]["profit"])
+    # Sort models by profit (our primary selection metric)
+    sorted_model_names = sorted(all_metrics, key=lambda m: all_metrics[m]["profit"], reverse=True)
+    
+    best_name = sorted_model_names[0]
+    challenger_name = sorted_model_names[1] if len(sorted_model_names) > 1 else best_name
+    
+    log.info("🏆 Champion model: %s (profit=%.2f)", best_name, all_metrics[best_name]["profit"])
+    log.info("🥈 Challenger model: %s (profit=%.2f)", challenger_name, all_metrics[challenger_name]["profit"])
 
-    os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
-    joblib.dump(best_model, MODEL_PATH)
-    log.info("Model saved → %s", MODEL_PATH)
+    os.makedirs(os.path.dirname(CHAMPION_MODEL_PATH), exist_ok=True)
+    
+    # Save Champion
+    joblib.dump(models[best_name], CHAMPION_MODEL_PATH)
+    log.info("Champion saved → %s", CHAMPION_MODEL_PATH)
+
+    # Save Challenger
+    joblib.dump(models[challenger_name], CHALLENGER_MODEL_PATH)
+    log.info("Challenger saved → %s", CHALLENGER_MODEL_PATH)
 
     import pickle
     os.makedirs(os.path.dirname(FEATURES_PATH), exist_ok=True)
@@ -334,11 +346,18 @@ def save_artifacts(models: dict, all_metrics: dict, scores: dict, feature_names:
         pickle.dump(feature_names, f)
     log.info("Feature list saved → %s", FEATURES_PATH)
 
+    # Save Metrics for both
     best_metrics = all_metrics[best_name]
     best_metrics["model_name"] = best_name
     with open(METRICS_PATH, "w") as f:
         json.dump(best_metrics, f, indent=4)
-    log.info("Metrics saved → %s", METRICS_PATH)
+        
+    challenger_metrics = all_metrics[challenger_name]
+    challenger_metrics["model_name"] = challenger_name
+    with open(CHALLENGER_METRICS_PATH, "w") as f:
+        json.dump(challenger_metrics, f, indent=4)
+        
+    log.info("Metrics saved for both Champion and Challenger.")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -36,16 +36,19 @@ Financial institutions face key challenges in loan risk assessment:
 | Feature | Description |
 |---|---|
 | **AI Risk Prediction** | Predicts default probability using XGBoost |
-| **Explainable AI (SHAP)** | Shows top 5 features driving each prediction |
+| **Real-time WebSockets** | Streams prediction progress (Validating → Running → SHAP → Decision) |
+| **Explainable AI (SHAP)** | Full SHAP integration showing exact risk drivers for each borrower |
 | **Risk Classification** | LOW / MEDIUM / HIGH RISK bands with business override rules |
+| **REST API + Swagger** | API Key authenticated `/api/v1/predict` with interactive docs at `/api/docs` |
+| **Compliance Audit Log** | Immutable log of every decision, tracking the officer, inputs, and overrides |
 | **Imbalance Handling** | SMOTE oversampling + XGBoost `scale_pos_weight` |
 | **Drift Detection** | Monitors live prediction distribution vs reference data |
 | **Auto-Retraining** | Triggers model retraining on drift or every 100 new predictions |
 | **Feedback Loop** | Prediction history feeds back into training data |
 | **Governance Logging** | Every decision logged for audit and compliance |
-| **Flask Web Interface** | Real-time predictions through an interactive web form |
+| **Flask Web Interface** | Premium, real-time predictions through an interactive web form |
 | **Prediction History** | Full searchable log of all past assessments |
-| **Dashboard** | Model metrics, confusion matrix visualised |
+| **Dashboard** | Model metrics, confusion matrix, and API Key management |
 | **Borrower Reports** | Individual printable risk reports per prediction |
 
 ---
@@ -148,30 +151,35 @@ Each SHAP value tells you: *"How much did this feature push the probability of d
 ---
 
 ## 🏗️ System Architecture
-
 ```
 Browser (User)
     │
     │  GET /  →  index.html (loan assessment form)
     │
-    │  POST /predict
+    │  SOCKET submit_prediction (Real-time Progress Stream)
     ▼
-Flask app.py
+Flask app.py (SocketIO + Eventlet)
     ├── 1. Validate input (loan_amnt, annual_inc, fico)
     ├── 2. preprocess_input()  →  1-row DataFrame
     ├── 3. create_features_live()  →  engineered features
     ├── 4. add_economic_features()  →  macro context
     ├── 5. reindex to MODEL_FEATURES  →  align columns
-    ├── 6. SHAP explain_single()  →  top 5 feature drivers
+    ├── 6. SHAP explain_single()  →  exact feature drivers
     ├── 7. MODEL.predict_proba()[0][1]  →  PD probability
-    ├── 8. Threshold logic  →  verdict + risk label
-    ├── 9. Calculate LGD, EAD, Expected Loss
-    ├── 10. Save to prediction_history.json
-    ├── 11. log_decision()  →  governance audit log
-    ├── 12. Feedback loop check  →  update training data if ≥100 entries
-    ├── 13. Drift detection  →  compare vs reference data
-    └── 14. render result.html  →  show risk to user
+    ├── 8. Business Logic Overrides  →  apply Bank Policies
+    ├── 9. Threshold logic  →  verdict + risk label
+    ├── 10. Calculate LGD, EAD, Expected Loss
+    ├── 11. Save to prediction_history.json
+    ├── 12. log_decision()  →  immutable audit log (logs/audit_log.json)
+    ├── 13. SOCKET prediction_complete  →  redirect to results
+    └── 14. render result.html  →  show risk + SHAP visualisations
 ```
+
+### 🔐 API Integration
+The system exposes a secure REST API for B2B integrations:
+- **Authentication**: `X-API-Key` or `Authorization: Bearer` header.
+- **Endpoint**: `POST /api/v1/predict` (Accepts JSON, returns probability + expected loss).
+- **Interactive Docs**: OpenAPI 3.0 specification served at `/api/docs`.
 
 ---
 
@@ -186,6 +194,10 @@ AI-Based-Loan-Default-Prediction-main/
 │   └── processed/
 │       └── cleaned_data.csv          ← Auto-generated after preprocessing
 │
+├── .github/
+│   ├── workflows/
+│   │   └── ci-cd.yml                 ← Continuous Integration and Continuous Development
+│ 
 ├── models/
 │   └── loan_default_model.pkl        ← Saved best model (XGBoost)
 │
@@ -209,20 +221,27 @@ AI-Based-Loan-Default-Prediction-main/
 │   └── model_features.pkl            ← Auto-generated list of model feature names
 │
 ├── webapp/
-│   ├── app.py                        ← Main Flask application (all routes)
-│   ├── retrain.py                    ← Triggers retraining as subprocess
-│   ├── model_training.ipynb          ← Jupyter notebook for exploratory training
+│   ├── app.py                        ← Main Flask application (WebSockets + REST API)
+│   ├── retrain.py                    ← Triggers model retraining
+│   ├── aegisbank.db                  ← SQLite Database (Users, Roles, API Keys)
 │   ├── templates/
-│   │   ├── base.html                 ← Shared navigation + layout
-│   │   ├── index.html                ← Loan assessment input form
-│   │   ├── result.html               ← Prediction result page
-│   │   ├── dashboard.html            ← Model metrics + confusion matrix
-│   │   ├── history.html              ← Searchable prediction log
-│   │   ├── reports.html              ← All borrower report cards
-│   │   └── report_detail.html        ← Individual printable report
+│   │   ├── base.html                 ← Shared layout & Premium Navigation
+│   │   ├── index.html                ← Real-time assessment with progress modal
+│   │   ├── dashboard.html            ← Metrics, Drift, and API Key management
+│   │   ├── audit.html                ← Compliance Audit Trail Log
+│   │   ├── timeline.html             ← Borrower risk history visualization
+│   │   ├── heatmap.html              ← Geographic risk distribution map
+│   │   ├── compare.html              ← Side-by-side borrower comparison
+│   │   ├── batch.html                ← Mass loan processing portal
+│   │   ├── admin.html                ← User management & System settings
+│   │   ├── history.html              ← Searchable global prediction history
+│   │   ├── reports.html              ← All borrower risk report cards
+│   │   └── result.html               ← Detailed results with SHAP & Fairness cards
+│   │
 │   └── static/
-│       ├── css/style.css             ← Application styling
-│       └── js/script.js              ← Frontend JavaScript logic
+│       ├── css/style.css             ← Glassmorphism & Premium UI styling
+│       ├── js/script.js              ← WebSocket handlers & Chart logic
+│       └── swagger.json              ← OpenAPI 3.0 REST API Specification
 │
 ├── monitoring/
 │   └── drift_detection.py            ← PSI-based feature drift monitor
@@ -315,18 +334,17 @@ Open: **http://localhost:5000**
 
 ## 🌐 Web Application Pages
 
-| URL | Method | Description |
-|---|---|---|
+```
 | `/` | GET | Loan assessment input form |
-| `/predict` | POST | Runs model, saves to history, shows result |
-| `/dashboard` | GET | Model metrics, confusion matrix, charts |
+| `/audit` | GET | **Compliance Log Viewer** (immutable decision trail) |
+| `/api/docs` | GET | **Swagger UI** (interactive REST API documentation) |
+| `/dashboard` | GET | Model metrics, confusion matrix, **API Key Generation** |
 | `/history` | GET | Filterable log of all past predictions |
+| `/timeline` | GET | Borrower historical risk tracking |
 | `/reports` | GET | All borrower report cards |
-| `/reports/<id>` | GET | Individual printable borrower report |
-| `/api/metrics` | GET | JSON — model accuracy metrics |
-| `/api/history` | GET | JSON history (supports `?q=` search filter) |
+| `/api/v1/predict` | POST | **REST API** endpoint for B2B integrations |
 | `/health` | GET | Healthcheck endpoint |
-
+```
 ---
 
 ## 🔄 Data Flow
@@ -370,7 +388,8 @@ webapp/retrain.py              → triggers src.train_model if drift found
 | **Imbalance Handling** | imbalanced-learn (SMOTE) |
 | **Data Processing** | Pandas, NumPy |
 | **Visualization** | Matplotlib, Seaborn |
-| **Web Framework** | Flask |
+| **Web Framework** | Flask, **Flask-SocketIO**, **Eventlet** |
+| **API Docs** | **Flask-Swagger-UI** (OpenAPI 3.0) |
 | **Frontend** | HTML5, CSS3, JavaScript |
 | **Serialization** | Joblib, Pickle |
 | **Containerization** | Docker, Docker Compose |
@@ -395,11 +414,8 @@ webapp/retrain.py              → triggers src.train_model if drift found
 
 - Replace JSON history file with a proper database (PostgreSQL / SQLite)
 - Add real-time macroeconomic indicators (live inflation, unemployment rate API)
-- Expose a REST API for integration with banking core systems
 - Add mobile-friendly responsive UI improvements
 - Implement advanced fairness auditing (demographic parity, equalized odds)
-- Add role-based access control (loan officer vs admin vs auditor)
-- Extend to MSME credit risk analytics
 - Evolve into a Risk Intelligence SaaS platform for banks and NBFCs
 
 ---
@@ -413,6 +429,14 @@ webapp/retrain.py              → triggers src.train_model if drift found
 
 ---
 
+Screenshots
+
+Homepage - <img src="images/screenshot.png" width="400">
+Dashboard - <img src="images/screenshot.png" width="400">
+History - <img src="images/screenshot.png" width="400">
+Reports - <img src="images/screenshot.png" width="400">
+---
+
 ## 📄 License
 
 This project is developed for academic and research purposes.
@@ -423,3 +447,9 @@ This project is developed for academic and research purposes.
 
 **AegisBank — AI Loan Default Prediction**  
 Built with Flask · XGBoost · SHAP · Python
+
+---
+
+## 👨‍💻 Made By
+
+**Ashwani Pandey and team**  

@@ -1,0 +1,557 @@
+{% extends "base.html" %}
+{% block title %}AegisBank AI — Proven AI for Lending{% endblock %}
+
+{% block head %}
+<style>
+body { background: #0d1526; }
+
+/* ── PARTICLE CANVAS ── */
+#heroCanvas {
+  position:absolute; inset:0; width:100%; height:100%;
+  pointer-events:none; z-index:0; opacity:.55;
+}
+.lp-hero > *:not(#heroCanvas) { position:relative; z-index:1; }
+
+/* ── TYPEWRITER CURSOR ── */
+.tw-cursor { display:inline-block; width:3px; background:#c9a84c; margin-left:4px; animation:blink .8s step-end infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* ── BANNER ── */
+.lp-banner {
+  background: #1a2848; text-align: center; padding: 9px 20px;
+  font-size: 13px; color: #e2c26e; letter-spacing: .02em;
+  border-bottom: 1px solid rgba(201,168,76,.15);
+  position: fixed; top: 0; left: 0; right: 0; z-index: 300;
+}
+.lp-banner a { color: #e2c26e; font-weight: 700; text-decoration: underline; }
+.nav { top: 37px; }
+.page-root { padding-top: calc(var(--nav-h) + 37px); }
+
+/* ── HERO ── */
+.lp-hero {
+  min-height: 88vh; background: #0d1526;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 80px 24px 60px;
+  position: relative; overflow: hidden;
+}
+.lp-hero::before {
+  content: ''; position: absolute; width: 700px; height: 700px;
+  background: radial-gradient(circle, rgba(201,168,76,.07) 0%, transparent 65%);
+  top: 50%; left: 50%; transform: translate(-50%, -55%); pointer-events: none;
+}
+.lp-eyebrow {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-family: 'DM Mono', monospace; font-size: 11.5px; letter-spacing: .14em;
+  text-transform: uppercase; color: #e2c26e;
+  background: rgba(201,168,76,.1); border: 1px solid rgba(201,168,76,.25);
+  padding: 5px 14px; border-radius: 20px; margin-bottom: 32px;
+  animation: fadeUp .6s ease both;
+}
+.lp-eyebrow-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: #c9a84c;
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.4)} }
+
+.lp-h1 {
+  font-family: 'Syne', sans-serif; font-weight: 800;
+  font-size: clamp(40px, 6.5vw, 76px); line-height: 1.07;
+  color: #fff; max-width: 860px; margin: 0 auto 20px;
+  animation: fadeUp .65s .08s ease both;
+}
+.lp-h1 em { font-style: normal; color: #e2c26e; }
+
+.lp-sub {
+  font-size: clamp(15px, 2vw, 19px); color: #8a97b8;
+  max-width: 560px; margin: 0 auto 44px; line-height: 1.6;
+  animation: fadeUp .65s .16s ease both;
+}
+
+.lp-ctas {
+  display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;
+  animation: fadeUp .65s .24s ease both;
+}
+.lp-btn-primary {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px;
+  padding: 15px 36px; background: #c9a84c; color: #0d1526;
+  border: none; border-radius: 8px; cursor: pointer; text-decoration: none;
+  transition: background .18s, transform .18s, box-shadow .18s;
+  box-shadow: 0 4px 24px rgba(201,168,76,.28);
+}
+.lp-btn-primary:hover { background: #e2c26e; transform: translateY(-2px); box-shadow: 0 8px 32px rgba(201,168,76,.38); }
+.lp-btn-ghost {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: 'Syne', sans-serif; font-weight: 600; font-size: 15px;
+  padding: 15px 30px; color: #edf2ff; background: transparent;
+  border: 1px solid rgba(255,255,255,.18); border-radius: 8px;
+  cursor: pointer; text-decoration: none;
+  transition: border-color .18s, background .18s;
+}
+.lp-btn-ghost:hover { border-color: rgba(255,255,255,.4); background: rgba(255,255,255,.06); }
+
+/* ── STATS ── */
+.lp-stats { background: #f4f6fb; padding: 72px 24px; }
+.lp-stats-inner {
+  max-width: 1100px; margin: 0 auto;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; text-align: center;
+}
+.lp-stat-num {
+  font-family: 'Syne', sans-serif; font-weight: 800;
+  font-size: clamp(42px, 5vw, 68px); line-height: 1;
+  color: #0d1526; margin-bottom: 10px;
+}
+.lp-stat-num sup { font-size: .42em; vertical-align: super; }
+.lp-stat-label { font-size: 14px; color: #4a5568; line-height: 1.5; max-width: 180px; margin: 0 auto; }
+.stat-anim { opacity: 0; transform: translateY(16px); transition: opacity .6s ease, transform .6s ease; }
+.stat-anim.visible { opacity: 1; transform: none; }
+
+/* ── FEATURES ── */
+.lp-features { background: #111f3a; border-top: 1px solid rgba(255,255,255,.06); padding: 72px 24px; }
+.lp-features-inner {
+  max-width: 1100px; margin: 0 auto;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+}
+.lp-feat {
+  padding: 28px; background: #0d1526;
+  border: 1px solid rgba(255,255,255,.07); border-radius: 16px;
+  transition: border-color .2s, transform .2s;
+}
+.lp-feat:hover { border-color: rgba(201,168,76,.3); transform: translateY(-3px); }
+.lp-feat-icon { font-size: 28px; margin-bottom: 14px; }
+.lp-feat-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 17px; color: #fff; margin-bottom: 8px; }
+.lp-feat-desc { font-size: 13.5px; color: #8a97b8; line-height: 1.6; }
+
+/* ── MODAL OVERLAY ── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(5, 10, 22, 0.88);
+  backdrop-filter: blur(10px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  opacity: 0; pointer-events: none;
+  transition: opacity .25s ease;
+}
+.modal-overlay.open { opacity: 1; pointer-events: auto; }
+
+.modal-card {
+  position: relative; width: 100%; max-width: 420px;
+  background: #111f3a;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 20px; padding: 38px 34px;
+  box-shadow: 0 32px 80px rgba(0,0,0,.6);
+  transform: translateY(20px) scale(.97);
+  transition: transform .28s cubic-bezier(.16,1,.3,1);
+}
+.modal-overlay.open .modal-card { transform: translateY(0) scale(1); }
+.modal-card::before {
+  content: ''; position: absolute; top: 0; left: 34px; right: 34px; height: 2px;
+  background: linear-gradient(90deg, transparent, #c9a84c, transparent);
+}
+
+.modal-close {
+  position: absolute; top: 14px; right: 16px;
+  background: none; border: none; color: #4a5880; font-size: 18px;
+  cursor: pointer; padding: 4px 8px; border-radius: 6px;
+  transition: color .15s, background .15s; line-height: 1;
+}
+.modal-close:hover { color: #fff; background: rgba(255,255,255,.08); }
+
+.modal-logo-row {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 24px;
+}
+.modal-logo {
+  width: 38px; height: 38px; border-radius: 10px;
+  background: linear-gradient(135deg, #c9a84c, #e2c26e);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Syne', sans-serif; font-weight: 800; font-size: 17px; color: #0d1526;
+}
+.modal-brand { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; color: #fff; }
+.modal-brand-sub { font-size: 10.5px; color: #4a5880; font-family: 'DM Mono', monospace; }
+
+.modal-title {
+  font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px;
+  color: #fff; margin-bottom: 4px;
+}
+.modal-sub { font-size: 13.5px; color: #8a97b8; margin-bottom: 24px; }
+
+/* Alert inside modal */
+.m-alert {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 13px; border-radius: 8px; font-size: 13px; margin-bottom: 16px;
+}
+.m-alert-error { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.25); color: #fca5a5; }
+.m-alert-success { background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.25); color: #86efac; }
+
+/* Form fields */
+.m-field { margin-bottom: 15px; }
+.m-label {
+  display: block; font-size: 11px; font-weight: 600;
+  letter-spacing: .06em; text-transform: uppercase; color: #8a97b8; margin-bottom: 6px;
+}
+.m-wrap { position: relative; }
+.m-input {
+  width: 100%; background: #0d1a30;
+  border: 1px solid rgba(255,255,255,.08); border-radius: 8px;
+  padding: 12px 14px 12px 40px; color: #edf2ff;
+  font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none;
+  transition: border-color .18s, box-shadow .18s;
+}
+.m-input:focus { border-color: #c9a84c; box-shadow: 0 0 0 3px rgba(201,168,76,.14); }
+.m-input::placeholder { color: #4a5880; }
+.m-icon {
+  position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+  font-size: 14px; color: #4a5880; pointer-events: none; transition: color .18s;
+}
+.m-wrap:focus-within .m-icon { color: #c9a84c; }
+.m-eye {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer; color: #4a5880; font-size: 14px;
+  transition: color .15s;
+}
+.m-eye:hover { color: #edf2ff; }
+
+.m-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.m-remember { display: flex; align-items: center; gap: 7px; cursor: pointer; }
+.m-remember input { accent-color: #c9a84c; cursor: pointer; }
+.m-remember span { font-size: 12.5px; color: #8a97b8; }
+.m-forgot { font-size: 12.5px; color: #c9a84c; text-decoration: none; }
+.m-forgot:hover { text-decoration: underline; }
+
+.m-submit {
+  width: 100%; display: flex; align-items: center; justify-content: center; gap: 9px;
+  font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14.5px;
+  padding: 13px; background: #c9a84c; color: #0d1526;
+  border: none; border-radius: 8px; cursor: pointer;
+  transition: background .18s, transform .18s, box-shadow .18s;
+  box-shadow: 0 4px 18px rgba(201,168,76,.25);
+}
+.m-submit:hover { background: #e2c26e; transform: translateY(-2px); box-shadow: 0 8px 26px rgba(201,168,76,.35); }
+.m-submit:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+.m-arrow { font-size: 15px; transition: transform .2s; }
+.m-submit:hover .m-arrow { transform: translateX(4px); }
+.m-spinner {
+  display: none; width: 16px; height: 16px;
+  border: 2px solid rgba(13,21,38,.3); border-top-color: #0d1526;
+  border-radius: 50%; animation: mspin .65s linear infinite;
+}
+.m-submit.loading .m-spinner { display: block; }
+.m-submit.loading .m-txt, .m-submit.loading .m-arrow { display: none; }
+@keyframes mspin { to { transform: rotate(360deg); } }
+
+.m-divider {
+  display: flex; align-items: center; gap: 10px;
+  margin: 18px 0; font-family: 'DM Mono', monospace; font-size: 11px; color: #4a5880;
+}
+.m-divider::before, .m-divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.07); }
+
+.m-socials { display: flex; gap: 9px; margin-bottom: 18px; }
+.m-social {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 10px; background: #0d1a30; border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px; color: #8a97b8; font-size: 13px; font-weight: 600;
+  text-decoration: none; font-family: 'DM Sans', sans-serif;
+  transition: border-color .18s, color .18s, background .18s;
+}
+.m-social:hover { border-color: rgba(255,255,255,.22); color: #edf2ff; background: rgba(255,255,255,.04); }
+
+.m-footer { text-align: center; font-size: 13px; color: #8a97b8; margin-bottom: 16px; }
+.m-footer a { color: #c9a84c; font-weight: 600; text-decoration: none; }
+.m-footer a:hover { text-decoration: underline; }
+
+.m-secure {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  font-family: 'DM Mono', monospace; font-size: 10.5px; color: #4a5880;
+}
+.m-secure-dot { width: 5px; height: 5px; border-radius: 50%; background: #22c55e; }
+
+/* ── PAGE FOOTER ── */
+.lp-page-footer {
+  background: #0d1526; border-top: 1px solid rgba(255,255,255,.06);
+  padding: 22px; text-align: center;
+  font-family: 'DM Mono', monospace; font-size: 11px; color: #4a5880;
+}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:none} }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 900px) { .lp-stats-inner { grid-template-columns: 1fr 1fr; } .lp-features-inner { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 600px) { .lp-features-inner { grid-template-columns: 1fr; } .modal-card { padding: 28px 18px; } .lp-ctas { flex-direction: column; align-items: center; } }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── BANNER ── -->
+<div class="lp-banner">
+  🚀 AegisBank AI v2.4 — XGBoost model with SHAP explainability now live. <a href="#">Learn more →</a>
+</div>
+
+<!-- ── HERO ── -->
+<section class="lp-hero">
+  <canvas id="heroCanvas"></canvas>
+  <div class="lp-eyebrow"><span class="lp-eyebrow-dot"></span> Trusted AI for Credit Risk</div>
+  <h1 class="lp-h1"><span id="twText">Proven AI for a</span><span class="tw-cursor"></span><br><em>Thriving Lending</em><br>Ecosystem</h1>
+  <p class="lp-sub">Accurately assess, confidently decision, perpetually optimize — powered by XGBoost and real-time SHAP explainability.</p>
+  <div class="lp-ctas">
+    <button class="lp-btn-primary" id="accessPlatformBtn">Access Platform →</button>
+    <a href="/signup" class="lp-btn-ghost">Create Account</a>
+  </div>
+</section>
+
+<!-- ── STATS ── -->
+<section class="lp-stats">
+  <div class="lp-stats-inner">
+    <div class="stat-anim"><div class="lp-stat-num" id="stat0">0<sup>%</sup></div><div class="lp-stat-label">of decisions can be automated with confidence</div></div>
+    <div class="stat-anim"><div class="lp-stat-num" id="stat1">0<sup>%+</sup></div><div class="lp-stat-label">reduction in risk while keeping approvals constant</div></div>
+    <div class="stat-anim"><div class="lp-stat-num" id="stat2">0<sup>%</sup></div><div class="lp-stat-label">average lift across protected borrower classes</div></div>
+    <div class="stat-anim"><div class="lp-stat-num" id="stat3">0<sup>%</sup></div><div class="lp-stat-label">lift in approvals without added default risk</div></div>
+  </div>
+</section>
+
+<!-- ── FEATURES ── -->
+<section class="lp-features">
+  <div class="lp-features-inner">
+    <div class="lp-feat"><div class="lp-feat-icon">🧠</div><div class="lp-feat-title">XGBoost Risk Engine</div><div class="lp-feat-desc">806-feature model trained on real lending data with live drift detection and automatic retraining.</div></div>
+    <div class="lp-feat"><div class="lp-feat-icon">🔍</div><div class="lp-feat-title">SHAP Explainability</div><div class="lp-feat-desc">Every decision comes with a full SHAP breakdown — audit-ready, regulator-friendly, fully transparent.</div></div>
+    <div class="lp-feat"><div class="lp-feat-icon">⚖️</div><div class="lp-feat-title">Fairness & Governance</div><div class="lp-feat-desc">Built-in bias checks, group fairness monitoring, and immutable decision logs for every prediction.</div></div>
+  </div>
+</section>
+
+<!-- ── PAGE FOOTER ── -->
+<footer class="lp-page-footer">© 2025 AegisBank AI Risk Engine · v2.4 · XGBoost · Built for institutional lending</footer>
+
+<!-- ════════════════════════════════════════════════════════════════
+     SIGN-IN MODAL
+════════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="signinModal" role="dialog" aria-modal="true" aria-label="Sign In">
+  <div class="modal-card">
+
+    <button class="modal-close" id="modalClose" aria-label="Close">✕</button>
+
+    <div class="modal-logo-row">
+      <div class="modal-logo">A</div>
+      <div>
+        <div class="modal-brand">AegisBank</div>
+        <div class="modal-brand-sub">AI Risk Engine v2.4</div>
+      </div>
+    </div>
+
+    <div class="modal-title">Welcome back</div>
+    <div class="modal-sub">Sign in to your analyst account.</div>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="m-alert m-alert-{{ 'error' if category == 'error' else 'success' }}">
+          <span>{{ '⚠' if category == 'error' else '✓' }}</span> {{ message }}
+        </div>
+      {% endfor %}
+    {% endwith %}
+
+    <form method="POST" action="/signin" id="signinForm" novalidate>
+
+      <div class="m-field">
+        <label class="m-label" for="m-email">Email Address</label>
+        <div class="m-wrap">
+          <input type="email" id="m-email" name="email" class="m-input"
+            placeholder="analyst@aegisbank.com" autocomplete="email" required>
+          <span class="m-icon">✉</span>
+        </div>
+      </div>
+
+      <div class="m-field">
+        <label class="m-label" for="m-pass">Password</label>
+        <div class="m-wrap">
+          <input type="password" id="m-pass" name="password" class="m-input"
+            placeholder="Enter your password" autocomplete="current-password" required>
+          <span class="m-icon">🔒</span>
+          <button type="button" class="m-eye" id="togglePwd">👁</button>
+        </div>
+      </div>
+
+      <div class="m-meta">
+        <label class="m-remember"><input type="checkbox" name="remember"><span>Remember me</span></label>
+        <a href="/forgot-password" class="m-forgot">Forgot password?</a>
+      </div>
+
+      <button type="submit" class="m-submit" id="signinBtn">
+        <span class="m-txt">Sign In</span>
+        <span class="m-arrow">→</span>
+        <span class="m-spinner"></span>
+      </button>
+    </form>
+
+    <div class="m-divider">or continue with</div>
+
+    <div class="m-socials">
+      <a href="/auth/google" class="m-social">🌐 Google</a>
+      <a href="/auth/microsoft" class="m-social">🪟 Microsoft</a>
+    </div>
+
+    <div class="m-footer">No account? <a href="/signup">Create one →</a></div>
+    <div class="m-secure"><span class="m-secure-dot"></span> 256-bit SSL · SOC 2 Compliant</div>
+
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+  /* ── Modal helpers ── */
+  const modal   = document.getElementById('signinModal');
+  const accBtn  = document.getElementById('accessPlatformBtn');
+  const closeBtn = document.getElementById('modalClose');
+  const navLink = document.getElementById('navSignInLink');
+  const hasFlash = {{ 'true' if get_flashed_messages() else 'false' }};
+
+  function openModal()  { modal.classList.add('open'); document.body.style.overflow = 'hidden'; }
+  function closeModal() { modal.classList.remove('open'); document.body.style.overflow = ''; }
+
+  if (accBtn)   accBtn.addEventListener('click', openModal);
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+
+  /* Close on backdrop click */
+  modal.addEventListener('click', function(e) { if (e.target === modal) closeModal(); });
+
+  /* Close on Escape */
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal(); });
+
+  /* Nav Sign In → open modal (intercept navigation) */
+  if (navLink) {
+    navLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      openModal();
+    });
+  }
+
+  /* Auto-open if flash messages present (e.g. wrong password redirect) */
+  if (hasFlash) openModal();
+
+  /* ── Password toggle ── */
+  const toggleBtn = document.getElementById('togglePwd');
+  const pwdInput  = document.getElementById('m-pass');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', function() {
+      const show = pwdInput.type === 'password';
+      pwdInput.type = show ? 'text' : 'password';
+      this.textContent = show ? '🙈' : '👁';
+    });
+  }
+
+  /* ── Loading state on submit ── */
+  const form = document.getElementById('signinForm');
+  const btn  = document.getElementById('signinBtn');
+  if (form) {
+    form.addEventListener('submit', function() {
+      if (form.checkValidity()) { btn.classList.add('loading'); btn.disabled = true; }
+    });
+  }
+
+  /* ── Stat counter animation ── */
+  const targets  = [80, 20, 30, 25];
+  const suffixes = ['%', '%+', '%', '%'];
+  let counted = false;
+
+  function countUp(id, target, suffix, dur) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    let val = 0;
+    const step = target / (dur / 16);
+    const timer = setInterval(function() {
+      val = Math.min(val + step, target);
+      el.innerHTML = Math.round(val) + '<sup>' + suffix + '</sup>';
+      if (val >= target) clearInterval(timer);
+    }, 16);
+  }
+
+  const statsSection = document.querySelector('.lp-stats');
+  if (statsSection) {
+    const countObs = new IntersectionObserver(function(entries) {
+      if (entries[0].isIntersecting && !counted) {
+        counted = true;
+        targets.forEach(function(t, i) { countUp('stat' + i, t, suffixes[i], 1200); });
+      }
+    }, { threshold: 0.3 });
+    countObs.observe(statsSection);
+  }
+
+  /* ── Scroll-in fade for stat blocks ── */
+  const animObs = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) {
+      if (e.isIntersecting) { e.target.classList.add('visible'); animObs.unobserve(e.target); }
+    });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.stat-anim').forEach(function(el, i) {
+    el.style.transitionDelay = (i * 0.1) + 's';
+    animObs.observe(el);
+  });
+
+  /* ── Particle network canvas ── */
+  const canvas = document.getElementById('heroCanvas');
+  if (canvas) {
+    const ctx2 = canvas.getContext('2d');
+    let W, H, particles = [];
+    function resize() { W = canvas.width = canvas.offsetWidth; H = canvas.height = canvas.offsetHeight; }
+    resize();
+    window.addEventListener('resize', resize);
+    for (let i = 0; i < 55; i++) {
+      particles.push({ x: Math.random()*W, y: Math.random()*H,
+        vx: (Math.random()-.5)*.35, vy: (Math.random()-.5)*.35,
+        r: Math.random()*2+1 });
+    }
+    function drawParticles() {
+      ctx2.clearRect(0,0,W,H);
+      particles.forEach(function(p) {
+        p.x += p.vx; p.y += p.vy;
+        if (p.x<0||p.x>W) p.vx*=-1;
+        if (p.y<0||p.y>H) p.vy*=-1;
+        ctx2.beginPath();
+        ctx2.arc(p.x, p.y, p.r, 0, Math.PI*2);
+        ctx2.fillStyle = 'rgba(201,168,76,0.7)';
+        ctx2.fill();
+        particles.forEach(function(q) {
+          const dx=p.x-q.x, dy=p.y-q.y, d=Math.sqrt(dx*dx+dy*dy);
+          if (d < 120) {
+            ctx2.beginPath();
+            ctx2.moveTo(p.x,p.y); ctx2.lineTo(q.x,q.y);
+            ctx2.strokeStyle = 'rgba(201,168,76,'+(0.18*(1-d/120))+')';
+            ctx2.lineWidth = .6; ctx2.stroke();
+          }
+        });
+      });
+      requestAnimationFrame(drawParticles);
+    }
+    drawParticles();
+  }
+
+  /* ── Typewriter headline cycling ── */
+  const phrases = ['Proven AI for a', 'Smarter Credit Decisions', 'Audit-Ready Explainability', '806 Features. 1 Decision.'];
+  const twEl = document.getElementById('twText');
+  if (twEl) {
+    let pi = 0;
+    function typePhrase(phrase, cb) {
+      twEl.textContent = '';
+      let ci = 0;
+      const t = setInterval(function() {
+        twEl.textContent += phrase[ci++];
+        if (ci >= phrase.length) { clearInterval(t); setTimeout(cb, 2200); }
+      }, 55);
+    }
+    function erasePhrase(cb) {
+      const t = setInterval(function() {
+        twEl.textContent = twEl.textContent.slice(0,-1);
+        if (!twEl.textContent.length) { clearInterval(t); cb(); }
+      }, 30);
+    }
+    function cycle() { pi = (pi+1) % phrases.length; erasePhrase(function(){ typePhrase(phrases[pi], cycle); }); }
+    setTimeout(function(){ typePhrase(phrases[0], cycle); }, 1200);
+  }
+
+}); // end DOMContentLoaded
+</script>
+{% endblock %}
