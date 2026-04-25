@@ -152,7 +152,11 @@ def _load_alternative_data(df: pd.DataFrame) -> pd.DataFrame:
 
 def load_and_preprocess():
     df = pd.read_csv(PROCESSED_DATA_PATH)
-    log.info("Loaded data: %s rows × %s cols", *df.shape)
+    log.info("Loaded data: %d rows — %d cols", len(df), len(df.columns))
+    
+    # Subsample for speed in demo environment
+    df = df.sample(n=min(10000, len(df)), random_state=RANDOM_STATE)
+    log.info("Subsampled to %d rows for faster training", len(df))
 
     # Economic context features (static demo values)
     df["inflation_rate"] = 0.06
@@ -232,8 +236,8 @@ def train_all(X_train, y_train) -> dict:
     log.info("Best XGBoost params (recall): %s", xgb_grid.best_params_)
 
     candidates = {
-        "logistic_regression": LogisticRegression(max_iter=5000, solver="saga", random_state=RANDOM_STATE),
-        "random_forest":       RandomForestClassifier(n_estimators=100, random_state=RANDOM_STATE, n_jobs=-1),
+        "logistic_regression": LogisticRegression(max_iter=100, solver="lbfgs", random_state=RANDOM_STATE),
+        "random_forest":       RandomForestClassifier(n_estimators=20, max_depth=10, random_state=RANDOM_STATE, n_jobs=-1),
         "xgboost":             xgb_grid.best_estimator_,
     }
     trained = {}

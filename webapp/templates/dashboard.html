@@ -35,6 +35,8 @@ canvas { max-width:100%; }
 .feat-bar-val { font-family:'DM Mono',monospace; font-size:11px; color:var(--tx-3); width:40px; text-align:right; }
 
 .active-tab { background: rgba(201,168,76,0.1) !important; border: 1px solid var(--gold-border) !important; color: var(--gold) !important; }
+.btn-ghost:hover { background: rgba(255,255,255,0.05); }
+#tab-btn-perf, #tab-btn-mlops { transition: all 0.2s ease; cursor: pointer; }
 
 @media(max-width:700px){ .chart-row{grid-template-columns:1fr} .model-health{grid-template-columns:1fr} }
 </style>
@@ -212,14 +214,24 @@ async function generateApiKey() {
 }
 
 // Tab Switching
-function switchTab(tab) {
-  document.getElementById('tab-content-perf').style.display = tab === 'perf' ? 'block' : 'none';
-  document.getElementById('tab-content-mlops').style.display = tab === 'mlops' ? 'block' : 'none';
+function switchTab(tabId) {
+  // Hide all contents
+  document.getElementById('tab-content-perf').style.display = 'none';
+  document.getElementById('tab-content-mlops').style.display = 'none';
   
-  document.getElementById('tab-btn-perf').classList.toggle('active-tab', tab === 'perf');
-  document.getElementById('tab-btn-mlops').classList.toggle('active-tab', tab === 'mlops');
+  // Deactivate all buttons
+  document.getElementById('tab-btn-perf').classList.remove('active-tab');
+  document.getElementById('tab-btn-mlops').classList.remove('active-tab');
   
-  if (tab === 'mlops') loadMLOpsHealth();
+  // Show selected content
+  if (tabId === 'perf') {
+    document.getElementById('tab-content-perf').style.display = 'block';
+    document.getElementById('tab-btn-perf').classList.add('active-tab');
+  } else if (tabId === 'mlops') {
+    document.getElementById('tab-content-mlops').style.display = 'block';
+    document.getElementById('tab-btn-mlops').classList.add('active-tab');
+    loadMLOpsHealth();
+  }
 }
 
 async function loadMLOpsHealth() {
@@ -302,7 +314,7 @@ async function triggerReload() {
   } catch (e) { alert("Reload failed."); }
 }
 
-// Chart.js Performance Charts
+// Constants
 const perfMetrics = {
   accuracy:  {{ metrics.accuracy }},
   precision: {{ metrics.precision }},
@@ -315,45 +327,86 @@ const neg = {{ cm.tn + cm.fp }}, pos = {{ cm.fn + cm.tp }};
 
 const chartDefaults = {
   responsive: true,
-  plugins: { legend: { labels: { color: 'rgba(255,255,255,0.6)', font: { family: 'DM Sans', size: 12 } } } }
+  maintainAspectRatio: false,
+  plugins: { 
+    legend: { 
+      labels: { color: 'rgba(255,255,255,0.7)', font: { family: "'DM Sans', sans-serif", size: 12 } } 
+    } 
+  }
 };
 
-new Chart(document.getElementById('radarChart'), {
-  type: 'radar',
-  data: {
-    labels: ['Accuracy','Precision','Recall','F1 Score','ROC-AUC'],
-    datasets: [{ label: 'Model', data: [perfMetrics.accuracy*100, perfMetrics.precision*100, perfMetrics.recall*100, perfMetrics.f1*100, perfMetrics.roc_auc*100],
-      backgroundColor: 'rgba(201,168,76,0.15)', borderColor: '#c9a84c', pointBackgroundColor: '#c9a84c', borderWidth: 2 }]
-  },
-  options: { ...chartDefaults, scales: { r: { min:0, max:100, grid: { color:'rgba(255,255,255,0.07)' }, angleLines: { color:'rgba(255,255,255,0.07)' }, ticks: { display:false } }}}
-});
+// Initialisation
+document.addEventListener('DOMContentLoaded', () => {
+  // Radar Chart
+  new Chart(document.getElementById('radarChart'), {
+    type: 'radar',
+    data: {
+      labels: ['Accuracy','Precision','Recall','F1 Score','ROC-AUC'],
+      datasets: [{ 
+        label: 'Model Performance', 
+        data: [perfMetrics.accuracy*100, perfMetrics.precision*100, perfMetrics.recall*100, perfMetrics.f1*100, perfMetrics.roc_auc*100],
+        backgroundColor: 'rgba(201,168,76,0.2)', 
+        borderColor: '#c9a84c', 
+        pointBackgroundColor: '#c9a84c', 
+        borderWidth: 2 
+      }]
+    },
+    options: { 
+      ...chartDefaults, 
+      scales: { 
+        r: { 
+          min:0, max:100, 
+          grid: { color:'rgba(255,255,255,0.1)' }, 
+          angleLines: { color:'rgba(255,255,255,0.1)' }, 
+          pointLabels: { color: 'rgba(255,255,255,0.6)' },
+          ticks: { display:false } 
+        } 
+      }
+    }
+  });
 
-new Chart(document.getElementById('donutChart'), {
-  type: 'doughnut',
-  data: {
-    labels: ['Non-Default','Default'],
-    datasets: [{ data: [neg, pos], backgroundColor: ['rgba(34,197,94,0.75)','rgba(239,68,68,0.75)'], borderWidth: 0 }]
-  },
-  options: { ...chartDefaults, cutout: '70%', plugins: { legend: { position: 'bottom' } } }
-});
+  // Donut Chart
+  new Chart(document.getElementById('donutChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Non-Default','Default'],
+      datasets: [{ data: [neg, pos], backgroundColor: ['rgba(34,197,94,0.8)','rgba(239,68,68,0.8)'], borderWidth: 0 }]
+    },
+    options: { 
+      ...chartDefaults, 
+      cutout: '70%', 
+      plugins: { ...chartDefaults.plugins, legend: { position: 'bottom', labels: { color: 'rgba(255,255,255,0.7)' } } } 
+    }
+  });
 
-new Chart(document.getElementById('lineChart'), {
-  type: 'line',
-  data: {
-    labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
-    datasets: [
-      { label:'Low Risk', data:[12,18,14,22,19,25,21], borderColor:'#22c55e', tension:0.4, fill:false },
-      { label:'Med Risk', data:[8,11,9,13,10,14,12], borderColor:'#f59e0b', tension:0.4, fill:false },
-      { label:'High Risk', data:[3,5,4,6,4,7,5], borderColor:'#ef4444', tension:0.4, fill:false }
-    ]
-  },
-  options: { ...chartDefaults, scales: { x: { grid:{display:false} }, y: { grid:{color:'rgba(255,255,255,0.05)'} } } }
-});
+  // Line Chart
+  new Chart(document.getElementById('lineChart'), {
+    type: 'line',
+    data: {
+      labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+      datasets: [
+        { label:'Low Risk', data:[12,18,14,22,19,25,21], borderColor:'#22c55e', tension:0.4, fill:false },
+        { label:'Med Risk', data:[8,11,9,13,10,14,12], borderColor:'#f59e0b', tension:0.4, fill:false },
+        { label:'High Risk', data:[3,5,4,6,4,7,5], borderColor:'#ef4444', tension:0.4, fill:false }
+      ]
+    },
+    options: { 
+      ...chartDefaults, 
+      scales: { 
+        x: { ticks: { color: 'rgba(255,255,255,0.5)' }, grid:{display:false} }, 
+        y: { ticks: { color: 'rgba(255,255,255,0.5)' }, grid:{color:'rgba(255,255,255,0.05)'} } 
+      } 
+    }
+  });
 
-// Animations
-setTimeout(() => {
-  document.querySelectorAll('.mt-fill').forEach(el => { el.style.width = el.style.width; });
-  document.querySelectorAll('.feat-bar-fill').forEach(el => { el.style.width = el.dataset.width; });
-}, 100);
+  // Animations
+  setTimeout(() => {
+    document.querySelectorAll('.mt-fill').forEach(el => { el.style.width = el.style.width; });
+    document.querySelectorAll('.feat-bar-fill').forEach(el => { 
+      el.style.width = el.dataset.width; 
+      el.style.opacity = "1";
+    });
+  }, 300);
+});
 </script>
 {% endblock %}

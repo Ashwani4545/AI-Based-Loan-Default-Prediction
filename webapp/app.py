@@ -995,6 +995,7 @@ def handle_prediction(form_data):
             risk_note = "Standard credit evaluation"
 
         # Build history record
+        threshold = 0.4
         record = {
             "id":          str(uuid.uuid4()),
             "trace_id":    str(uuid.uuid4()),
