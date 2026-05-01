@@ -1,0 +1,18 @@
+
+    ===== Loan Risk Report =====
+    
+    Borrower: hjhj
+    Loan Amount: 10000000.0
+    
+    Probability of Default (PD): 35.61%
+    Risk Level: LOW RISK
+    
+    Decision: Repay
+    
+    Key Factors:
+    
+ - int_rate: impact 0.3878
+ - installment_income_ratio: impact 0.3741
+ - term__60_months: impact 0.2745
+ - revol_income_ratio: impact 0.2732
+ - num_actv_bc_tl: impact 0.1334

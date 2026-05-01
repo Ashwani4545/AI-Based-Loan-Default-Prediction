@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block title %}Dashboard Overview{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-end;">
+  <div>
+    <h1 class="page-title">Dashboard Overview</h1>
+    <p class="page-subtitle">Summary of loan predictions and model performance</p>
+  </div>
+  <div>
+    <select class="form-group select" style="padding:8px 16px; border:1px solid var(--border); border-radius:6px; background:#fff;">
+      <option>May 1, 2026 - May 31, 2026</option>
+      <option>Last 30 Days</option>
+    </select>
+  </div>
+</div>
+
+<!-- KPI Cards -->
+<div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:20px; margin-bottom:24px;">
+  <div class="card" style="margin-bottom:0;">
+    <div style="color:var(--text-muted); font-size:12px; font-weight:500; margin-bottom:8px;">Total Predictions</div>
+    <div style="font-size:32px; font-weight:700; color:var(--text-dark); margin-bottom:8px;" id="kpiTotal">0</div>
+    <div style="color:var(--low-risk); font-size:12px; font-weight:500;">&uarr; 12.5% from last month</div>
+  </div>
+  <div class="card" style="margin-bottom:0;">
+    <div style="color:var(--text-muted); font-size:12px; font-weight:500; margin-bottom:8px;">Defaults Predicted</div>
+    <div style="font-size:32px; font-weight:700; color:var(--text-dark); margin-bottom:8px;" id="kpiDefaults">0</div>
+    <div style="color:var(--low-risk); font-size:12px; font-weight:500;">&uarr; 6.3% from last month</div>
+  </div>
+  <div class="card" style="margin-bottom:0;">
+    <div style="color:var(--text-muted); font-size:12px; font-weight:500; margin-bottom:8px;">Default Rate</div>
+    <div style="font-size:32px; font-weight:700; color:var(--text-dark); margin-bottom:8px;" id="kpiRate">0.00%</div>
+    <div style="color:var(--low-risk); font-size:12px; font-weight:500;">&uarr; 2.1% from last month</div>
+  </div>
+  <div class="card" style="margin-bottom:0;">
+    <div style="color:var(--text-muted); font-size:12px; font-weight:500; margin-bottom:8px;">Model Accuracy</div>
+    <div style="font-size:32px; font-weight:700; color:var(--text-dark); margin-bottom:8px;" id="kpiAccuracy">0.00%</div>
+    <div style="color:var(--low-risk); font-size:12px; font-weight:500;">&uarr; 1.8% from last month</div>
+  </div>
+</div>
+
+<!-- Charts Grid -->
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+  <div class="card">
+    <h3 class="card-title">Predictions Over Time</h3>
+    <div style="height:250px;">
+      <canvas id="chartPredictionsTime"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <h3 class="card-title">Default Rate Over Time</h3>
+    <div style="height:250px;">
+      <canvas id="chartDefaultTime"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <h3 class="card-title">Risk Distribution</h3>
+    <div style="height:250px; display:flex; justify-content:center;">
+      <canvas id="chartRiskDist"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <h3 class="card-title">Defaults by Loan Purpose</h3>
+    <div style="height:250px;">
+      <canvas id="chartPurpose"></canvas>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+async function loadDashboardData() {
+  try {
+    const res = await fetch('/api/metrics');
+    const data = await res.json();
+    
+    // Update KPIs (mocking the rate/defaults since metrics endpoint might not provide exact aggregates)
+    const historyRes = await fetch('/api/history');
+    const history = await historyRes.json();
+    
+    const total = history.length;
+    const defaults = history.filter(h => h.verdict === 'Decline' || h.verdict === 'Manual Review').length;
+    const rate = total ? ((defaults/total)*100).toFixed(2) : 0;
+    
+    document.getElementById('kpiTotal').innerText = total.toLocaleString();
+    document.getElementById('kpiDefaults').innerText = defaults.toLocaleString();
+    document.getElementById('kpiRate').innerText = rate + '%';
+    document.getElementById('kpiAccuracy').innerText = (data.metrics.accuracy * 100).toFixed(2) + '%';
+    
+    // Chart 1: Predictions Over Time (Mock Data for UI design)
+    new Chart(document.getElementById('chartPredictionsTime'), {
+      type: 'line',
+      data: {
+        labels: ['May 1', 'May 8', 'May 15', 'May 22', 'May 29'],
+        datasets: [{
+          label: 'Predictions',
+          data: [50, 65, 55, 80, 70],
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59,130,246,0.1)',
+          fill: true,
+          tension: 0.4
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {display:false} } }
+    });
+
+    // Chart 2: Default Rate Over Time
+    new Chart(document.getElementById('chartDefaultTime'), {
+      type: 'line',
+      data: {
+        labels: ['May 1', 'May 8', 'May 15', 'May 22', 'May 29'],
+        datasets: [{
+          label: 'Default Rate %',
+          data: [20, 25, 22, 28, 24],
+          borderColor: '#8b5cf6',
+          backgroundColor: 'rgba(139,92,246,0.1)',
+          fill: true,
+          tension: 0.4
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {display:false} } }
+    });
+
+    // Chart 3: Risk Distribution Donut
+    const riskCounts = { 'LOW RISK': 0, 'MEDIUM RISK': 0, 'HIGH RISK': 0 };
+    history.forEach(h => {
+        if(riskCounts[h.risk_level] !== undefined) {
+            riskCounts[h.risk_level]++;
+        } else {
+            riskCounts['HIGH RISK']++; // catchall
+        }
+    });
+    
+    new Chart(document.getElementById('chartRiskDist'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Low Risk', 'Medium Risk', 'High Risk'],
+        datasets: [{
+          data: [riskCounts['LOW RISK']||38, riskCounts['MEDIUM RISK']||36, riskCounts['HIGH RISK']||25],
+          backgroundColor: ['#3b82f6', '#f59e0b', '#ef4444'],
+          borderWidth: 0
+        }]
+      },
+      options: { 
+          responsive: true, 
+          maintainAspectRatio: false,
+          cutout: '70%',
+          plugins: {
+              legend: { position: 'right' }
+          }
+      }
+    });
+
+    // Chart 4: Defaults by Purpose Bar
+    new Chart(document.getElementById('chartPurpose'), {
+      type: 'bar',
+      data: {
+        labels: ['Debt Consolidation', 'Home Improvement', 'Business', 'Education', 'Other'],
+        datasets: [{
+          data: [120, 85, 61, 31, 20],
+          backgroundColor: '#3b82f6',
+          borderRadius: 4
+        }]
+      },
+      options: { 
+          indexAxis: 'y',
+          responsive: true, 
+          maintainAspectRatio: false,
+          plugins: { legend: {display:false} },
+          scales: { x: { display: false }, y: { grid: { display: false } } }
+      }
+    });
+
+  } catch(e) {
+    console.error("Dashboard error:", e);
+  }
+}
+loadDashboardData();
+</script>
+{% endblock %}

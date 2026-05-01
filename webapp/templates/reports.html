@@ -1,0 +1,84 @@
+{% extends "base.html" %} {% block title %}Reports{% endblock %} {% block
+content %}
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-pill">📄 Borrower Reports</div>
+    <h1 class="hero-h1">Individual<br /><em>Reports</em></h1>
+    <p class="hero-sub">
+      Structured reports for every loan assessment, ready to view or print.
+    </p>
+  </div>
+</div>
+
+<div class="reports-shell">
+  {% if records %}
+  <div class="report-cards">
+    {% for r in records %}
+    <div class="report-card">
+      <div class="rc-header">
+        <div
+          class="rc-avatar"
+          style="background: {{ r.color }}20; color: {{ r.color }}"
+        >
+          {{ r.borrower[0].upper() if r.borrower else 'A' }}
+        </div>
+        <div class="rc-meta">
+          <div class="rc-name">{{ r.borrower }}</div>
+          <div class="rc-date">
+            {{ r.timestamp[:10] }} · {{ r.purpose.replace('_',' ').title() }}
+          </div>
+        </div>
+        <span
+          class="risk-pill"
+          style="color:{{ r.color }}; border-color:{{ r.color }}30; background:{{ r.color }}10; margin-left:auto"
+        >
+          {{ r.risk_level }}
+        </span>
+      </div>
+
+      <div class="rc-body">
+        <div class="rc-stat">
+          <div class="rc-stat-label">Default Probability</div>
+          <div class="rc-stat-value" style="color: {{ r.color }}">
+            {{ r.probability }}%
+          </div>
+        </div>
+        <div class="rc-stat">
+          <div class="rc-stat-label">Loan Amount</div>
+          <div class="rc-stat-value">${{ "{:,.0f}".format(r.loan_amnt) }}</div>
+        </div>
+        <div class="rc-stat">
+          <div class="rc-stat-label">Grade</div>
+          <div class="rc-stat-value">{{ r.grade }}</div>
+        </div>
+        <div class="rc-stat">
+          <div class="rc-stat-label">Verdict</div>
+          <div
+            class="rc-stat-value {% if r.prediction == 0 %}color-green{% else %}color-red{% endif %}"
+          >
+            {% if r.prediction == 0 %}✅ Repay{% else %}⚠️ Default{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="rc-foot">
+        <a href="/reports/{{ r.id }}" class="btn btn-outline btn-sm"
+          >View Full Report →</a
+        >
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="empty-state">
+    <div class="es-icon">📄</div>
+    <div class="es-title">No reports yet</div>
+    <div class="es-sub">
+      Complete a loan assessment to generate a borrower report.
+    </div>
+    <a href="/" class="btn btn-outline">Start Assessment</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,18 @@
+
+    ===== Loan Risk Report =====
+    
+    Borrower: sf
+    Loan Amount: 10000000.0
+    
+    Probability of Default (PD): 24.87%
+    Risk Level: HIGH RISK (OVERRIDE)
+    
+    Decision: High Risk (Override)
+    
+    Key Factors:
+    
+ - int_rate: impact 0.4013
+ - installment_income_ratio: impact 0.3255
+ - term__60_months: impact 0.2779
+ - credit_stress: impact 0.2716
+ - revol_income_ratio: impact 0.256

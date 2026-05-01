@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Prediction History{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Prediction History</h1>
+  <p class="page-subtitle">View all loan default predictions</p>
+</div>
+
+<div class="card" style="padding: 0; overflow:hidden;">
+  <div style="padding:20px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border);">
+    <div style="position:relative; width:300px;">
+      <i class="fa-solid fa-search" style="position:absolute; left:12px; top:10px; color:var(--text-muted); font-size:14px;"></i>
+      <input type="text" placeholder="Search by ID or applicant..." style="width:100%; padding:8px 12px 8px 36px; border:1px solid var(--border); border-radius:6px; font-size:14px; outline:none;">
+    </div>
+    <button class="btn-secondary" style="color:var(--text-dark); border-color:var(--border);"><i class="fa-solid fa-filter"></i> Filter</button>
+  </div>
+  
+  <div style="overflow-x:auto;">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Date</th>
+          <th>Applicant</th>
+          <th>Loan Amount</th>
+          <th>Risk Level</th>
+          <th>Default Probability</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="historyTableBody">
+        <tr><td colspan="7" style="text-align:center; padding:40px; color:var(--text-muted);">Loading history...</td></tr>
+      </tbody>
+    </table>
+  </div>
+  
+  <div style="padding:16px 20px; display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); font-size:14px; color:var(--text-muted);">
+    <div id="showingText">Showing 0 entries</div>
+    <div style="display:flex; gap:4px;">
+      <button style="padding:6px 12px; border:1px solid var(--border); border-radius:4px; background:#fff; cursor:pointer;">&lt;</button>
+      <button style="padding:6px 12px; border:1px solid var(--primary); border-radius:4px; background:var(--primary); color:#fff; cursor:pointer;">1</button>
+      <button style="padding:6px 12px; border:1px solid var(--border); border-radius:4px; background:#fff; cursor:pointer;">&gt;</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadHistory() {
+  try {
+    const res = await fetch('/api/history');
+    const data = await res.json();
+    const tbody = document.getElementById('historyTableBody');
+    tbody.innerHTML = '';
+    
+    if(!data || data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No records found.</td></tr>';
+      return;
+    }
+    
+    document.getElementById('showingText').innerText = `Showing 1 to ${Math.min(10, data.length)} of ${data.length} entries`;
+    
+    data.slice(0, 10).forEach(item => {
+      const d = new Date(item.timestamp);
+      const dateStr = d.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+      
+      let riskClass = 'status-medium';
+      if(item.risk_level.includes('HIGH')) riskClass = 'status-high';
+      if(item.risk_level.includes('LOW')) riskClass = 'status-low';
+      
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="color:var(--text-muted); font-size:12px;">#PRED-${item.id.substring(0,8).toUpperCase()}</td>
+        <td>${dateStr}</td>
+        <td style="font-weight:500;">${item.borrower}</td>
+        <td>$${item.loan_amnt.toLocaleString()}</td>
+        <td><span class="status-pill ${riskClass}">${item.risk_level.replace(' RISK','').title()}</span></td>
+        <td>${item.probability}%</td>
+        <td><span class="status-pill status-low" style="background:#f0fdf4; color:#166534;">Completed</span></td>
+      `;
+      tr.style.cursor = 'pointer';
+      tr.onclick = () => window.location.href = `/result/${item.id}`;
+      tbody.appendChild(tr);
+    });
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+// helper polyfill
+String.prototype.title = function() {
+    return this.charAt(0).toUpperCase() + this.slice(1).toLowerCase();
+};
+
+loadHistory();
+</script>
+{% endblock %}

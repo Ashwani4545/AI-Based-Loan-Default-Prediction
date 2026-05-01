@@ -1,0 +1,18 @@
+
+    ===== Loan Risk Report =====
+    
+    Borrower: m
+    Loan Amount: 10000000.0
+    
+    Probability of Default (PD): 55.65%
+    Risk Level: MEDIUM RISK
+    
+    Decision: Review
+    
+    Key Factors:
+    
+ - int_rate: impact 0.3703
+ - term__60_months: impact 0.2299
+ - risk_score: impact 0.1455
+ - revol_income_ratio: impact 0.1269
+ - loan_income_ratio: impact 0.1089

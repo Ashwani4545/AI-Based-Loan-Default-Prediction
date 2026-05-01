@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}API Documentation{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui.css" />
+<style>
+.swagger-ui .wrapper { max-width: 1200px; margin: 0 auto; padding: 20px; }
+body { background: #fff; color: #000; } /* Override dark mode for Swagger */
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="swagger-ui"></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-bundle.js"></script>
+<script>
+window.onload = () => {
+  window.ui = SwaggerUIBundle({
+    url: '/static/swagger.json',
+    dom_id: '#swagger-ui',
+    deepLinking: true,
+    presets: [
+      SwaggerUIBundle.presets.apis,
+      SwaggerUIBundle.SwaggerUIStandalonePreset
+    ],
+  });
+};
+</script>
+{% endblock %}

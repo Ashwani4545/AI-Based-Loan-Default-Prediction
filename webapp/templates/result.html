@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Prediction Result{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Prediction Result</h1>
+  <p class="page-subtitle" style="color:var(--primary); font-weight:500;">Prediction ID: #PRED-{{ record.id[:8] | upper }}</p>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px;">
+  
+  <!-- Left: Prediction Summary -->
+  <div class="card" style="display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:40px;">
+    <div style="color:var(--text-muted); font-size:14px; font-weight:500; margin-bottom:8px;">Prediction</div>
+    <div style="font-size:32px; font-weight:800; color:var(--high-risk); margin-bottom:4px; letter-spacing:1px;">
+      {% if 'HIGH' in record.risk_level %}HIGH RISK
+      {% elif 'MEDIUM' in record.risk_level %}MEDIUM RISK
+      {% else %}<span style="color:var(--low-risk)">LOW RISK</span>{% endif %}
+    </div>
+    <div style="font-size:13px; color:var(--text-muted); margin-bottom:30px;">Likely to Default</div>
+    
+    <div style="color:var(--text-muted); font-size:14px; font-weight:500; margin-bottom:8px;">Probability of Default</div>
+    <div style="font-size:36px; font-weight:800; color:var(--text-dark); margin-bottom:12px;">{{ record.probability }}%</div>
+    <div style="width:100%; height:6px; background:#e5e7eb; border-radius:3px; overflow:hidden;">
+      <div style="width:{{ record.probability }}%; height:100%; background:var(--high-risk);"></div>
+    </div>
+  </div>
+
+  <!-- Right: Risk Dial -->
+  <div class="card" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px;">
+    <div style="color:var(--text-dark); font-size:16px; font-weight:600; margin-bottom:30px;">Risk Score</div>
+    <div class="dial-container">
+      <svg class="dial-svg" viewBox="0 0 200 100">
+        <!-- Background arc -->
+        <path class="dial-bg" d="M 20 90 A 70 70 0 0 1 180 90" />
+        <!-- Foreground arc (Dasharray calculated in JS based on score) -->
+        <path id="dialFill" class="dial-fill" d="M 20 90 A 70 70 0 0 1 180 90" stroke-dasharray="0 220" />
+        <!-- Color markers at ends -->
+        <text x="15" y="105" font-size="12" fill="var(--low-risk)" font-weight="bold">0</text>
+        <text x="170" y="105" font-size="12" fill="var(--high-risk)" font-weight="bold">1000</text>
+      </svg>
+      <div class="dial-score">
+        <div class="dial-number">{{ (record.probability * 10)|int }}</div>
+        <div class="dial-label">
+          {% if 'HIGH' in record.risk_level %}High Risk
+          {% elif 'MEDIUM' in record.risk_level %}Medium Risk
+          {% else %}Low Risk{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="display:grid; grid-template-columns:2fr 1fr; gap:24px;">
+  
+  <!-- Top Contributing Factors -->
+  <div class="card">
+    <h3 class="card-title">Top Contributing Factors</h3>
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      {% for ex in record.top_features[:5] %}
+      <div style="display:flex; align-items:center;">
+        <div style="width:140px; font-size:13px; font-weight:500;">{{ ex.feature | replace('_',' ') | title }}</div>
+        <div style="flex:1; margin:0 16px;">
+          <div style="height:8px; background:#e5e7eb; border-radius:4px; overflow:hidden;">
+            {% set pct = (ex.impact|abs / 0.5)*100 %}
+            <div style="width:{{ pct if pct < 100 else 100 }}%; height:100%; background:{{ 'var(--high-risk)' if loop.index < 3 else 'var(--medium-risk)' }};"></div>
+          </div>
+        </div>
+        <div style="width:100px; text-align:right; font-size:12px; color:var(--text-muted);">
+          {% if loop.index == 1 %}High Impact
+          {% elif loop.index == 2 %}High Impact
+          {% elif loop.index == 3 %}Medium Impact
+          {% else %}Low Impact{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Recommendation -->
+  <div class="card" style="background:#fffaf0; border-color:#fed7aa;">
+    <h3 class="card-title" style="color:#9a3412;">Recommendation</h3>
+    <p style="font-size:14px; color:#b45309; line-height:1.6;">
+      {% if 'HIGH' in record.risk_level %}
+      This applicant is at <strong>high risk</strong> of default. Consider stricter loan terms, requiring collateral, or denying the application.
+      {% elif 'MEDIUM' in record.risk_level %}
+      This applicant presents moderate risk. Further manual review is recommended.
+      {% else %}
+      This applicant is low risk. Standard approval procedures apply.
+      {% endif %}
+    </p>
+  </div>
+
+</div>
+
+<div style="margin-top: 24px;">
+  <a href="/history" class="btn-primary">Back to History</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Animate Risk Dial
+  setTimeout(() => {
+    const dialFill = document.getElementById('dialFill');
+    // Arc length of a semi-circle with r=70 is pi * 70 = ~220
+    const prob = {{ record.probability }};
+    const fillLength = (prob / 100) * 220;
+    dialFill.style.strokeDasharray = `${fillLength} 220`;
+    
+    // Set color based on risk
+    if(prob < 30) dialFill.style.stroke = 'var(--low-risk)';
+    else if(prob < 60) dialFill.style.stroke = 'var(--medium-risk)';
+    else dialFill.style.stroke = 'var(--high-risk)';
+  }, 100);
+</script>
+{% endblock %}

@@ -1,0 +1,351 @@
+{% extends "base.html" %}
+{% block title %}Geographic Risk Heatmap{% endblock %}
+{% block head %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+.hm-shell { padding: 0 28px 32px; max-width: 1400px; margin: 0 auto; }
+.hm-controls {
+  display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
+  margin-bottom: 18px;
+}
+.hm-select {
+  background: var(--navy-2); border: 1px solid var(--border);
+  color: var(--tx-1); font-family: 'DM Sans', sans-serif; font-size: 13px;
+  padding: 8px 14px; border-radius: 8px; outline: none; cursor: pointer;
+  transition: border-color .15s;
+}
+.hm-select:focus { border-color: var(--gold); }
+
+.hm-map-wrap {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden; margin-bottom: 20px;
+  position: relative;
+}
+#riskMap { width: 100%; height: 540px; background: #0d1526; }
+
+/* Leaflet popup override */
+.leaflet-popup-content-wrapper {
+  background: #1a2848 !important; color: var(--tx-1) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 10px !important; box-shadow: 0 8px 28px rgba(0,0,0,.5) !important;
+}
+.leaflet-popup-tip { background: #1a2848 !important; }
+.leaflet-popup-content { margin: 12px 16px !important; font-family: 'DM Sans', sans-serif; font-size: 13px; }
+.pop-state { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; margin-bottom: 4px; }
+.pop-prob  { font-size: 24px; font-weight: 800; font-family: 'Syne', sans-serif; }
+.pop-row   { display: flex; gap: 8px; align-items: center; margin-top: 4px; font-size: 12px; color: #8a97b8; }
+
+/* Legend */
+.hm-legend {
+  position: absolute; bottom: 24px; right: 12px; z-index: 900;
+  background: rgba(13,21,38,.92); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 16px; min-width: 160px;
+  backdrop-filter: blur(8px);
+}
+.hm-legend-title { font-family: 'DM Mono', monospace; font-size: 10px; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--tx-3); margin-bottom: 10px; }
+.hm-legend-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; font-size: 12px; color: var(--tx-2); }
+.hm-legend-swatch { width: 22px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+
+/* Stats bar */
+.hm-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+.hm-stat {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 14px 16px;
+}
+.hm-stat-val { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 26px; color: var(--tx-1); line-height: 1; }
+.hm-stat-lbl { font-size: 11px; color: var(--tx-3); text-transform: uppercase; letter-spacing: .05em; margin-top: 3px; }
+
+/* Table */
+.hm-table-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.hm-table-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.hm-table-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; color: var(--tx-1); }
+.hm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.hm-table th { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--tx-3); padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+.hm-table td { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,.04); color: var(--tx-2); }
+.hm-table tr:last-child td { border: none; }
+.hm-table tr:hover td { background: rgba(255,255,255,.02); }
+.risk-bar-wrap { width: 120px; height: 6px; background: rgba(255,255,255,.08); border-radius: 3px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 8px; }
+.risk-bar-fill { height: 100%; border-radius: 3px; }
+.src-badge { display: inline-block; padding: 1px 7px; border-radius: 8px; font-size: 10px; font-weight: 600; }
+.src-live     { background: rgba(34,197,94,.12); color: #22c55e; }
+.src-baseline { background: rgba(100,116,139,.12); color: #64748b; }
+
+@media(max-width:700px){
+  .hm-stats { grid-template-columns: 1fr 1fr; }
+  #riskMap  { height: 360px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-pill">🗺 Geospatial Intelligence</div>
+    <h1 class="hero-h1">Geographic Risk <em>Heatmap</em></h1>
+    <p class="hero-sub">Average default probability by US state — live data from prediction history, baseline-filled for full coverage.</p>
+  </div>
+</div>
+
+<div class="hm-shell">
+
+  <!-- Controls -->
+  <div class="hm-controls">
+    <select class="hm-select" id="colorScheme">
+      <option value="risk">Color: Risk Gradient</option>
+      <option value="mono">Color: Monochrome</option>
+      <option value="traffic">Color: Traffic Light</option>
+    </select>
+    <select class="hm-select" id="sortMode">
+      <option value="risk_desc">Sort Table: Highest Risk</option>
+      <option value="risk_asc">Sort Table: Lowest Risk</option>
+      <option value="alpha">Sort Table: A–Z</option>
+      <option value="count">Sort Table: Most Predictions</option>
+    </select>
+    <div style="margin-left:auto;font-size:12px;color:var(--tx-3)">
+      <span id="liveCount" style="color:#22c55e;font-weight:700">0</span> live states ·
+      <span id="baselineCount" style="color:#64748b;font-weight:700">0</span> baseline
+    </div>
+  </div>
+
+  <!-- Summary stats -->
+  <div class="hm-stats" id="statBar">
+    <div class="hm-stat"><div class="hm-stat-val" id="s-highest">—</div><div class="hm-stat-lbl">Highest Risk State</div></div>
+    <div class="hm-stat"><div class="hm-stat-val" id="s-lowest">—</div><div class="hm-stat-lbl">Lowest Risk State</div></div>
+    <div class="hm-stat"><div class="hm-stat-val" id="s-avg">—</div><div class="hm-stat-lbl">National Average</div></div>
+    <div class="hm-stat"><div class="hm-stat-val" id="s-high-pct">—</div><div class="hm-stat-lbl">High-Risk States (≥50%)</div></div>
+  </div>
+
+  <!-- Map -->
+  <div class="hm-map-wrap">
+    <div id="riskMap"></div>
+    <!-- Legend inside map-wrap so it overlays -->
+    <div class="hm-legend" id="mapLegend">
+      <div class="hm-legend-title">Default Probability</div>
+      <div id="legendRows"></div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="hm-table-card">
+    <div class="hm-table-header">
+      <span class="hm-table-title">📋 State Risk Rankings</span>
+      <span style="font-size:12px;color:var(--tx-3)" id="tableCount">Loading...</span>
+    </div>
+    <div style="overflow-x:auto;max-height:400px;overflow-y:auto">
+      <table class="hm-table">
+        <thead style="position:sticky;top:0;background:var(--card);z-index:2">
+          <tr>
+            <th>#</th><th>State</th><th>Avg Default Prob</th>
+            <th>Risk Bar</th><th>Predictions</th><th>Data Source</th>
+          </tr>
+        </thead>
+        <tbody id="stateTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /hm-shell -->
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ── US States GeoJSON (simplified, self-contained abbr map) ──────────────
+// We use a CDN-hosted file for full polygon data
+const GEO_URL = 'https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json';
+
+// Abbr lookup (name → abbr)
+const NAME_TO_ABBR = {
+  "Alabama":"AL","Alaska":"AK","Arizona":"AZ","Arkansas":"AR","California":"CA",
+  "Colorado":"CO","Connecticut":"CT","Delaware":"DE","Florida":"FL","Georgia":"GA",
+  "Hawaii":"HI","Idaho":"ID","Illinois":"IL","Indiana":"IN","Iowa":"IA","Kansas":"KS",
+  "Kentucky":"KY","Louisiana":"LA","Maine":"ME","Maryland":"MD","Massachusetts":"MA",
+  "Michigan":"MI","Minnesota":"MN","Mississippi":"MS","Missouri":"MO","Montana":"MT",
+  "Nebraska":"NE","Nevada":"NV","New Hampshire":"NH","New Jersey":"NJ","New Mexico":"NM",
+  "New York":"NY","North Carolina":"NC","North Dakota":"ND","Ohio":"OH","Oklahoma":"OK",
+  "Oregon":"OR","Pennsylvania":"PA","Rhode Island":"RI","South Carolina":"SC",
+  "South Dakota":"SD","Tennessee":"TN","Texas":"TX","Utah":"UT","Vermont":"VT",
+  "Virginia":"VA","Washington":"WA","West Virginia":"WV","Wisconsin":"WI","Wyoming":"WY",
+  "District of Columbia":"DC"
+};
+
+// ── Color schemes ────────────────────────────────────────────────────────────
+const SCHEMES = {
+  risk: [
+    { max:30, color:'#22c55e', label:'< 30% Low' },
+    { max:40, color:'#84cc16', label:'30–40% Moderate' },
+    { max:50, color:'#f59e0b', label:'40–50% Elevated' },
+    { max:60, color:'#f97316', label:'50–60% High' },
+    { max:100,color:'#ef4444', label:'> 60% Critical' },
+  ],
+  mono: [
+    { max:30, color:'rgba(201,168,76,.15)', label:'< 30%' },
+    { max:40, color:'rgba(201,168,76,.35)', label:'30–40%' },
+    { max:50, color:'rgba(201,168,76,.55)', label:'40–50%' },
+    { max:60, color:'rgba(201,168,76,.75)', label:'50–60%' },
+    { max:100,color:'rgba(201,168,76,.95)', label:'> 60%' },
+  ],
+  traffic: [
+    { max:35, color:'#16a34a', label:'< 35% Green' },
+    { max:50, color:'#ca8a04', label:'35–50% Amber' },
+    { max:100,color:'#dc2626', label:'> 50% Red' },
+  ],
+};
+
+function getColor(prob, scheme) {
+  const s = SCHEMES[scheme] || SCHEMES.risk;
+  for (const tier of s) { if (prob <= tier.max) return tier.color; }
+  return s[s.length-1].color;
+}
+
+function buildLegend(scheme) {
+  const s = SCHEMES[scheme] || SCHEMES.risk;
+  document.getElementById('legendRows').innerHTML = s.map(t =>
+    `<div class="hm-legend-row">
+      <div class="hm-legend-swatch" style="background:${t.color}"></div>
+      <span>${t.label}</span>
+    </div>`
+  ).join('');
+}
+
+// ── Map init ────────────────────────────────────────────────────────────────
+const map = L.map('riskMap', {
+  center: [38, -96], zoom: 4,
+  zoomControl: true, attributionControl: false
+});
+
+// Dark tile layer
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  maxZoom: 10
+}).addTo(map);
+
+let geoLayer = null;
+let geoData  = null;
+let riskByAbbr = {};
+
+// ── Fetch geo-risk data then GeoJSON ─────────────────────────────────────────
+fetch('/api/geo-risk')
+  .then(r => r.json())
+  .then(data => {
+    data.forEach(d => { riskByAbbr[d.state] = d; });
+    updateStats(data);
+    renderTable(data, 'risk_desc');
+    updateCounters(data);
+    return fetch(GEO_URL);
+  })
+  .then(r => r.json())
+  .then(geo => {
+    geoData = geo;
+    drawMap('risk');
+    buildLegend('risk');
+  })
+  .catch(err => {
+    document.getElementById('stateTableBody').innerHTML =
+      `<tr><td colspan="6" style="text-align:center;color:#ef4444;padding:20px">Error loading data: ${err.message}</td></tr>`;
+  });
+
+function drawMap(scheme) {
+  if (geoLayer) map.removeLayer(geoLayer);
+  geoLayer = L.geoJSON(geoData, {
+    style: feature => {
+      const name = feature.properties.name;
+      const abbr = NAME_TO_ABBR[name] || '';
+      const d    = riskByAbbr[abbr];
+      const prob = d ? d.avg_prob : 45;
+      return {
+        fillColor:   getColor(prob, scheme),
+        fillOpacity: 0.78,
+        color:       'rgba(255,255,255,0.12)',
+        weight:      1,
+      };
+    },
+    onEachFeature: (feature, layer) => {
+      const name = feature.properties.name;
+      const abbr = NAME_TO_ABBR[name] || name;
+      const d    = riskByAbbr[abbr];
+      const prob = d ? d.avg_prob : '—';
+      const cnt  = d ? d.count : 0;
+      const src  = d ? d.source : 'baseline';
+      const col  = d ? getColor(d.avg_prob, document.getElementById('colorScheme').value) : '#6b7280';
+
+      layer.bindPopup(`
+        <div class="pop-state">${name} (${abbr})</div>
+        <div class="pop-prob" style="color:${col}">${prob}%</div>
+        <div class="pop-row">📊 Default Probability</div>
+        <div class="pop-row">🔢 ${cnt} live prediction${cnt !== 1 ? 's' : ''}</div>
+        <div class="pop-row">📡 Source: <strong style="color:${src==='live'?'#22c55e':'#64748b'}">${src}</strong></div>
+      `);
+      layer.on({
+        mouseover(e) {
+          e.target.setStyle({ fillOpacity: 1, weight: 2, color: '#c9a84c' });
+        },
+        mouseout(e) {
+          geoLayer.resetStyle(e.target);
+        },
+        click(e) { map.fitBounds(e.target.getBounds(), { padding: [30,30] }); e.target.openPopup(); }
+      });
+    }
+  }).addTo(map);
+}
+
+// ── Stats bar ────────────────────────────────────────────────────────────────
+function updateStats(data) {
+  const sorted = [...data].sort((a,b) => b.avg_prob - a.avg_prob);
+  const avg    = data.reduce((s,d) => s + d.avg_prob, 0) / data.length;
+  const high   = sorted.filter(d => d.avg_prob >= 50).length;
+  document.getElementById('s-highest').textContent  = sorted[0].state + ' ' + sorted[0].avg_prob + '%';
+  document.getElementById('s-lowest').textContent   = sorted[sorted.length-1].state + ' ' + sorted[sorted.length-1].avg_prob + '%';
+  document.getElementById('s-avg').textContent      = avg.toFixed(1) + '%';
+  document.getElementById('s-high-pct').textContent = high + ' / ' + data.length;
+}
+
+function updateCounters(data) {
+  const live = data.filter(d => d.source === 'live').length;
+  document.getElementById('liveCount').textContent     = live;
+  document.getElementById('baselineCount').textContent = data.length - live;
+}
+
+// ── Table rendering ──────────────────────────────────────────────────────────
+function renderTable(data, mode) {
+  let sorted = [...data];
+  if      (mode === 'risk_desc') sorted.sort((a,b) => b.avg_prob - a.avg_prob);
+  else if (mode === 'risk_asc')  sorted.sort((a,b) => a.avg_prob - b.avg_prob);
+  else if (mode === 'alpha')     sorted.sort((a,b) => a.state.localeCompare(b.state));
+  else if (mode === 'count')     sorted.sort((a,b) => b.count - a.count);
+
+  const scheme = document.getElementById('colorScheme').value;
+  const body   = document.getElementById('stateTableBody');
+  body.innerHTML = sorted.map((d, i) => {
+    const col = getColor(d.avg_prob, scheme);
+    return `<tr>
+      <td style="color:var(--tx-3);font-family:'DM Mono',monospace;font-size:11px">${i+1}</td>
+      <td style="font-family:'Syne',sans-serif;font-weight:700;color:var(--tx-1)">${d.state}</td>
+      <td style="font-weight:700;color:${col};font-family:'DM Mono',monospace">${d.avg_prob}%</td>
+      <td>
+        <span class="risk-bar-wrap">
+          <span class="risk-bar-fill" style="width:${d.avg_prob}%;background:${col}"></span>
+        </span>
+      </td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px">${d.count || '—'}</td>
+      <td><span class="src-badge src-${d.source}">${d.source}</span></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('tableCount').textContent = sorted.length + ' states';
+}
+
+// ── Controls wiring ──────────────────────────────────────────────────────────
+document.getElementById('colorScheme').addEventListener('change', function() {
+  const scheme = this.value;
+  drawMap(scheme);
+  buildLegend(scheme);
+  renderTable(Object.values(riskByAbbr), document.getElementById('sortMode').value);
+});
+
+document.getElementById('sortMode').addEventListener('change', function() {
+  renderTable(Object.values(riskByAbbr), this.value);
+});
+</script>
+{% endblock %}

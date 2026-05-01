@@ -1,0 +1,49 @@
+AI_Loan_Default_Predictor/
+│
+├── data/
+│   ├── raw/
+│   │   └── loan_data.csv
+│   │
+│   └── processed/
+│       └── cleaned_data.csv
+│
+├── notebooks/
+│   └── EDA.ipynb
+│
+├── src/
+│   ├── data_preprocessing.py
+│   ├── feature_engineering.py
+│   ├── train_model.py
+│   ├── evaluate_model.py
+│   ├── predict.py
+│
+├── models/
+│   └── loan_default_model.pkl
+│
+├── explainability/
+│   └── shap_explainer.py
+│
+├── monitoring/
+│   └── drift_detection.py
+│
+├── webapp/
+│   ├── app.py
+│   │
+│   ├── templates/
+│   │   ├── index.html
+│   │   ├── result.html
+│   │   └── dashboard.html
+│   │
+│   └── static/
+│       ├── css/
+│       │   └── style.css
+│       │
+│       └── js/
+│           └── script.js
+│
+├── utils/
+│   └── config.py
+│
+├── requirements.txt
+│
+└── README.md

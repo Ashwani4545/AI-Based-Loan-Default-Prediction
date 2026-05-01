@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Select Bank & Policy{% endblock %}
+
+{% block content %}
+<div class="hero">
+  <div class="hero-inner hero-inner--center">
+    <div class="hero-pill">⚡ Step 1: Pre-Qualification</div>
+    <h1 class="hero-h1">Bank Selection & Policy</h1>
+    <p class="hero-sub">Choose your preferred lender and tell us about your loan needs.</p>
+  </div>
+</div>
+
+<div class="form-shell">
+  <form method="GET" action="/assessment" id="bankSelectionForm" novalidate>
+    <div class="form-card">
+      <h3 class="section-head"><span class="section-num">00</span> Loan Preferences</h3>
+      
+      <div class="field-row">
+        <div class="field">
+          <label>Select Preferred Bank <span class="req">*</span></label>
+          <select name="bank" id="bank" required>
+            <option value="" disabled selected>-- Select a Bank --</option>
+            <option value="SBI">State Bank of India (SBI)</option>
+            <option value="HDFC">HDFC Bank</option>
+            <option value="ICICI">ICICI Bank</option>
+          </select>
+        </div>
+        
+        <div class="field">
+          <label>Loan Type <span class="req">*</span></label>
+          <select name="loan_type" required>
+            <option value="" disabled selected>-- Select Loan Type --</option>
+            <option value="house">Home Loan</option>
+            <option value="major_purchase">Car Loan</option>
+            <option value="other">Business Loan</option>
+          </select>
+        </div>
+        
+        <div class="field">
+          <label>Age Group <span class="req">*</span></label>
+          <select name="age_group" required>
+            <option value="" disabled selected>-- Select Age Group --</option>
+            <option value="18-25">18 - 25</option>
+            <option value="26-35">26 - 35</option>
+            <option value="36-50">36 - 50</option>
+            <option value="50+">50+</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="field-row" style="margin-top: 2rem;">
+        <div class="field" style="width: 100%;">
+          <div style="background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+            <h4 style="margin-bottom: 0.5rem; color: #fff;">Bank Policy Agreement</h4>
+            <p style="font-size: 0.9rem; color: #aaa; margin-bottom: 1rem;">
+              Before proceeding, please read the loan policy for your selected bank. The policy determines your interest rate based on loan amount and income.
+            </p>
+            <a href="#" id="policyLink" style="color: #4ade80; text-decoration: underline; margin-bottom: 1rem; display: inline-block; pointer-events: none; opacity: 0.5;">
+              Select a bank to read its policy
+            </a>
+            
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin-top: 1rem;">
+              <input type="checkbox" id="agree_policy" name="agree_policy" required style="width: 18px; height: 18px; accent-color: #4ade80; cursor: pointer;" disabled>
+              <label for="agree_policy" style="margin-bottom: 0; cursor: pointer; color: #ddd;">
+                I have read and agree to continue further with this bank's loan policy. <span class="req">*</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUBMIT -->
+    <div class="submit-row">
+      <button type="submit" class="btn-submit" id="proceedBtn" disabled style="opacity: 0.5; cursor: not-allowed;">
+        <span class="btn-label">Proceed to Assessment</span>
+        <span class="btn-icon">→</span>
+      </button>
+    </div>
+  </form>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const bankSelect = document.getElementById('bank');
+  const policyLink = document.getElementById('policyLink');
+  const agreeCheckbox = document.getElementById('agree_policy');
+  const proceedBtn = document.getElementById('proceedBtn');
+
+  bankSelect.addEventListener('change', function() {
+    const bank = this.value;
+    if (bank) {
+      // Set Official Policy URLs
+      let policyUrl = "#";
+      if (bank === "SBI") {
+        policyUrl = "https://sbi.co.in/web/interest-rates/interest-rates/loan-schemes-interest-rates";
+      } else if (bank === "HDFC") {
+        policyUrl = "https://www.hdfcbank.com/personal/borrow/popular-loans";
+      } else if (bank === "ICICI") {
+        policyUrl = "https://www.icicibank.com/personal-banking/loans";
+      }
+      
+      // Enable link and checkbox
+      policyLink.style.pointerEvents = 'auto';
+      policyLink.style.opacity = '1';
+      policyLink.href = policyUrl;
+      policyLink.target = "_blank"; // Open in new tab
+      policyLink.textContent = `Read ${bank}'s Official Loan Policy`;
+      
+      agreeCheckbox.disabled = false;
+      checkFormValidity();
+    }
+  });
+
+  agreeCheckbox.addEventListener('change', checkFormValidity);
+
+  function checkFormValidity() {
+    if (agreeCheckbox.checked && bankSelect.value) {
+      proceedBtn.disabled = false;
+      proceedBtn.style.opacity = '1';
+      proceedBtn.style.cursor = 'pointer';
+    } else {
+      proceedBtn.disabled = true;
+      proceedBtn.style.opacity = '0.5';
+      proceedBtn.style.cursor = 'not-allowed';
+    }
+  }
+</script>
+{% endblock %}

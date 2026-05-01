@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}New Prediction{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">New Prediction</h1>
+  <p class="page-subtitle">Enter loan applicant details to predict default risk</p>
+</div>
+
+<form method="POST" action="/predict" id="loanForm" class="card">
+  <h2 class="card-title">Applicant Information</h2>
+  
+  <div class="form-grid" style="margin-bottom: 20px;">
+    <div class="form-group" style="grid-column: span 3;">
+      <label>Applicant Name</label>
+      <input type="text" name="borrower_name" placeholder="e.g. John Doe">
+    </div>
+  </div>
+  
+  <div class="form-grid">
+    <div class="form-group">
+      <label>Age</label>
+      <input type="number" name="age" required min="18" max="100" placeholder="e.g. 32" value="32">
+    </div>
+    <div class="form-group">
+      <label>Gender</label>
+      <select name="gender" required>
+        <option value="Male" selected>Male</option>
+        <option value="Female">Female</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Marital Status</label>
+      <select name="marital_status" required>
+        <option value="Married" selected>Married</option>
+        <option value="Single">Single</option>
+        <option value="Divorced">Divorced</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label>Education</label>
+      <select name="education" required>
+        <option value="Bachelor" selected>Bachelor</option>
+        <option value="Master">Master</option>
+        <option value="High School">High School</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Employment Type</label>
+      <select name="employment_type" required>
+        <option value="Salaried" selected>Salaried</option>
+        <option value="Self-Employed">Self-Employed</option>
+        <option value="Business">Business</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Years at Job</label>
+      <input type="number" name="years_at_job" required min="0" placeholder="e.g. 5" value="5">
+    </div>
+
+    <div class="form-group">
+      <label>Monthly Income (USD)</label>
+      <input type="number" name="monthly_income" required min="0" placeholder="e.g. 4500" value="4500">
+    </div>
+    <div class="form-group">
+      <label>Loan Amount (USD)</label>
+      <input type="number" name="loan_amnt" required min="500" placeholder="e.g. 15000" value="15000">
+    </div>
+    <div class="form-group">
+      <label>Loan Term (Months)</label>
+      <select name="term" required>
+        <option value="36_months" selected>36</option>
+        <option value="60_months">60</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Credit History Length (Years)</label>
+      <input type="number" name="credit_history_years" required min="0" placeholder="e.g. 6" value="6">
+    </div>
+    <div class="form-group">
+      <label>Number of Dependents</label>
+      <input type="number" name="dependents" required min="0" placeholder="e.g. 2" value="2">
+    </div>
+    <div class="form-group">
+      <label>Existing Credit (USD)</label>
+      <input type="number" name="existing_credit" required min="0" placeholder="e.g. 3000" value="3000">
+    </div>
+
+    <div class="form-group">
+      <label>Housing Status</label>
+      <select name="home_ownership" required>
+        <option value="RENT" selected>Rent</option>
+        <option value="MORTGAGE">Mortgage</option>
+        <option value="OWN">Own</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Purpose of Loan</label>
+      <select name="purpose" required>
+        <option value="debt_consolidation" selected>Debt Consolidation</option>
+        <option value="home_improvement">Home Improvement</option>
+        <option value="major_purchase">Major Purchase</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Interest Rate (%)</label>
+      <input type="number" name="int_rate" required min="0" step="0.1" placeholder="e.g. 12.5" value="12.5">
+    </div>
+  </div>
+
+  <div style="margin-top: 30px;">
+    <button type="submit" class="btn-primary" id="submitBtn">
+      <i class="fa-solid fa-chart-line" style="margin-right: 8px;"></i>
+      Predict Default Risk
+    </button>
+  </div>
+</form>
+
+<!-- ── PROCESSING MODAL ── -->
+<div id="processingModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(17,24,39,0.8); z-index:9999; flex-direction:column; align-items:center; justify-content:center; backdrop-filter: blur(4px);">
+  <div style="background:var(--bg-card); border:1px solid var(--border); padding:40px; border-radius:12px; text-align:center; max-width:400px; width:100%; box-shadow: 0 20px 40px rgba(0,0,0,0.1);">
+    <div style="display: inline-block; width: 36px; height: 36px; border: 3px solid rgba(59,130,246,0.2); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
+    <h3 style="color:var(--text-dark); margin-bottom:10px;">AI Risk Analysis</h3>
+    <div id="progressStep" style="color:var(--primary); font-size:14px; margin-bottom:24px; min-height: 20px; font-weight: 500;">Initializing...</div>
+    <div style="width:100%; height:6px; background:#e5e7eb; border-radius:3px; overflow:hidden;">
+      <div id="progressBar" style="width:0%; height:100%; background:var(--primary); transition:width 0.4s ease;"></div>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+  const socket = io();
+  const form = document.getElementById('loanForm');
+  const modal = document.getElementById('processingModal');
+  const progressStep = document.getElementById('progressStep');
+  const progressBar = document.getElementById('progressBar');
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    modal.style.display = 'flex';
+    progressStep.innerText = 'Connecting to AI Engine...';
+    progressBar.style.width = '5%';
+
+    const formData = new FormData(form);
+    const data = {};
+    formData.forEach((value, key) => { data[key] = value; });
+
+    socket.emit('submit_prediction', data);
+  });
+
+  socket.on('progress', function(data) {
+    progressStep.innerText = data.step;
+    progressBar.style.width = data.percent + '%';
+  });
+
+  socket.on('prediction_complete', function(data) {
+    window.location.href = '/result/' + data.record_id;
+  });
+
+  socket.on('prediction_error', function(data) {
+    modal.style.display = 'none';
+    alert("Error: " + (data.error || 'An error occurred during prediction.'));
+  });
+</script>
+{% endblock %}

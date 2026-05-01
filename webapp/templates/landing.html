@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Ministry of Banking{% endblock %}
+
+{% block content %}
+<div class="landing-body">
+  <nav class="landing-nav">
+    <div style="display:flex; align-items:center; gap:12px; font-weight:700; font-size:20px;">
+      <i class="fa-solid fa-building-columns"></i>
+      Ministry of Banking
+    </div>
+    <div style="display:flex; gap:32px; font-size:14px; font-weight:500;">
+      <a href="#" style="color:#fff; text-decoration:none;">Home</a>
+      <a href="#" style="color:#94a3b8; text-decoration:none;">About</a>
+      <a href="/signin" class="btn-primary" style="padding: 8px 16px;">Get Started</a>
+    </div>
+  </nav>
+
+  <main class="landing-hero">
+    <div class="hero-content">
+      <h1 class="hero-title">
+        AI Loan Default<br>
+        <span>Predictor</span>
+      </h1>
+      <p class="hero-desc">
+        Leverage AI and machine learning to assess loan default risk and make smarter lending decisions.
+      </p>
+      <div class="hero-buttons">
+        <a href="/signin" class="btn-primary">Start Prediction &rarr;</a>
+        <a href="/dashboard" class="btn-secondary">View Dashboard <i class="fa-solid fa-chart-line" style="margin-left:8px;"></i></a>
+      </div>
+    </div>
+    
+    <!-- Background circuit graphic -->
+    <div style="position:absolute; right:0; top:0; width:50%; height:100%; opacity:0.3; background:url('https://www.transparenttextures.com/patterns/cubes.png') center/cover; pointer-events:none; z-index:0; display:flex; align-items:center; justify-content:center;">
+       <i class="fa-solid fa-building-columns" style="font-size: 300px; color: var(--primary); filter: drop-shadow(0 0 40px rgba(59,130,246,0.8));"></i>
+    </div>
+  </main>
+</div>
+{% endblock %}
