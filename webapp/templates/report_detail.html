@@ -13,7 +13,7 @@ endblock %} {% block content %}
     <div class="rpt-brand">
       <div class="rpt-logo">A</div>
       <div>
-        <div class="rpt-bank">AegisBank</div>
+        <div class="rpt-bank">Ministry of Banking</div>
         <div class="rpt-sub">AI Risk Engine v2.4</div>
       </div>
     </div>
@@ -38,8 +38,7 @@ endblock %} {% block content %}
         <label>Assessment Date</label><span>{{ record.timestamp[:10] }}</span>
       </div>
       <div class="rpt-field">
-        <label>Purpose</label
-        ><span>{{ record.purpose.replace('_',' ').title() }}</span>
+        <label>Purpose</label><span>{{ record.purpose.replace('_',' ').title() }}</span>
       </div>
     </div>
   </div>
@@ -49,15 +48,13 @@ endblock %} {% block content %}
     <h2 class="rpt-section-title">Loan Details</h2>
     <div class="rpt-grid-3">
       <div class="rpt-field">
-        <label>Loan Amount</label
-        ><span>${{ "{:,.0f}".format(record.loan_amnt) }}</span>
+        <label>Loan Amount</label><span>${{ "{:,.0f}".format(record.loan_amnt) }}</span>
       </div>
       <div class="rpt-field">
         <label>Interest Rate</label><span>{{ record.int_rate }}%</span>
       </div>
       <div class="rpt-field">
-        <label>Annual Income</label
-        ><span>${{ "{:,.0f}".format(record.annual_inc) }}</span>
+        <label>Annual Income</label><span>${{ "{:,.0f}".format(record.annual_inc) }}</span>
       </div>
       <div class="rpt-field">
         <label>FICO Score</label><span>{{ record.fico | int }}</span>
@@ -69,10 +66,7 @@ endblock %} {% block content %}
   </div>
 
   <!-- ── RISK ASSESSMENT ────────────────────────────────────────────────── -->
-  <div
-    class="rpt-section rpt-risk-section"
-    style="border-color: {{ record.color }}30"
-  >
+  <div class="rpt-section rpt-risk-section" style="border-color: {{ record.color }}30">
     <h2 class="rpt-section-title">Risk Assessment</h2>
     <div class="rpt-risk-body">
       <div class="rpt-prob-big" style="color: {{ record.color }}">
@@ -80,28 +74,20 @@ endblock %} {% block content %}
         <span class="rpt-prob-label">Default Probability</span>
       </div>
       <div class="rpt-risk-detail">
-        <div
-          class="rpt-risk-badge"
-          style="color:{{ record.color }}; background:{{ record.color }}12; border-color:{{ record.color }}30"
-        >
+        <div class="rpt-risk-badge"
+          style="color:{{ record.color }}; background:{{ record.color }}12; border-color:{{ record.color }}30">
           {{ record.risk_level }}
         </div>
-        <div
-          class="rpt-verdict {% if record.prediction == 0 %}rpt-safe{% else %}rpt-risk{% endif %}"
-        >
+        <div class="rpt-verdict {% if record.prediction == 0 %}rpt-safe{% else %}rpt-risk{% endif %}">
           {% if record.prediction == 0 %} ✅ Likely to Repay — Recommended for
           Approval {% else %} ⚠️ Default Risk Detected — Enhanced Review
           Required {% endif %}
         </div>
         <div class="rpt-risk-bar-wrap">
-          <div
-            class="rpt-risk-bar"
-            style="width: {{ record.probability }}%; background: {{ record.color }}"
-          ></div>
+          <div class="rpt-risk-bar" style="width: {{ record.probability }}%; background: {{ record.color }}"></div>
         </div>
         <div class="rpt-risk-scale">
-          <span>0% (No Risk)</span><span>50%</span
-          ><span>100% (Certain Default)</span>
+          <span>0% (No Risk)</span><span>50%</span><span>100% (Certain Default)</span>
         </div>
       </div>
     </div>
@@ -125,7 +111,7 @@ endblock %} {% block content %}
 
   <!-- ── DISCLAIMER ─────────────────────────────────────────────────────── -->
   <div class="rpt-disclaimer">
-    This report is generated automatically by the AegisBank AI Risk Engine and
+    This report is generated automatically by the Ministry of Banking AI Risk Engine and
     is intended for internal review purposes only. It does not constitute a
     formal credit decision. All lending decisions must be reviewed and approved
     by a qualified credit officer in accordance with applicable regulations.
@@ -143,16 +129,19 @@ endblock %} {% block content %}
 {% endblock %} {% block scripts %}
 <style>
   @media print {
+
     .nav,
     .rpt-actions,
     .hero {
       display: none !important;
     }
+
     .rpt-shell {
       margin: 0;
       padding: 20px;
       max-width: 100%;
     }
+
     body {
       background: white;
       color: black;
