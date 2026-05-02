@@ -1,16 +1,15 @@
 /* ═══════════════════════════════════════════════════════════════
-   AegisBank — UI Script
+   Ministry of Banking — AegisBank
 ═══════════════════════════════════════════════════════════════ */
 
 document.addEventListener("DOMContentLoaded", () => {
 
   // ── FORM LOADING STATE ──────────────────────────────────────────────────
   const form = document.getElementById("loanForm");
-  const btn  = document.getElementById("submitBtn");
+  const btn = document.getElementById("submitBtn");
 
   if (form && btn) {
     form.addEventListener("submit", (e) => {
-      // Basic client-side validation before showing loader
       const required = form.querySelectorAll("[required]");
       let valid = true;
       required.forEach(el => {
@@ -23,7 +22,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!valid) {
         e.preventDefault();
-        // Scroll to first error
         const first = form.querySelector(".field-error");
         if (first) first.scrollIntoView({ behavior: "smooth", block: "center" });
         return;
@@ -33,16 +31,6 @@ document.addEventListener("DOMContentLoaded", () => {
       btn.disabled = true;
       btn.querySelector(".btn-label").textContent = "Analysing…";
     });
-  }
-
-  // ── NAV SCROLL SHADOW ───────────────────────────────────────────────────
-  const nav = document.getElementById("mainNav");
-  if (nav) {
-    window.addEventListener("scroll", () => {
-      nav.style.boxShadow = window.scrollY > 12
-        ? "0 4px 32px rgba(0,0,0,0.45)"
-        : "";
-    }, { passive: true });
   }
 
   // ── RISK BAR ANIMATION (result page) ────────────────────────────────────
@@ -65,13 +53,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const num = parseFloat(raw.replace(/[^0-9.]/g, ""));
     if (isNaN(num) || num === 0) return;
 
-    const suffix   = raw.replace(/[0-9.]/g, "");
-    const decimals = raw.includes(".") ? (raw.split(".")[1] || "").replace(/\D/g,"").length : 0;
-    const dur = 1100;
-    const t0  = performance.now();
+    const suffix = raw.replace(/[0-9.]/g, "");
+    const decimals = raw.includes(".") ? (raw.split(".")[1] || "").replace(/\D/g, "").length : 0;
+    const dur = 1000;
+    const t0 = performance.now();
 
     (function tick(now) {
-      const p    = Math.min((now - t0) / dur, 1);
+      const p = Math.min((now - t0) / dur, 1);
       const ease = 1 - Math.pow(1 - p, 3);
       el.textContent = (num * ease).toFixed(decimals) + suffix;
       if (p < 1) requestAnimationFrame(tick);
@@ -81,7 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // ── ANIMATE GAUGE ON RESULT PAGE ─────────────────────────────────────────
   const gaugeArc = document.getElementById("gaugeArc");
   if (gaugeArc) {
-    const total  = 251.2;
+    const total = 251.2;
     const target = parseFloat(gaugeArc.getAttribute("stroke-dashoffset"));
     gaugeArc.setAttribute("stroke-dashoffset", total.toString());
     setTimeout(() => {
@@ -92,7 +80,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ── FIELD ERROR HIGHLIGHT ────────────────────────────────────────────────
   const style = document.createElement("style");
-  style.textContent = `.field-error { border-color: #ef4444 !important; box-shadow: 0 0 0 3px rgba(239,68,68,.18) !important; }`;
+  style.textContent = `.field-error { border-color: #dc2626 !important; box-shadow: 0 0 0 3px rgba(220,38,38,.12) !important; }`;
   document.head.appendChild(style);
 
 });
