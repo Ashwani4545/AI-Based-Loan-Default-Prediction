@@ -16,10 +16,7 @@ content %}
     {% for r in records %}
     <div class="report-card">
       <div class="rc-header">
-        <div
-          class="rc-avatar"
-          style="background: {{ r.color }}20; color: {{ r.color }}"
-        >
+        <div class="rc-avatar" style="background: {{ r.color }}20; color: {{ r.color }}">
           {{ r.borrower[0].upper() if r.borrower else 'A' }}
         </div>
         <div class="rc-meta">
@@ -28,10 +25,8 @@ content %}
             {{ r.timestamp[:10] }} · {{ r.purpose.replace('_',' ').title() }}
           </div>
         </div>
-        <span
-          class="risk-pill"
-          style="color:{{ r.color }}; border-color:{{ r.color }}30; background:{{ r.color }}10; margin-left:auto"
-        >
+        <span class="risk-pill"
+          style="color:{{ r.color }}; border-color:{{ r.color }}30; background:{{ r.color }}10; margin-left:auto">
           {{ r.risk_level }}
         </span>
       </div>
@@ -53,18 +48,14 @@ content %}
         </div>
         <div class="rc-stat">
           <div class="rc-stat-label">Verdict</div>
-          <div
-            class="rc-stat-value {% if r.prediction == 0 %}color-green{% else %}color-red{% endif %}"
-          >
+          <div class="rc-stat-value {% if r.prediction == 0 %}color-green{% else %}color-red{% endif %}">
             {% if r.prediction == 0 %}✅ Repay{% else %}⚠️ Default{% endif %}
           </div>
         </div>
       </div>
 
       <div class="rc-foot">
-        <a href="/reports/{{ r.id }}" class="btn btn-outline btn-sm"
-          >View Full Report →</a
-        >
+        <a href="/reports/{{ r.id }}" class="btn btn-outline btn-sm">View Full Report →</a>
       </div>
     </div>
     {% endfor %}

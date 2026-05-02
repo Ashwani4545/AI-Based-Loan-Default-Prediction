@@ -1,4 +1,4 @@
-{% extends "base.html" %} {% block title %}AegisBank AI — Proven AI for
+{% extends "base.html" %} {% block title %}Ministry of Banking AI — Proven AI for
 Lending{% endblock %} {% block head %}
 <style>
   body {
@@ -15,7 +15,8 @@ Lending{% endblock %} {% block head %}
     z-index: 0;
     opacity: 0.55;
   }
-  .lp-hero > *:not(#heroCanvas) {
+
+  .lp-hero>*:not(#heroCanvas) {
     position: relative;
     z-index: 1;
   }
@@ -24,15 +25,18 @@ Lending{% endblock %} {% block head %}
   .tw-cursor {
     display: inline-block;
     width: 3px;
-    background: #c9a84c;
+    background: var(--blue);
     margin-left: 4px;
     animation: blink 0.8s step-end infinite;
   }
+
   @keyframes blink {
+
     0%,
     100% {
       opacity: 1;
     }
+
     50% {
       opacity: 0;
     }
@@ -44,7 +48,7 @@ Lending{% endblock %} {% block head %}
     text-align: center;
     padding: 9px 20px;
     font-size: 13px;
-    color: #e2c26e;
+    color: var(--blue-lt);
     letter-spacing: 0.02em;
     border-bottom: 1px solid rgba(201, 168, 76, 0.15);
     position: fixed;
@@ -53,14 +57,17 @@ Lending{% endblock %} {% block head %}
     right: 0;
     z-index: 300;
   }
+
   .lp-banner a {
-    color: #e2c26e;
+    color: var(--blue-lt);
     font-weight: 700;
     text-decoration: underline;
   }
+
   .nav {
     top: 37px;
   }
+
   .page-root {
     padding-top: calc(var(--nav-h) + 37px);
   }
@@ -78,21 +85,21 @@ Lending{% endblock %} {% block head %}
     position: relative;
     overflow: hidden;
   }
+
   .lp-hero::before {
     content: "";
     position: absolute;
     width: 700px;
     height: 700px;
-    background: radial-gradient(
-      circle,
-      rgba(201, 168, 76, 0.07) 0%,
-      transparent 65%
-    );
+    background: radial-gradient(circle,
+        rgba(201, 168, 76, 0.07) 0%,
+        transparent 65%);
     top: 50%;
     left: 50%;
     transform: translate(-50%, -55%);
     pointer-events: none;
   }
+
   .lp-eyebrow {
     display: inline-flex;
     align-items: center;
@@ -101,7 +108,7 @@ Lending{% endblock %} {% block head %}
     font-size: 11.5px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: #e2c26e;
+    color: var(--blue-lt);
     background: rgba(201, 168, 76, 0.1);
     border: 1px solid rgba(201, 168, 76, 0.25);
     padding: 5px 14px;
@@ -109,19 +116,23 @@ Lending{% endblock %} {% block head %}
     margin-bottom: 32px;
     animation: fadeUp 0.6s ease both;
   }
+
   .lp-eyebrow-dot {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #c9a84c;
+    background: var(--blue);
     animation: pulse 2s ease-in-out infinite;
   }
+
   @keyframes pulse {
+
     0%,
     100% {
       opacity: 1;
       transform: scale(1);
     }
+
     50% {
       opacity: 0.5;
       transform: scale(1.4);
@@ -138,9 +149,10 @@ Lending{% endblock %} {% block head %}
     margin: 0 auto 20px;
     animation: fadeUp 0.65s 0.08s ease both;
   }
+
   .lp-h1 em {
     font-style: normal;
-    color: #e2c26e;
+    color: var(--blue-lt);
   }
 
   .lp-sub {
@@ -159,6 +171,7 @@ Lending{% endblock %} {% block head %}
     flex-wrap: wrap;
     animation: fadeUp 0.65s 0.24s ease both;
   }
+
   .lp-btn-primary {
     display: inline-flex;
     align-items: center;
@@ -167,7 +180,7 @@ Lending{% endblock %} {% block head %}
     font-weight: 700;
     font-size: 15px;
     padding: 15px 36px;
-    background: #c9a84c;
+    background: var(--blue);
     color: #0d1526;
     border: none;
     border-radius: 8px;
@@ -179,11 +192,13 @@ Lending{% endblock %} {% block head %}
       box-shadow 0.18s;
     box-shadow: 0 4px 24px rgba(201, 168, 76, 0.28);
   }
+
   .lp-btn-primary:hover {
-    background: #e2c26e;
+    background: var(--blue-lt);
     transform: translateY(-2px);
     box-shadow: 0 8px 32px rgba(201, 168, 76, 0.38);
   }
+
   .lp-btn-ghost {
     display: inline-flex;
     align-items: center;
@@ -202,6 +217,7 @@ Lending{% endblock %} {% block head %}
       border-color 0.18s,
       background 0.18s;
   }
+
   .lp-btn-ghost:hover {
     border-color: rgba(255, 255, 255, 0.4);
     background: rgba(255, 255, 255, 0.06);
@@ -212,6 +228,7 @@ Lending{% endblock %} {% block head %}
     background: #f4f6fb;
     padding: 72px 24px;
   }
+
   .lp-stats-inner {
     max-width: 1100px;
     margin: 0 auto;
@@ -220,6 +237,7 @@ Lending{% endblock %} {% block head %}
     gap: 24px;
     text-align: center;
   }
+
   .lp-stat-num {
     font-family: "Syne", sans-serif;
     font-weight: 800;
@@ -228,10 +246,12 @@ Lending{% endblock %} {% block head %}
     color: #0d1526;
     margin-bottom: 10px;
   }
+
   .lp-stat-num sup {
     font-size: 0.42em;
     vertical-align: super;
   }
+
   .lp-stat-label {
     font-size: 14px;
     color: #4a5568;
@@ -239,6 +259,7 @@ Lending{% endblock %} {% block head %}
     max-width: 180px;
     margin: 0 auto;
   }
+
   .stat-anim {
     opacity: 0;
     transform: translateY(16px);
@@ -246,6 +267,7 @@ Lending{% endblock %} {% block head %}
       opacity 0.6s ease,
       transform 0.6s ease;
   }
+
   .stat-anim.visible {
     opacity: 1;
     transform: none;
@@ -257,6 +279,7 @@ Lending{% endblock %} {% block head %}
     border-top: 1px solid rgba(255, 255, 255, 0.06);
     padding: 72px 24px;
   }
+
   .lp-features-inner {
     max-width: 1100px;
     margin: 0 auto;
@@ -264,6 +287,7 @@ Lending{% endblock %} {% block head %}
     grid-template-columns: repeat(3, 1fr);
     gap: 24px;
   }
+
   .lp-feat {
     padding: 28px;
     background: #0d1526;
@@ -273,14 +297,17 @@ Lending{% endblock %} {% block head %}
       border-color 0.2s,
       transform 0.2s;
   }
+
   .lp-feat:hover {
     border-color: rgba(201, 168, 76, 0.3);
     transform: translateY(-3px);
   }
+
   .lp-feat-icon {
     font-size: 28px;
     margin-bottom: 14px;
   }
+
   .lp-feat-title {
     font-family: "Syne", sans-serif;
     font-weight: 700;
@@ -288,6 +315,7 @@ Lending{% endblock %} {% block head %}
     color: #fff;
     margin-bottom: 8px;
   }
+
   .lp-feat-desc {
     font-size: 13.5px;
     color: #8a97b8;
@@ -309,6 +337,7 @@ Lending{% endblock %} {% block head %}
     pointer-events: none;
     transition: opacity 0.25s ease;
   }
+
   .modal-overlay.open {
     opacity: 1;
     pointer-events: auto;
@@ -326,9 +355,11 @@ Lending{% endblock %} {% block head %}
     transform: translateY(20px) scale(0.97);
     transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
   }
+
   .modal-overlay.open .modal-card {
     transform: translateY(0) scale(1);
   }
+
   .modal-card::before {
     content: "";
     position: absolute;
@@ -336,7 +367,7 @@ Lending{% endblock %} {% block head %}
     left: 34px;
     right: 34px;
     height: 2px;
-    background: linear-gradient(90deg, transparent, #c9a84c, transparent);
+    background: linear-gradient(90deg, transparent, var(--blue), transparent);
   }
 
   .modal-close {
@@ -355,6 +386,7 @@ Lending{% endblock %} {% block head %}
       background 0.15s;
     line-height: 1;
   }
+
   .modal-close:hover {
     color: #fff;
     background: rgba(255, 255, 255, 0.08);
@@ -366,11 +398,12 @@ Lending{% endblock %} {% block head %}
     gap: 10px;
     margin-bottom: 24px;
   }
+
   .modal-logo {
     width: 38px;
     height: 38px;
     border-radius: 10px;
-    background: linear-gradient(135deg, #c9a84c, #e2c26e);
+    background: linear-gradient(135deg, var(--blue), var(--blue-lt));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -379,12 +412,14 @@ Lending{% endblock %} {% block head %}
     font-size: 17px;
     color: #0d1526;
   }
+
   .modal-brand {
     font-family: "Syne", sans-serif;
     font-weight: 700;
     font-size: 16px;
     color: #fff;
   }
+
   .modal-brand-sub {
     font-size: 10.5px;
     color: #4a5880;
@@ -398,6 +433,7 @@ Lending{% endblock %} {% block head %}
     color: #fff;
     margin-bottom: 4px;
   }
+
   .modal-sub {
     font-size: 13.5px;
     color: #8a97b8;
@@ -414,11 +450,13 @@ Lending{% endblock %} {% block head %}
     font-size: 13px;
     margin-bottom: 16px;
   }
+
   .m-alert-error {
     background: rgba(239, 68, 68, 0.1);
     border: 1px solid rgba(239, 68, 68, 0.25);
     color: #fca5a5;
   }
+
   .m-alert-success {
     background: rgba(34, 197, 94, 0.1);
     border: 1px solid rgba(34, 197, 94, 0.25);
@@ -429,6 +467,7 @@ Lending{% endblock %} {% block head %}
   .m-field {
     margin-bottom: 15px;
   }
+
   .m-label {
     display: block;
     font-size: 11px;
@@ -438,9 +477,11 @@ Lending{% endblock %} {% block head %}
     color: #8a97b8;
     margin-bottom: 6px;
   }
+
   .m-wrap {
     position: relative;
   }
+
   .m-input {
     width: 100%;
     background: #0d1a30;
@@ -455,13 +496,16 @@ Lending{% endblock %} {% block head %}
       border-color 0.18s,
       box-shadow 0.18s;
   }
+
   .m-input:focus {
-    border-color: #c9a84c;
+    border-color: var(--blue);
     box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.14);
   }
+
   .m-input::placeholder {
     color: #4a5880;
   }
+
   .m-icon {
     position: absolute;
     left: 13px;
@@ -472,9 +516,11 @@ Lending{% endblock %} {% block head %}
     pointer-events: none;
     transition: color 0.18s;
   }
+
   .m-wrap:focus-within .m-icon {
-    color: #c9a84c;
+    color: var(--blue);
   }
+
   .m-eye {
     position: absolute;
     right: 12px;
@@ -487,6 +533,7 @@ Lending{% endblock %} {% block head %}
     font-size: 14px;
     transition: color 0.15s;
   }
+
   .m-eye:hover {
     color: #edf2ff;
   }
@@ -497,25 +544,30 @@ Lending{% endblock %} {% block head %}
     align-items: center;
     margin-bottom: 20px;
   }
+
   .m-remember {
     display: flex;
     align-items: center;
     gap: 7px;
     cursor: pointer;
   }
+
   .m-remember input {
-    accent-color: #c9a84c;
+    accent-color: var(--blue);
     cursor: pointer;
   }
+
   .m-remember span {
     font-size: 12.5px;
     color: #8a97b8;
   }
+
   .m-forgot {
     font-size: 12.5px;
-    color: #c9a84c;
+    color: var(--blue);
     text-decoration: none;
   }
+
   .m-forgot:hover {
     text-decoration: underline;
   }
@@ -530,7 +582,7 @@ Lending{% endblock %} {% block head %}
     font-weight: 700;
     font-size: 14.5px;
     padding: 13px;
-    background: #c9a84c;
+    background: var(--blue);
     color: #0d1526;
     border: none;
     border-radius: 8px;
@@ -541,23 +593,28 @@ Lending{% endblock %} {% block head %}
       box-shadow 0.18s;
     box-shadow: 0 4px 18px rgba(201, 168, 76, 0.25);
   }
+
   .m-submit:hover {
-    background: #e2c26e;
+    background: var(--blue-lt);
     transform: translateY(-2px);
     box-shadow: 0 8px 26px rgba(201, 168, 76, 0.35);
   }
+
   .m-submit:disabled {
     opacity: 0.6;
     cursor: not-allowed;
     transform: none;
   }
+
   .m-arrow {
     font-size: 15px;
     transition: transform 0.2s;
   }
+
   .m-submit:hover .m-arrow {
     transform: translateX(4px);
   }
+
   .m-spinner {
     display: none;
     width: 16px;
@@ -567,13 +624,16 @@ Lending{% endblock %} {% block head %}
     border-radius: 50%;
     animation: mspin 0.65s linear infinite;
   }
+
   .m-submit.loading .m-spinner {
     display: block;
   }
+
   .m-submit.loading .m-txt,
   .m-submit.loading .m-arrow {
     display: none;
   }
+
   @keyframes mspin {
     to {
       transform: rotate(360deg);
@@ -589,6 +649,7 @@ Lending{% endblock %} {% block head %}
     font-size: 11px;
     color: #4a5880;
   }
+
   .m-divider::before,
   .m-divider::after {
     content: "";
@@ -602,6 +663,7 @@ Lending{% endblock %} {% block head %}
     gap: 9px;
     margin-bottom: 18px;
   }
+
   .m-social {
     flex: 1;
     display: flex;
@@ -622,6 +684,7 @@ Lending{% endblock %} {% block head %}
       color 0.18s,
       background 0.18s;
   }
+
   .m-social:hover {
     border-color: rgba(255, 255, 255, 0.22);
     color: #edf2ff;
@@ -634,11 +697,13 @@ Lending{% endblock %} {% block head %}
     color: #8a97b8;
     margin-bottom: 16px;
   }
+
   .m-footer a {
-    color: #c9a84c;
+    color: var(--blue);
     font-weight: 600;
     text-decoration: none;
   }
+
   .m-footer a:hover {
     text-decoration: underline;
   }
@@ -652,6 +717,7 @@ Lending{% endblock %} {% block head %}
     font-size: 10.5px;
     color: #4a5880;
   }
+
   .m-secure-dot {
     width: 5px;
     height: 5px;
@@ -676,6 +742,7 @@ Lending{% endblock %} {% block head %}
       opacity: 0;
       transform: translateY(18px);
     }
+
     to {
       opacity: 1;
       transform: none;
@@ -687,17 +754,21 @@ Lending{% endblock %} {% block head %}
     .lp-stats-inner {
       grid-template-columns: 1fr 1fr;
     }
+
     .lp-features-inner {
       grid-template-columns: 1fr 1fr;
     }
   }
+
   @media (max-width: 600px) {
     .lp-features-inner {
       grid-template-columns: 1fr;
     }
+
     .modal-card {
       padding: 28px 18px;
     }
+
     .lp-ctas {
       flex-direction: column;
       align-items: center;
@@ -708,7 +779,7 @@ Lending{% endblock %} {% block head %}
 
 <!-- ── BANNER ── -->
 <div class="lp-banner">
-  🚀 AegisBank AI v2.4 — XGBoost model with SHAP explainability now live.
+  🚀 Ministry of Banking AI v2.4 — XGBoost model with SHAP explainability now live.
   <a href="#">Learn more →</a>
 </div>
 
@@ -719,8 +790,8 @@ Lending{% endblock %} {% block head %}
     <span class="lp-eyebrow-dot"></span> Trusted AI for Credit Risk
   </div>
   <h1 class="lp-h1">
-    <span id="twText">Proven AI for a</span><span class="tw-cursor"></span
-    ><br /><em>Thriving Lending</em><br />Ecosystem
+    <span id="twText">Proven AI for a</span><span class="tw-cursor"></span><br /><em>Thriving
+      Lending</em><br />Ecosystem
   </h1>
   <p class="lp-sub">
     Accurately assess, confidently decision, perpetually optimize — powered by
@@ -796,7 +867,7 @@ Lending{% endblock %} {% block head %}
 
 <!-- ── PAGE FOOTER ── -->
 <footer class="lp-page-footer">
-  © 2025 AegisBank AI Risk Engine · v2.4 · XGBoost · Built for institutional
+  © 2025 Ministry of Banking AI Risk Engine · v2.4 · XGBoost · Built for institutional
   lending
 </footer>
 
@@ -805,20 +876,14 @@ Lending{% endblock %} {% block head %}
 <!-- ════════════════════════════════════════════════════════════════
   SIGN-IN MODAL
 ════════════════════════════════════════════════════════════════ -->
-<div
-  class="modal-overlay"
-  id="signinModal"
-  role="dialog"
-  aria-modal="true"
-  aria-label="Sign In"
->
+<div class="modal-overlay" id="signinModal" role="dialog" aria-modal="true" aria-label="Sign In">
   <div class="modal-card">
     <button class="modal-close" id="modalClose" aria-label="Close">✕</button>
 
     <div class="modal-logo-row">
       <div class="modal-logo">A</div>
       <div>
-        <div class="modal-brand">AegisBank</div>
+        <div class="modal-brand">Ministry of Banking</div>
         <div class="modal-brand-sub">AI Risk Engine v2.4</div>
       </div>
     </div>
@@ -828,9 +893,7 @@ Lending{% endblock %} {% block head %}
 
     <!-- Flash messages -->
     {% for category, message in flashed_messages %}
-    <div
-      class="m-alert m-alert-{{ 'error' if category == 'error' else 'success' }}"
-    >
+    <div class="m-alert m-alert-{{ 'error' if category == 'error' else 'success' }}">
       <span>{{ '⚠' if category == 'error' else '✓' }}</span> {{ message }}
     </div>
     {% endfor %}
@@ -839,15 +902,8 @@ Lending{% endblock %} {% block head %}
       <div class="m-field">
         <label class="m-label" for="m-email">Email Address</label>
         <div class="m-wrap">
-          <input
-            type="email"
-            id="m-email"
-            name="email"
-            class="m-input"
-            placeholder="analyst@aegisbank.com"
-            autocomplete="email"
-            required
-          />
+          <input type="email" id="m-email" name="email" class="m-input" placeholder="analyst@ministry-of-banking.com"
+            autocomplete="email" required />
           <span class="m-icon">✉</span>
         </div>
       </div>
@@ -855,26 +911,15 @@ Lending{% endblock %} {% block head %}
       <div class="m-field">
         <label class="m-label" for="m-pass">Password</label>
         <div class="m-wrap">
-          <input
-            type="password"
-            id="m-pass"
-            name="password"
-            class="m-input"
-            placeholder="Enter your password"
-            autocomplete="current-password"
-            required
-          />
+          <input type="password" id="m-pass" name="password" class="m-input" placeholder="Enter your password"
+            autocomplete="current-password" required />
           <span class="m-icon">🔒</span>
           <button type="button" class="m-eye" id="togglePwd">👁</button>
         </div>
       </div>
 
       <div class="m-meta">
-        <label class="m-remember"
-          ><input type="checkbox" name="remember" /><span
-            >Remember me</span
-          ></label
-        >
+        <label class="m-remember"><input type="checkbox" name="remember" /><span>Remember me</span></label>
         <a href="/forgot-password" class="m-forgot">Forgot password?</a>
       </div>
 
@@ -901,157 +946,160 @@ Lending{% endblock %} {% block head %}
 
 {% endblock %} {% block scripts %}
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('DOMContentLoaded', function () {
 
     /* ── Modal helpers ── */
-    const modal   = document.getElementById('signinModal');
-    const accBtn  = document.getElementById('accessPlatformBtn');
+    const modal = document.getElementById('signinModal');
+    const accBtn = document.getElementById('accessPlatformBtn');
     const closeBtn = document.getElementById('modalClose');
     const navLink = document.getElementById('navSignInLink');
-    const hasFlash = {{ 'true' if flashed_messages else 'false' }};
+    const hasFlash = {{ 'true' if flashed_messages else 'false' }
+  };
 
-    function openModal()  { modal.classList.add('open'); document.body.style.overflow = 'hidden'; }
-    function closeModal() { modal.classList.remove('open'); document.body.style.overflow = ''; }
+  function openModal() { modal.classList.add('open'); document.body.style.overflow = 'hidden'; }
+  function closeModal() { modal.classList.remove('open'); document.body.style.overflow = ''; }
 
-    if (accBtn)   accBtn.addEventListener('click', openModal);
-    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+  if (accBtn) accBtn.addEventListener('click', openModal);
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
 
-    /* Close on backdrop click */
-    modal.addEventListener('click', function(e) { if (e.target === modal) closeModal(); });
+  /* Close on backdrop click */
+  modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
 
-    /* Close on Escape */
-    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal(); });
+  /* Close on Escape */
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
 
-    /* Nav Sign In → open modal (intercept navigation) */
-    if (navLink) {
-      navLink.addEventListener('click', function(e) {
-        e.preventDefault();
-        openModal();
-      });
-    }
-
-    /* Auto-open if flash messages present (e.g. wrong password redirect) */
-    if (hasFlash) openModal();
-
-    /* ── Password toggle ── */
-    const toggleBtn = document.getElementById('togglePwd');
-    const pwdInput  = document.getElementById('m-pass');
-    if (toggleBtn) {
-      toggleBtn.addEventListener('click', function() {
-        const show = pwdInput.type === 'password';
-        pwdInput.type = show ? 'text' : 'password';
-        this.textContent = show ? '🙈' : '👁';
-      });
-    }
-
-    /* ── Loading state on submit ── */
-    const form = document.getElementById('signinForm');
-    const btn  = document.getElementById('signinBtn');
-    if (form) {
-      form.addEventListener('submit', function() {
-        if (form.checkValidity()) { btn.classList.add('loading'); btn.disabled = true; }
-      });
-    }
-
-    /* ── Stat counter animation ── */
-    const targets  = [80, 20, 30, 25];
-    const suffixes = ['%', '%+', '%', '%'];
-    let counted = false;
-
-    function countUp(id, target, suffix, dur) {
-      const el = document.getElementById(id);
-      if (!el) return;
-      let val = 0;
-      const step = target / (dur / 16);
-      const timer = setInterval(function() {
-        val = Math.min(val + step, target);
-        el.innerHTML = Math.round(val) + '<sup>' + suffix + '</sup>';
-        if (val >= target) clearInterval(timer);
-      }, 16);
-    }
-
-    const statsSection = document.querySelector('.lp-stats');
-    if (statsSection) {
-      const countObs = new IntersectionObserver(function(entries) {
-        if (entries[0].isIntersecting && !counted) {
-          counted = true;
-          targets.forEach(function(t, i) { countUp('stat' + i, t, suffixes[i], 1200); });
-        }
-      }, { threshold: 0.3 });
-      countObs.observe(statsSection);
-    }
-
-    /* ── Scroll-in fade for stat blocks ── */
-    const animObs = new IntersectionObserver(function(entries) {
-      entries.forEach(function(e) {
-        if (e.isIntersecting) { e.target.classList.add('visible'); animObs.unobserve(e.target); }
-      });
-    }, { threshold: 0.15 });
-    document.querySelectorAll('.stat-anim').forEach(function(el, i) {
-      el.style.transitionDelay = (i * 0.1) + 's';
-      animObs.observe(el);
+  /* Nav Sign In → open modal (intercept navigation) */
+  if (navLink) {
+    navLink.addEventListener('click', function (e) {
+      e.preventDefault();
+      openModal();
     });
+  }
 
-    /* ── Particle network canvas ── */
-    const canvas = document.getElementById('heroCanvas');
-    if (canvas) {
-      const ctx2 = canvas.getContext('2d');
-      let W, H, particles = [];
-      function resize() { W = canvas.width = canvas.offsetWidth; H = canvas.height = canvas.offsetHeight; }
-      resize();
-      window.addEventListener('resize', resize);
-      for (let i = 0; i < 55; i++) {
-        particles.push({ x: Math.random()*W, y: Math.random()*H,
-          vx: (Math.random()-.5)*.35, vy: (Math.random()-.5)*.35,
-          r: Math.random()*2+1 });
+  /* Auto-open if flash messages present (e.g. wrong password redirect) */
+  if (hasFlash) openModal();
+
+  /* ── Password toggle ── */
+  const toggleBtn = document.getElementById('togglePwd');
+  const pwdInput = document.getElementById('m-pass');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', function () {
+      const show = pwdInput.type === 'password';
+      pwdInput.type = show ? 'text' : 'password';
+      this.textContent = show ? '🙈' : '👁';
+    });
+  }
+
+  /* ── Loading state on submit ── */
+  const form = document.getElementById('signinForm');
+  const btn = document.getElementById('signinBtn');
+  if (form) {
+    form.addEventListener('submit', function () {
+      if (form.checkValidity()) { btn.classList.add('loading'); btn.disabled = true; }
+    });
+  }
+
+  /* ── Stat counter animation ── */
+  const targets = [80, 20, 30, 25];
+  const suffixes = ['%', '%+', '%', '%'];
+  let counted = false;
+
+  function countUp(id, target, suffix, dur) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    let val = 0;
+    const step = target / (dur / 16);
+    const timer = setInterval(function () {
+      val = Math.min(val + step, target);
+      el.innerHTML = Math.round(val) + '<sup>' + suffix + '</sup>';
+      if (val >= target) clearInterval(timer);
+    }, 16);
+  }
+
+  const statsSection = document.querySelector('.lp-stats');
+  if (statsSection) {
+    const countObs = new IntersectionObserver(function (entries) {
+      if (entries[0].isIntersecting && !counted) {
+        counted = true;
+        targets.forEach(function (t, i) { countUp('stat' + i, t, suffixes[i], 1200); });
       }
-      function drawParticles() {
-        ctx2.clearRect(0,0,W,H);
-        particles.forEach(function(p) {
-          p.x += p.vx; p.y += p.vy;
-          if (p.x<0||p.x>W) p.vx*=-1;
-          if (p.y<0||p.y>H) p.vy*=-1;
-          ctx2.beginPath();
-          ctx2.arc(p.x, p.y, p.r, 0, Math.PI*2);
-          ctx2.fillStyle = 'rgba(201,168,76,0.7)';
-          ctx2.fill();
-          particles.forEach(function(q) {
-            const dx=p.x-q.x, dy=p.y-q.y, d=Math.sqrt(dx*dx+dy*dy);
-            if (d < 120) {
-              ctx2.beginPath();
-              ctx2.moveTo(p.x,p.y); ctx2.lineTo(q.x,q.y);
-              ctx2.strokeStyle = 'rgba(201,168,76,'+(0.18*(1-d/120))+')';
-              ctx2.lineWidth = .6; ctx2.stroke();
-            }
-          });
+    }, { threshold: 0.3 });
+    countObs.observe(statsSection);
+  }
+
+  /* ── Scroll-in fade for stat blocks ── */
+  const animObs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) { e.target.classList.add('visible'); animObs.unobserve(e.target); }
+    });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.stat-anim').forEach(function (el, i) {
+    el.style.transitionDelay = (i * 0.1) + 's';
+    animObs.observe(el);
+  });
+
+  /* ── Particle network canvas ── */
+  const canvas = document.getElementById('heroCanvas');
+  if (canvas) {
+    const ctx2 = canvas.getContext('2d');
+    let W, H, particles = [];
+    function resize() { W = canvas.width = canvas.offsetWidth; H = canvas.height = canvas.offsetHeight; }
+    resize();
+    window.addEventListener('resize', resize);
+    for (let i = 0; i < 55; i++) {
+      particles.push({
+        x: Math.random() * W, y: Math.random() * H,
+        vx: (Math.random() - .5) * .35, vy: (Math.random() - .5) * .35,
+        r: Math.random() * 2 + 1
+      });
+    }
+    function drawParticles() {
+      ctx2.clearRect(0, 0, W, H);
+      particles.forEach(function (p) {
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0 || p.x > W) p.vx *= -1;
+        if (p.y < 0 || p.y > H) p.vy *= -1;
+        ctx2.beginPath();
+        ctx2.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx2.fillStyle = 'rgba(37,99,235,0.7)';
+        ctx2.fill();
+        particles.forEach(function (q) {
+          const dx = p.x - q.x, dy = p.y - q.y, d = Math.sqrt(dx * dx + dy * dy);
+          if (d < 120) {
+            ctx2.beginPath();
+            ctx2.moveTo(p.x, p.y); ctx2.lineTo(q.x, q.y);
+            ctx2.strokeStyle = 'rgba(37,99,235,' + (0.18 * (1 - d / 120)) + ')';
+            ctx2.lineWidth = .6; ctx2.stroke();
+          }
         });
-        requestAnimationFrame(drawParticles);
-      }
-      drawParticles();
+      });
+      requestAnimationFrame(drawParticles);
     }
+    drawParticles();
+  }
 
-    /* ── Typewriter headline cycling ── */
-    const phrases = ['Proven AI for a', 'Smarter Credit Decisions', 'Audit-Ready Explainability', '806 Features. 1 Decision.'];
-    const twEl = document.getElementById('twText');
-    if (twEl) {
-      let pi = 0;
-      function typePhrase(phrase, cb) {
-        twEl.textContent = '';
-        let ci = 0;
-        const t = setInterval(function() {
-          twEl.textContent += phrase[ci++];
-          if (ci >= phrase.length) { clearInterval(t); setTimeout(cb, 2200); }
-        }, 55);
-      }
-      function erasePhrase(cb) {
-        const t = setInterval(function() {
-          twEl.textContent = twEl.textContent.slice(0,-1);
-          if (!twEl.textContent.length) { clearInterval(t); cb(); }
-        }, 30);
-      }
-      function cycle() { pi = (pi+1) % phrases.length; erasePhrase(function(){ typePhrase(phrases[pi], cycle); }); }
-      setTimeout(function(){ typePhrase(phrases[0], cycle); }, 1200);
+  /* ── Typewriter headline cycling ── */
+  const phrases = ['Proven AI for a', 'Smarter Credit Decisions', 'Audit-Ready Explainability', '806 Features. 1 Decision.'];
+  const twEl = document.getElementById('twText');
+  if (twEl) {
+    let pi = 0;
+    function typePhrase(phrase, cb) {
+      twEl.textContent = '';
+      let ci = 0;
+      const t = setInterval(function () {
+        twEl.textContent += phrase[ci++];
+        if (ci >= phrase.length) { clearInterval(t); setTimeout(cb, 2200); }
+      }, 55);
     }
+    function erasePhrase(cb) {
+      const t = setInterval(function () {
+        twEl.textContent = twEl.textContent.slice(0, -1);
+        if (!twEl.textContent.length) { clearInterval(t); cb(); }
+      }, 30);
+    }
+    function cycle() { pi = (pi + 1) % phrases.length; erasePhrase(function () { typePhrase(phrases[pi], cycle); }); }
+    setTimeout(function () { typePhrase(phrases[0], cycle); }, 1200);
+  }
 
   }); // end DOMContentLoaded
 </script>

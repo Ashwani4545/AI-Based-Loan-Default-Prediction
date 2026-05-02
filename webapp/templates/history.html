@@ -15,12 +15,7 @@ block content %}
   <div class="filter-bar">
     <div class="search-wrap">
       <span class="search-icon">🔍</span>
-      <input
-        type="text"
-        id="searchInput"
-        placeholder="Search by name, purpose, risk level…"
-        class="search-input"
-      />
+      <input type="text" id="searchInput" placeholder="Search by name, purpose, risk level…" class="search-input" />
     </div>
     <div class="filter-chips" id="filterChips">
       <button class="chip chip-active" data-filter="all">All</button>
@@ -57,11 +52,8 @@ block content %}
       </thead>
       <tbody id="histBody">
         {% for r in records %}
-        <tr
-          class="hist-row"
-          data-search="{{ r.borrower|lower }} {{ r.purpose|lower }} {{ r.risk_level|lower }}"
-          data-risk="{{ r.risk_level }}"
-        >
+        <tr class="hist-row" data-search="{{ r.borrower|lower }} {{ r.purpose|lower }} {{ r.risk_level|lower }}"
+          data-risk="{{ r.risk_level }}">
           <td class="td-idx">{{ loop.index }}</td>
           <td class="td-name">{{ r.borrower }}</td>
           <td class="td-date">{{ r.timestamp[:10] }}</td>
@@ -72,38 +64,35 @@ block content %}
           <td class="td-grade">{{ r.grade }}</td>
           <td class="td-prob">
             <div class="prob-bar-wrap">
-              <div
-                class="prob-bar"
-                style="width: {{ r.probability|default(0) }}%; background: {{ r.color }}"
-              ></div>
+              <div class="prob-bar" style="width: {{ r.probability|default(0) }}%; background: {{ r.color }}"></div>
             </div>
             <span>{{ r.probability }}%</span>
           </td>
           <td>
-            <span
-              class="risk-pill"
-              style="color:{{ r.color }}; border-color:{{ r.color }}; background:{{ r.color }}"
-            >
+            <span class="risk-pill" style="color:{{ r.color }}; border-color:{{ r.color }}; background:{{ r.color }}">
               {{ r.risk_level }}
             </span>
           </td>
           <td>
-            <span
-              class="verdict-dot {% if r.prediction == 0 %}dot-safe{% else %}dot-risk{% endif %}"
-            >
+            <span class="verdict-dot {% if r.prediction == 0 %}dot-safe{% else %}dot-risk{% endif %}">
               {% if r.prediction == 0 %}Repay{% else %}Default{% endif %}
             </span>
           </td>
           <td id="outcome-cell-{{ r.id }}">
             {% if r.actual_outcome is not none %}
-              <span class="risk-pill" style="border-radius:4px; font-size:10px; background:rgba(255,255,255,0.05); color:var(--tx-1);">
-                {{ "Repaid" if r.actual_outcome == 0 else "Defaulted" }}
-              </span>
+            <span class="risk-pill"
+              style="border-radius:4px; font-size:10px; background:rgba(255,255,255,0.05); color:var(--tx-1);">
+              {{ "Repaid" if r.actual_outcome == 0 else "Defaulted" }}
+            </span>
             {% else %}
-              <div style="display:flex; gap:4px;">
-                <button onclick="confirmOutcome('{{ r.id }}', 0)" class="btn-ghost" style="padding:4px 8px; font-size:10px; border:1px solid #22c55e; color:#22c55e; border-radius:4px;">✅ Repaid</button>
-                <button onclick="confirmOutcome('{{ r.id }}', 1)" class="btn-ghost" style="padding:4px 8px; font-size:10px; border:1px solid #ef4444; color:#ef4444; border-radius:4px;">❌ Def</button>
-              </div>
+            <div style="display:flex; gap:4px;">
+              <button onclick="confirmOutcome('{{ r.id }}', 0)" class="btn-ghost"
+                style="padding:4px 8px; font-size:10px; border:1px solid #22c55e; color:#22c55e; border-radius:4px;">✅
+                Repaid</button>
+              <button onclick="confirmOutcome('{{ r.id }}', 1)" class="btn-ghost"
+                style="padding:4px 8px; font-size:10px; border:1px solid #ef4444; color:#ef4444; border-radius:4px;">❌
+                Def</button>
+            </div>
             {% endif %}
           </td>
           <td>
@@ -160,7 +149,7 @@ block content %}
   });
   async function confirmOutcome(id, outcome) {
     if (!confirm(`Confirm this borrower ${outcome === 0 ? 'repaid' : 'defaulted'}? This will update the model accuracy.`)) return;
-    
+
     try {
       const res = await fetch('/api/history/confirm', {
         method: 'POST',

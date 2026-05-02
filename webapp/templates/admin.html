@@ -2,55 +2,168 @@
 {% block title %}Admin Panel{% endblock %}
 {% block head %}
 <style>
-.admin-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:28px; }
-.admin-stat {
-  background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
-  padding:20px 22px;
-}
-.admin-stat-val { font-family:'Syne',sans-serif; font-weight:800; font-size:32px; color:var(--tx-1); line-height:1; margin-bottom:4px; }
-.admin-stat-label { font-size:12px; color:var(--tx-3); text-transform:uppercase; letter-spacing:.06em; }
+  .admin-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
 
-.users-table { width:100%; border-collapse:collapse; font-size:13px; }
-.users-table th { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--tx-3); padding:10px 14px; text-align:left; border-bottom:1px solid var(--border); }
-.users-table td { padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.04); color:var(--tx-2); vertical-align:middle; }
-.users-table tr:hover td { background:rgba(255,255,255,.02); }
+  .admin-stat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 22px;
+  }
 
-.role-badge {
-  display:inline-block; padding:3px 10px; border-radius:12px;
-  font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
-}
-.role-admin      { background:rgba(201,168,76,.15); color:#c9a84c; }
-.role-risk_manager { background:rgba(167,139,250,.15); color:#a78bfa; }
-.role-analyst    { background:rgba(34,197,94,.12); color:#22c55e; }
-.role-compliance { background:rgba(59,130,246,.12); color:#3b82f6; }
+  .admin-stat-val {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 32px;
+    color: var(--tx-1);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
 
-.role-select {
-  background:var(--navy-2); border:1px solid var(--border); color:var(--tx-1);
-  font-family:'DM Sans',sans-serif; font-size:12px; padding:5px 8px;
-  border-radius:6px; cursor:pointer; outline:none;
-}
-.save-btn {
-  background:var(--gold-dim); border:1px solid var(--gold-border); color:var(--gold);
-  font-family:'Syne',sans-serif; font-weight:700; font-size:11px;
-  padding:5px 14px; border-radius:6px; cursor:pointer;
-  transition:background .15s;
-}
-.save-btn:hover { background:rgba(201,168,76,.22); }
+  .admin-stat-label {
+    font-size: 12px;
+    color: var(--tx-3);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+  }
 
-.access-table { width:100%; border-collapse:collapse; font-size:13px; }
-.access-table th { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--tx-3); padding:10px 14px; text-align:left; border-bottom:1px solid var(--border); }
-.access-table td { padding:10px 14px; border-bottom:1px solid rgba(255,255,255,.04); color:var(--tx-2); }
-.check { color:#22c55e; font-size:16px; }
-.cross { color:#ef4444; font-size:16px; }
+  .users-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
 
-@media(max-width:700px){ .admin-grid{grid-template-columns:1fr 1fr} }
+  .users-table th {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--tx-3);
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .users-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, .04);
+    color: var(--tx-2);
+    vertical-align: middle;
+  }
+
+  .users-table tr:hover td {
+    background: rgba(255, 255, 255, .02);
+  }
+
+  .role-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+  }
+
+  .role-admin {
+    background: rgba(37, 99, 235, .15);
+    color: var(--blue);
+  }
+
+  .role-risk_manager {
+    background: rgba(167, 139, 250, .15);
+    color: #a78bfa;
+  }
+
+  .role-analyst {
+    background: rgba(34, 197, 94, .12);
+    color: #22c55e;
+  }
+
+  .role-compliance {
+    background: rgba(59, 130, 246, .12);
+    color: #3b82f6;
+  }
+
+  .role-select {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    color: var(--tx-1);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .save-btn {
+    background: var(--blue-dim);
+    border: 1px solid var(--blue-border);
+    color: var(--blue);
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 5px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+
+  .save-btn:hover {
+    background: rgba(37, 99, 235, .22);
+  }
+
+  .access-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .access-table th {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--tx-3);
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .access-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, .04);
+    color: var(--tx-2);
+  }
+
+  .check {
+    color: #22c55e;
+    font-size: 16px;
+  }
+
+  .cross {
+    color: #ef4444;
+    font-size: 16px;
+  }
+
+  @media(max-width:700px) {
+    .admin-grid {
+      grid-template-columns: 1fr 1fr
+    }
+  }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="hero">
   <div class="hero-inner">
-    <div class="hero-pill" style="color:var(--gold)">⚙ Admin Only</div>
+    <div class="hero-pill" style="color:var(--blue)">⚙ Admin Only</div>
     <h1 class="hero-h1">Admin <em>Panel</em></h1>
     <p class="hero-sub">Manage users, roles, and system settings.</p>
   </div>
@@ -59,13 +172,13 @@
 <div class="dash-shell">
 
   {% with messages = get_flashed_messages(with_categories=true) %}
-    {% for cat, msg in messages %}
-      <div style="margin-bottom:16px;padding:12px 16px;border-radius:var(--radius-sm);
+  {% for cat, msg in messages %}
+  <div style="margin-bottom:16px;padding:12px 16px;border-radius:var(--radius-sm);
         background:{% if cat=='success' %}rgba(34,197,94,.1){% else %}rgba(239,68,68,.1){% endif %};
         border:1px solid {% if cat=='success' %}rgba(34,197,94,.3){% else %}rgba(239,68,68,.3){% endif %};
         color:{% if cat=='success' %}#86efac{% else %}#fca5a5{% endif %};
         font-size:13px;">{{ msg }}</div>
-    {% endfor %}
+  {% endfor %}
   {% endwith %}
 
   <!-- ── STATS ── -->
@@ -95,7 +208,13 @@
     <div style="overflow-x:auto">
       <table class="users-table">
         <thead>
-          <tr><th>Name</th><th>Email</th><th>Current Role</th><th>Joined</th><th>Change Role</th></tr>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Current Role</th>
+            <th>Joined</th>
+            <th>Change Role</th>
+          </tr>
         </thead>
         <tbody>
           {% for user in users %}
@@ -103,13 +222,15 @@
             <td>{{ user.full_name }}</td>
             <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--tx-3)">{{ user.email }}</td>
             <td><span class="role-badge role-{{ user.role }}">{{ user.role | replace('_',' ') }}</span></td>
-            <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--tx-3)">{{ user.created_at.strftime('%b %d, %Y') }}</td>
+            <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--tx-3)">{{ user.created_at.strftime('%b
+              %d, %Y') }}</td>
             <td>
               <form method="POST" action="/admin/promote" style="display:inline-flex;gap:8px;align-items:center">
                 <input type="hidden" name="email" value="{{ user.email }}">
                 <select name="role" class="role-select">
                   {% for r in ['analyst','risk_manager','admin','compliance'] %}
-                  <option value="{{ r }}" {% if r == user.role %}selected{% endif %}>{{ r | replace('_',' ') | title }}</option>
+                  <option value="{{ r }}" {% if r==user.role %}selected{% endif %}>{{ r | replace('_',' ') | title }}
+                  </option>
                   {% endfor %}
                 </select>
                 <button type="submit" class="save-btn">Save</button>
@@ -135,20 +256,20 @@
             <th>Feature</th>
             <th style="color:#22c55e">Analyst</th>
             <th style="color:#a78bfa">Risk Manager</th>
-            <th style="color:#c9a84c">Admin</th>
+            <th style="color:var(--blue)">Admin</th>
             <th style="color:#3b82f6">Compliance</th>
           </tr>
         </thead>
         <tbody>
           {% set matrix = [
-            ('Loan Assessment (Predict)', True, True, True, False),
-            ('Batch CSV Upload', True, True, True, False),
-            ('Dashboard & Analytics', True, True, True, True),
-            ('History & Audit Log', True, True, True, True),
-            ('Reports', True, True, True, True),
-            ('Override Decisions', False, True, True, False),
-            ('Admin Panel', False, False, True, False),
-            ('User Management', False, False, True, False),
+          ('Loan Assessment (Predict)', True, True, True, False),
+          ('Batch CSV Upload', True, True, True, False),
+          ('Dashboard & Analytics', True, True, True, True),
+          ('History & Audit Log', True, True, True, True),
+          ('Reports', True, True, True, True),
+          ('Override Decisions', False, True, True, False),
+          ('Admin Panel', False, False, True, False),
+          ('User Management', False, False, True, False),
           ] %}
           {% for feat, a, rm, ad, co in matrix %}
           <tr>
