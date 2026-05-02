@@ -245,18 +245,8 @@ def _load_model(path):
         return None
 
 
-def _load_scaler():
-    scaler_path = Path(MODEL_PATH).with_name("scaler.pkl")
-    try:
-        s = joblib.load(scaler_path)
-        log.info("Scaler loaded ✅  (%s)", scaler_path)
-        return s
-    except FileNotFoundError:
-        log.info("Scaler not found at %s — using unscaled inputs", scaler_path)
-        return None
-    except Exception as e:
-        log.warning("Scaler load failed: %s — using unscaled inputs", e)
-        return None
+# NOTE: Scaler removed — train_model.py never saves a scaler.pkl,
+# so the scaler code path was dead code (Bug #3 fix).
 
 
 def _load_features() -> list:
@@ -308,14 +298,13 @@ if MODEL is None:
     MODEL = _load_model(str(fallback_path))
 
 CHALLENGER_MODEL = _load_model(CHALLENGER_MODEL_PATH)
-SCALER           = _load_scaler()
 
 def reload_model():
-    global MODEL, CHALLENGER_MODEL, SCALER
+    global MODEL, CHALLENGER_MODEL
     MODEL            = _load_model(CHAMPION_MODEL_PATH)
     CHALLENGER_MODEL = _load_model(CHALLENGER_MODEL_PATH)
-    SCALER           = _load_scaler()
-    log.info("🔄 Models reloaded after retraining")
+    EXPLAINER.reload()
+    log.info("🔄 Models + SHAP explainer reloaded after retraining")
 
 
 MODEL_FEATURES = _load_features()
@@ -364,14 +353,18 @@ def get_current_data():
 
     df = pd.DataFrame(history)
 
+    # Rename legacy "fico" column if present (Bug #11 fix)
+    if "fico" in df.columns and "fico_range_low" not in df.columns:
+        df = df.rename(columns={"fico": "fico_range_low"})
+
     # Extract only numeric features used in drift
     cols = [
         "loan_amnt", "int_rate", "installment", "annual_inc",
-        "dti", "fico", "open_acc", "revol_bal", "total_acc"
+        "dti", "fico_range_low", "open_acc", "revol_bal", "total_acc"
     ]
 
-    df = df.rename(columns={"fico": "fico_range_low"})
-    return df[cols].dropna()
+    available = [c for c in cols if c in df.columns]
+    return df[available].dropna()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -395,30 +388,33 @@ _NUMERIC_FIELDS = {
 _CATEGORICAL_FIELDS = [
     "term", "grade", "sub_grade", "emp_length",
     "home_ownership", "verification_status", "purpose",
-    "addr_state", "initial_list_status", "earliest_cr_line",
+    "addr_state", "initial_list_status",
+    # "earliest_cr_line" removed — not collected in form (Bug #16 fix)
 ]
 
 
 def create_features_live(df: pd.DataFrame) -> pd.DataFrame:
+    """Compute engineered features — must match train_model.create_features() exactly."""
+    # Financial ratios
     df["loan_to_income"] = df["loan_amnt"] / (df["annual_inc"] + 1e-6)
     df["installment_to_income"] = df["installment"] / (df["annual_inc"] + 1e-6)
-    df["credit_utilization"] = df["revol_bal"] / (df["revol_bal"] + 1e-6)
+
+    # Credit behavior — Bug #1 fix: formula now matches training
+    df["credit_utilization"] = df["revol_bal"] / (df["revol_bal"] + df["bc_open_to_buy"] + 1e-6)
+
+    # Behavioral features — Bug #2 fix: these 3 were missing
+    df["payment_capacity"] = df["annual_inc"] - df["installment"] * 12
+    df["credit_stress"] = df["dti"] * df["loan_amnt"]
+    df["recent_inquiries_flag"] = (df["inq_last_6mths"] > 3).astype(int)
+
+    # Risk indicators
     df["high_dti_flag"] = (df["dti"] > 20).astype(int)
     df["low_fico_flag"] = (df["fico_range_low"] < 600).astype(int)
     return df
 
 
-def add_economic_features(df):
-    df["inflation_rate"] = 0.06
-    df["interest_rate_env"] = 0.08
-    df["unemployment_rate"] = 0.07
-
-    df["economic_stress"] = (
-        df["inflation_rate"] * 0.4 +
-        df["unemployment_rate"] * 0.4 +
-        df["interest_rate_env"] * 0.2
-    )
-    return df
+# NOTE: add_economic_features() removed — hardcoded constants (0.06, 0.08, 0.07)
+# provide zero signal to the model since they are the same for every row (Bug #9 fix).
 
 
 def preprocess_input(form_data: dict) -> pd.DataFrame:
@@ -542,20 +538,16 @@ def generate_risk_report(record):
 
 
 def save_report(report, record_id):
-    path = f"reports/{record_id}.txt"
+    # Bug #7 fix: use absolute path instead of relative
+    path = str(Path(__file__).resolve().parent.parent / "reports" / f"{record_id}.txt")
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w") as f:
         f.write(report)
     return path
 
 
-def credit_policy(pd):
-    if pd > 0.6:
-        return "Reject - High Risk"
-    elif pd > 0.4:
-        return "Manual Review"
-    else:
-        return "Approve"
+# NOTE: credit_policy() removed — was a duplicate of get_risk_level() from config.py
+# with inconsistent thresholds (Bug #4 fix). Use get_risk_level() everywhere instead.
 
 
 
@@ -823,10 +815,8 @@ def _score_borrower(form_data: dict) -> dict:
     try:
         input_df = preprocess_input(form_data)
         input_df = create_features_live(input_df)
-        input_df = add_economic_features(input_df)
         input_df = input_df.reindex(columns=MODEL_FEATURES, fill_value=0.0)
-        input_data = SCALER.transform(input_df) if SCALER is not None else input_df
-        prob = float(MODEL.predict_proba(input_data)[0][1])
+        prob = float(MODEL.predict_proba(input_df)[0][1])
 
         loan_amount  = float(form_data.get("loan_amnt", 0) or 0)
         fico         = float(form_data.get("fico_range_low", 0) or 0)
@@ -836,7 +826,7 @@ def _score_borrower(form_data: dict) -> dict:
         # Shadow Model Inference (MLOps: A/B Testing)
         challenger_prob = 0.0
         if CHALLENGER_MODEL:
-            challenger_prob = float(CHALLENGER_MODEL.predict_proba(input_data)[0][1])
+            challenger_prob = float(CHALLENGER_MODEL.predict_proba(input_df)[0][1])
 
         risk_info = get_risk_level(prob)
         risk    = risk_info["label"].title()
@@ -905,13 +895,12 @@ def handle_prediction(form_data):
     try:
         input_df = preprocess_input(form_data)
         input_df = create_features_live(input_df)
-        input_df = add_economic_features(input_df)
         columns = MODEL_FEATURES
         input_df = input_df.reindex(columns=columns, fill_value=0.0)
 
         emit('progress', {'step': 'Computing SHAP values...', 'percent': 60})
         time.sleep(0.6)
-        # Explain prediction
+        # Bug #15 fix: SHAP called AFTER reindex so columns match the model
         explanation = EXPLAINER.explain_single(input_df)
 
         emit('progress', {'step': 'Checking fairness...', 'percent': 80})
@@ -923,24 +912,16 @@ def handle_prediction(form_data):
         sensitive_warning = EXPLAINER.validate_sensitive_features(form_data)
 
         # Inference using class probability for default risk (PD)
-        input_data = input_df
-        if SCALER is not None:
-            input_data = SCALER.transform(input_data)
-            print("Scaler applied: True")
-        else:
-            print("Scaler applied: False")
-
-        prob = float(MODEL.predict_proba(input_data)[0][1])
+        prob = float(MODEL.predict_proba(input_df)[0][1])
         
         # Shadow Model Inference (MLOps: A/B Testing)
         challenger_prob = 0.0
         if CHALLENGER_MODEL:
-            challenger_prob = float(CHALLENGER_MODEL.predict_proba(input_data)[0][1])
+            challenger_prob = float(CHALLENGER_MODEL.predict_proba(input_df)[0][1])
             
-        print("Probability:", prob)
-        print("Challenger Probability:", challenger_prob)
+        log.info("Probability: %.4f | Challenger: %.4f", prob, challenger_prob)
         if prob < 0.3:
-            print("Warning: prob < 0.3 — possible feature issue")
+            log.info("Note: prob < 0.3 — possible feature issue")
         probability = prob
 
         pd_value = probability
@@ -952,7 +933,6 @@ def handle_prediction(form_data):
         expected_profit = loan_amount * (1 - probability) * 0.1 - loan_amount * probability
         income = float(form_data.get("annual_inc", 0) or 0)
         override_triggered = income > 0 and loan_amount > 5 * income
-        print(f"Decision debug -> prob={prob:.4f}, override={override_triggered}")
         log.info("Decision debug -> prob=%.4f override=%s", prob, override_triggered)
 
         # Risk bands (business-friendly labels)
@@ -963,7 +943,6 @@ def handle_prediction(form_data):
             risk = "High Risk (Override)"
             verdict = "Decline" # Override usually means decline
             show_warning = True
-            print("Override triggered: loan_amount > 5 * annual_inc")
             log.warning("Override triggered for borrower=%s (loan_amount=%.2f, annual_inc=%.2f)",
                         form_data.get("borrower_name", "Anonymous"), loan_amount, income)
         else:
@@ -1047,15 +1026,17 @@ def handle_prediction(form_data):
         _append_to_history(record)
         log_decision(record)
 
-        # Feedback loop
-        feedback_data = build_feedback_dataset()
-
-        if feedback_data is not None:
-            update_training_data(feedback_data)
-            log.info("🔁 Feedback data added to training set")
+        # Bug #6 fix: Only retrain every 100th prediction (not every prediction)
+        if should_retrain():
+            log.info("⚡ Triggering scheduled retraining (every 100 predictions)...")
+            feedback_data = build_feedback_dataset()
+            if feedback_data is not None:
+                update_training_data(feedback_data)
+                log.info("🔁 Feedback data added to training set")
             retrain_model()
             reload_model()
 
+        # Drift detection (independent of scheduled retraining)
         from monitoring.drift_detection import detect_drift
 
         current_data = get_current_data()
@@ -1065,14 +1046,8 @@ def handle_prediction(form_data):
 
             if drift_flag:
                 log.warning("🚨 DRIFT DETECTED — triggering retraining")
-
                 retrain_model()
                 reload_model()
-
-        if should_retrain():
-            log.info("⚡ Triggering retraining...")
-            retrain_model()
-            reload_model()
 
         emit('progress', {'step': 'Decision ready ✓', 'percent': 100})
         time.sleep(0.6)

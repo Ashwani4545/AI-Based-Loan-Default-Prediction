@@ -21,15 +21,18 @@ def build_feedback_dataset():
         mapping = {"Repay": 0, "Default": 1}
         df["prediction"] = df["prediction"].map(mapping)
 
-    # Extract features
+    # Extract features — Bug #12 fix: use fico_range_low directly
     features = [
-        "loan_amnt", "int_rate", "annual_inc", "fico",
+        "loan_amnt", "int_rate", "annual_inc", "fico_range_low",
         "dti", "open_acc", "revol_bal", "total_acc"
     ]
 
-    df = df.rename(columns={"fico": "fico_range_low"})
+    # Rename legacy "fico" column if present
+    if "fico" in df.columns and "fico_range_low" not in df.columns:
+        df = df.rename(columns={"fico": "fico_range_low"})
 
-    df = df[features + ["prediction"]].dropna()
+    available = [c for c in features + ["prediction"] if c in df.columns]
+    df = df[available].dropna()
 
     # Rename prediction → target
     df = df.rename(columns={"prediction": "loan_status"})

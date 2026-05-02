@@ -1,20 +1,20 @@
 {
-    "accuracy": 0.7965,
-    "precision": 0.4348,
-    "recall": 0.0248,
-    "f1_score": 0.0468,
-    "roc_auc": 0.6689,
-    "mse": 0.151567,
-    "rmse": 0.389315,
-    "mae": 0.303991,
-    "mape": 152020794770.3788,
-    "r2": 0.059737,
-    "profit": -3766172.5,
+    "accuracy": 0.8076,
+    "precision": 0.6089,
+    "recall": 0.1044,
+    "f1_score": 0.1782,
+    "roc_auc": 0.7269,
+    "mse": 0.141643,
+    "rmse": 0.376355,
+    "mae": 0.282545,
+    "mape": 140654333347.5224,
+    "r2": 0.114399,
+    "profit": -49078590.0,
     "confusion_matrix": {
-        "tn": 1583,
-        "fp": 13,
-        "fn": 394,
-        "tp": 10
+        "tn": 23601,
+        "fp": 402,
+        "fn": 5371,
+        "tp": 626
     },
-    "model_name": "logistic_regression"
+    "model_name": "random_forest"
 }

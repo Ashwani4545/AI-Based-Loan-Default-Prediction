@@ -2,246 +2,72 @@
 {% block title %}Prediction Timeline{% endblock %}
 {% block head %}
 <style>
-  .tl-shell {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 0 20px 40px;
-  }
+.tl-shell { max-width: 1100px; margin: 0 auto; padding: 0 20px 40px; }
 
-  /* ── Search Bar ── */
-  .tl-search-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 24px 30px;
-    margin-bottom: 24px;
-  }
+/* ── Search Bar ── */
+.tl-search-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 24px 30px; margin-bottom: 24px;
+}
+.tl-search-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 18px; color: var(--tx-1); margin-bottom: 6px; }
+.tl-search-sub { font-size: 13px; color: var(--tx-3); margin-bottom: 18px; }
 
-  .tl-search-title {
-    font-family: 'Syne', sans-serif;
-    font-weight: 700;
-    font-size: 18px;
-    color: var(--tx-1);
-    margin-bottom: 6px;
-  }
+.tl-input-wrap { display: flex; gap: 12px; }
+.tl-input {
+  flex: 1; background: var(--navy-2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 14px 20px; color: var(--tx-1);
+  font-family: 'DM Sans', sans-serif; font-size: 15px; outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.tl-input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,168,76,.15); }
+.tl-btn {
+  background: var(--gold); color: var(--navy-1);
+  font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px;
+  padding: 0 28px; border-radius: 8px; border: none; cursor: pointer;
+  transition: background .18s, transform .18s;
+}
+.tl-btn:hover { background: #e2c26e; transform: translateY(-2px); }
 
-  .tl-search-sub {
-    font-size: 13px;
-    color: var(--tx-3);
-    margin-bottom: 18px;
-  }
+/* ── Summary Stats ── */
+.tl-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; display: none; }
+.tl-stat { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px 20px; }
+.tl-stat-val { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 28px; color: var(--tx-1); line-height: 1; margin-bottom: 4px; }
+.tl-stat-lbl { font-size: 11px; color: var(--tx-3); text-transform: uppercase; letter-spacing: .06em; }
+.trend-worsening { color: #ef4444; }
+.trend-improving { color: #22c55e; }
+.trend-stable { color: #f59e0b; }
 
-  .tl-input-wrap {
-    display: flex;
-    gap: 12px;
-  }
+/* ── Chart ── */
+.tl-chart-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 24px 30px; margin-bottom: 24px;
+  display: none;
+}
+.tl-chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.tl-chart-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; color: var(--tx-1); }
 
-  .tl-input {
-    flex: 1;
-    background: var(--bg-2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 14px 20px;
-    color: var(--tx-1);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 15px;
-    outline: none;
-    transition: border-color .15s, box-shadow .15s;
-  }
+/* ── Table ── */
+.tl-table-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden; display: none;
+}
+.tl-table-header { padding: 18px 24px; border-bottom: 1px solid var(--border); }
+.tl-table-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; color: var(--tx-1); }
+.tl-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tl-table th { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--tx-3); padding: 12px 24px; text-align: left; border-bottom: 1px solid var(--border); }
+.tl-table td { padding: 14px 24px; border-bottom: 1px solid rgba(255,255,255,.04); color: var(--tx-2); }
+.tl-table tr:last-child td { border: none; }
+.tl-table tr:hover td { background: rgba(255,255,255,.02); }
 
-  .tl-input:focus {
-    border-color: var(--blue);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, .15);
-  }
+.verdict-pill { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.v-approve { background: rgba(34,197,94,.15); color: #22c55e; }
+.v-review  { background: rgba(245,158,11,.15); color: #f59e0b; }
+.v-decline { background: rgba(239,68,68,.15); color: #ef4444; }
 
-  .tl-btn {
-    background: var(--blue);
-    color: var(--navy-1);
-    font-family: 'Syne', sans-serif;
-    font-weight: 700;
-    font-size: 15px;
-    padding: 0 28px;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    transition: background .18s, transform .18s;
-  }
-
-  .tl-btn:hover {
-    background: var(--blue-lt);
-    transform: translateY(-2px);
-  }
-
-  /* ── Summary Stats ── */
-  .tl-stats {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-    margin-bottom: 24px;
-    display: none;
-  }
-
-  .tl-stat {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 16px 20px;
-  }
-
-  .tl-stat-val {
-    font-family: 'Syne', sans-serif;
-    font-weight: 800;
-    font-size: 28px;
-    color: var(--tx-1);
-    line-height: 1;
-    margin-bottom: 4px;
-  }
-
-  .tl-stat-lbl {
-    font-size: 11px;
-    color: var(--tx-3);
-    text-transform: uppercase;
-    letter-spacing: .06em;
-  }
-
-  .trend-worsening {
-    color: #ef4444;
-  }
-
-  .trend-improving {
-    color: #22c55e;
-  }
-
-  .trend-stable {
-    color: #f59e0b;
-  }
-
-  /* ── Chart ── */
-  .tl-chart-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 24px 30px;
-    margin-bottom: 24px;
-    display: none;
-  }
-
-  .tl-chart-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-  }
-
-  .tl-chart-title {
-    font-family: 'Syne', sans-serif;
-    font-weight: 700;
-    font-size: 16px;
-    color: var(--tx-1);
-  }
-
-  /* ── Table ── */
-  .tl-table-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-    display: none;
-  }
-
-  .tl-table-header {
-    padding: 18px 24px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .tl-table-title {
-    font-family: 'Syne', sans-serif;
-    font-weight: 700;
-    font-size: 15px;
-    color: var(--tx-1);
-  }
-
-  .tl-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-  }
-
-  .tl-table th {
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    letter-spacing: .07em;
-    text-transform: uppercase;
-    color: var(--tx-3);
-    padding: 12px 24px;
-    text-align: left;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .tl-table td {
-    padding: 14px 24px;
-    border-bottom: 1px solid rgba(255, 255, 255, .04);
-    color: var(--tx-2);
-  }
-
-  .tl-table tr:last-child td {
-    border: none;
-  }
-
-  .tl-table tr:hover td {
-    background: rgba(255, 255, 255, .02);
-  }
-
-  .verdict-pill {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .05em;
-  }
-
-  .v-approve {
-    background: rgba(34, 197, 94, .15);
-    color: #22c55e;
-  }
-
-  .v-review {
-    background: rgba(245, 158, 11, .15);
-    color: #f59e0b;
-  }
-
-  .v-decline {
-    background: rgba(239, 68, 68, .15);
-    color: #ef4444;
-  }
-
-  /* ── Loading / Empty ── */
-  .tl-msg {
-    text-align: center;
-    padding: 40px;
-    color: var(--tx-3);
-    font-size: 14px;
-    display: none;
-  }
-
-  .tl-spinner {
-    display: inline-block;
-    width: 24px;
-    height: 24px;
-    border: 3px solid rgba(37, 99, 235, .2);
-    border-top-color: var(--blue);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 12px;
-  }
-
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+/* ── Loading / Empty ── */
+.tl-msg { text-align: center; padding: 40px; color: var(--tx-3); font-size: 14px; display: none; }
+.tl-spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid rgba(201,168,76,.2); border-top-color: var(--gold); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 12px; }
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>
 {% endblock %}
 
@@ -261,8 +87,7 @@
     <div class="tl-search-title">Lookup Borrower</div>
     <div class="tl-search-sub">Enter an exact name to pull their historical risk trajectory.</div>
     <form id="searchForm" class="tl-input-wrap">
-      <input type="text" id="borrowerInput" class="tl-input" placeholder="e.g. Alice Johnson" value="{{ query }}"
-        autocomplete="off" list="borrowerNames">
+      <input type="text" id="borrowerInput" class="tl-input" placeholder="e.g. Alice Johnson" value="{{ query }}" autocomplete="off" list="borrowerNames">
       <datalist id="borrowerNames"></datalist>
       <button type="submit" class="tl-btn">Generate Timeline</button>
     </form>
@@ -329,176 +154,176 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-  // Elements
-  const form = document.getElementById('searchForm');
-  const input = document.getElementById('borrowerInput');
-  const datalist = document.getElementById('borrowerNames');
-  const loadingMsg = document.getElementById('loadingMsg');
-  const errorMsg = document.getElementById('errorMsg');
-  const emptyMsg = document.getElementById('emptyMsg');
-  const statsRow = document.getElementById('statsRow');
-  const chartCard = document.getElementById('chartCard');
-  const tableCard = document.getElementById('tableCard');
-  const tableBody = document.getElementById('tableBody');
+// Elements
+const form = document.getElementById('searchForm');
+const input = document.getElementById('borrowerInput');
+const datalist = document.getElementById('borrowerNames');
+const loadingMsg = document.getElementById('loadingMsg');
+const errorMsg = document.getElementById('errorMsg');
+const emptyMsg = document.getElementById('emptyMsg');
+const statsRow = document.getElementById('statsRow');
+const chartCard = document.getElementById('chartCard');
+const tableCard = document.getElementById('tableCard');
+const tableBody = document.getElementById('tableBody');
 
-  let chartInstance = null;
+let chartInstance = null;
 
-  // Autocomplete
-  input.addEventListener('input', async function () {
-    const val = this.value.trim();
-    if (val.length < 2) return;
-    try {
-      const res = await fetch(`/api/borrower-names?q=${encodeURIComponent(val)}`);
-      const names = await res.json();
-      datalist.innerHTML = names.map(n => `<option value="${n}">`).join('');
-    } catch (e) { console.error('Autocomplete failed', e); }
-  });
+// Autocomplete
+input.addEventListener('input', async function() {
+  const val = this.value.trim();
+  if (val.length < 2) return;
+  try {
+    const res = await fetch(`/api/borrower-names?q=${encodeURIComponent(val)}`);
+    const names = await res.json();
+    datalist.innerHTML = names.map(n => `<option value="${n}">`).join('');
+  } catch (e) { console.error('Autocomplete failed', e); }
+});
 
-  // Formatters
-  const fmtDate = iso => new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-  const fmtMoney = n => '$' + Number(n).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+// Formatters
+const fmtDate = iso => new Date(iso).toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' });
+const fmtMoney = n => '$' + Number(n).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0});
 
-  function setDisplay(el, val) { el.style.display = val; }
+function setDisplay(el, val) { el.style.display = val; }
 
-  function getVerdictClass(v) {
-    const v_low = (v || '').toLowerCase();
-    if (v_low.includes('approve') || v_low.includes('repay')) return 'v-approve';
-    if (v_low.includes('decline') || v_low.includes('default')) return 'v-decline';
-    return 'v-review';
-  }
+function getVerdictClass(v) {
+  const v_low = (v || '').toLowerCase();
+  if (v_low.includes('approve') || v_low.includes('repay')) return 'v-approve';
+  if (v_low.includes('decline') || v_low.includes('default')) return 'v-decline';
+  return 'v-review';
+}
 
-  function getVerdictText(v) {
-    const v_low = (v || '').toLowerCase();
-    if (v_low.includes('approve') || v_low.includes('repay')) return 'Approve';
-    if (v_low.includes('decline') || v_low.includes('default')) return 'Decline';
-    return 'Review';
-  }
+function getVerdictText(v) {
+  const v_low = (v || '').toLowerCase();
+  if (v_low.includes('approve') || v_low.includes('repay')) return 'Approve';
+  if (v_low.includes('decline') || v_low.includes('default')) return 'Decline';
+  return 'Review';
+}
 
 
-  // Load data
-  async function loadTimeline(name) {
-    setDisplay(emptyMsg, 'none');
-    setDisplay(errorMsg, 'none');
-    setDisplay(statsRow, 'none');
-    setDisplay(chartCard, 'none');
-    setDisplay(tableCard, 'none');
-    setDisplay(loadingMsg, 'block');
+// Load data
+async function loadTimeline(name) {
+  setDisplay(emptyMsg, 'none');
+  setDisplay(errorMsg, 'none');
+  setDisplay(statsRow, 'none');
+  setDisplay(chartCard, 'none');
+  setDisplay(tableCard, 'none');
+  setDisplay(loadingMsg, 'block');
 
-    try {
-      const res = await fetch(`/api/timeline/${encodeURIComponent(name)}`);
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to load timeline');
-      }
+  try {
+    const res = await fetch(`/api/timeline/${encodeURIComponent(name)}`);
+    if (!res.ok) {
       const data = await res.json();
-
-      setDisplay(loadingMsg, 'none');
-      renderStats(data);
-      renderChart(data);
-      renderTable(data);
-
-      setDisplay(statsRow, 'grid');
-      setDisplay(chartCard, 'block');
-      setDisplay(tableCard, 'block');
-
-      // Update URL without reload
-      const newUrl = new URL(window.location);
-      newUrl.searchParams.set('q', name);
-      window.history.pushState({}, '', newUrl);
-
-    } catch (err) {
-      setDisplay(loadingMsg, 'none');
-      errorMsg.textContent = err.message;
-      setDisplay(errorMsg, 'block');
+      throw new Error(data.error || 'Failed to load timeline');
     }
+    const data = await res.json();
+    
+    setDisplay(loadingMsg, 'none');
+    renderStats(data);
+    renderChart(data);
+    renderTable(data);
+    
+    setDisplay(statsRow, 'grid');
+    setDisplay(chartCard, 'block');
+    setDisplay(tableCard, 'block');
+    
+    // Update URL without reload
+    const newUrl = new URL(window.location);
+    newUrl.searchParams.set('q', name);
+    window.history.pushState({}, '', newUrl);
+    
+  } catch (err) {
+    setDisplay(loadingMsg, 'none');
+    errorMsg.textContent = err.message;
+    setDisplay(errorMsg, 'block');
   }
+}
 
-  function renderStats(data) {
-    document.getElementById('statAssessments').textContent = data.count;
-    document.getElementById('statLatest').textContent = data.latest.probability + '%';
-
-    const trendEl = document.getElementById('statTrend');
-    if (data.trend === 'single') {
-      trendEl.textContent = 'Insufficient Data';
-      trendEl.className = 'tl-stat-val';
-    } else {
-      let text = '', cls = '';
-      if (data.trend === 'worsening') { text = `↗ +${data.delta}% (Worsening)`; cls = 'trend-worsening'; }
-      else if (data.trend === 'improving') { text = `↘ ${data.delta}% (Improving)`; cls = 'trend-improving'; }
-      else { text = `→ Stable`; cls = 'trend-stable'; }
-      trendEl.textContent = text;
-      trendEl.className = `tl-stat-val ${cls}`;
-    }
+function renderStats(data) {
+  document.getElementById('statAssessments').textContent = data.count;
+  document.getElementById('statLatest').textContent = data.latest.probability + '%';
+  
+  const trendEl = document.getElementById('statTrend');
+  if (data.trend === 'single') {
+    trendEl.textContent = 'Insufficient Data';
+    trendEl.className = 'tl-stat-val';
+  } else {
+    let text = '', cls = '';
+    if (data.trend === 'worsening') { text = `↗ +${data.delta}% (Worsening)`; cls = 'trend-worsening'; }
+    else if (data.trend === 'improving') { text = `↘ ${data.delta}% (Improving)`; cls = 'trend-improving'; }
+    else { text = `→ Stable`; cls = 'trend-stable'; }
+    trendEl.textContent = text;
+    trendEl.className = `tl-stat-val ${cls}`;
   }
+}
 
-  function renderChart(data) {
-    const ctx = document.getElementById('timelineChart').getContext('2d');
-    if (chartInstance) chartInstance.destroy();
+function renderChart(data) {
+  const ctx = document.getElementById('timelineChart').getContext('2d');
+  if (chartInstance) chartInstance.destroy();
+  
+  const labels = data.points.map(p => fmtDate(p.timestamp));
+  const probs = data.points.map(p => p.probability);
+  
+  // Color gradient
+  const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+  gradient.addColorStop(0, 'rgba(239, 68, 68, 0.4)'); // Red (High risk)
+  gradient.addColorStop(0.5, 'rgba(245, 158, 11, 0.4)'); // Yellow (Medium risk)
+  gradient.addColorStop(1, 'rgba(34, 197, 94, 0.4)'); // Green (Low risk)
 
-    const labels = data.points.map(p => fmtDate(p.timestamp));
-    const probs = data.points.map(p => p.probability);
-
-    // Color gradient
-    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-    gradient.addColorStop(0, 'rgba(239, 68, 68, 0.4)'); // Red (High risk)
-    gradient.addColorStop(0.5, 'rgba(245, 158, 11, 0.4)'); // Yellow (Medium risk)
-    gradient.addColorStop(1, 'rgba(34, 197, 94, 0.4)'); // Green (Low risk)
-
-    chartInstance = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Default Risk %',
-          data: probs,
-          borderColor: 'var(--blue)',
-          backgroundColor: gradient,
-          borderWidth: 3,
-          pointBackgroundColor: '#0d1526',
-          pointBorderColor: 'var(--blue)',
-          pointBorderWidth: 2,
-          pointRadius: 5,
-          pointHoverRadius: 7,
-          fill: true,
-          tension: 0.3
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: {
-            min: 0, max: 100,
-            grid: { color: 'rgba(255,255,255,0.06)' },
-            ticks: { color: '#8a97b8', font: { size: 11 }, callback: v => v + '%' }
-          },
-          x: {
-            grid: { color: 'rgba(255,255,255,0.06)' },
-            ticks: { color: '#8a97b8', font: { size: 11 } }
-          }
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Default Risk %',
+        data: probs,
+        borderColor: '#c9a84c',
+        backgroundColor: gradient,
+        borderWidth: 3,
+        pointBackgroundColor: '#0d1526',
+        pointBorderColor: '#c9a84c',
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        fill: true,
+        tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: { 
+          min: 0, max: 100,
+          grid: { color: 'rgba(255,255,255,0.06)' },
+          ticks: { color: '#8a97b8', font: { size: 11 }, callback: v => v + '%' }
         },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: '#1a2848',
-            titleFont: { family: 'Syne', size: 13 },
-            bodyFont: { family: 'DM Mono', size: 12 },
-            padding: 12,
-            borderColor: 'rgba(255,255,255,0.1)',
-            borderWidth: 1,
-            displayColors: false,
-            callbacks: { label: ctx => `Risk: ${ctx.raw}%` }
-          }
+        x: {
+          grid: { color: 'rgba(255,255,255,0.06)' },
+          ticks: { color: '#8a97b8', font: { size: 11 } }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1a2848',
+          titleFont: { family: 'Syne', size: 13 },
+          bodyFont: { family: 'DM Mono', size: 12 },
+          padding: 12,
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          displayColors: false,
+          callbacks: { label: ctx => `Risk: ${ctx.raw}%` }
         }
       }
-    });
-  }
+    }
+  });
+}
 
-  function renderTable(data) {
-    // Sort descending for table (newest first)
-    const sorted = [...data.points].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    tableBody.innerHTML = sorted.map(p => `
+function renderTable(data) {
+  // Sort descending for table (newest first)
+  const sorted = [...data.points].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  
+  tableBody.innerHTML = sorted.map(p => `
     <tr>
       <td style="font-family:'DM Mono',monospace">${fmtDate(p.timestamp)}</td>
       <td style="font-family:'DM Mono',monospace">${fmtMoney(p.loan_amnt)}</td>
@@ -507,24 +332,24 @@
       <td style="font-family:'DM Mono',monospace;font-weight:700">${p.probability}%</td>
       <td><span class="verdict-pill ${getVerdictClass(p.verdict)}">${getVerdictText(p.verdict)}</span></td>
       <td>
-        <a href="/reports/${p.id}" target="_blank" style="color:var(--blue);text-decoration:none;font-weight:600;font-size:12px">View ↗</a>
+        <a href="/reports/${p.id}" target="_blank" style="color:var(--gold);text-decoration:none;font-weight:600;font-size:12px">View ↗</a>
       </td>
     </tr>
   `).join('');
-  }
+}
 
-  // Initial state
-  form.addEventListener('submit', e => {
-    e.preventDefault();
-    const val = input.value.trim();
-    if (val) loadTimeline(val);
-  });
+// Initial state
+form.addEventListener('submit', e => {
+  e.preventDefault();
+  const val = input.value.trim();
+  if (val) loadTimeline(val);
+});
 
-  // Load from URL if present
-  if (input.value.trim()) {
-    loadTimeline(input.value.trim());
-  } else {
-    setDisplay(emptyMsg, 'block');
-  }
+// Load from URL if present
+if (input.value.trim()) {
+  loadTimeline(input.value.trim());
+} else {
+  setDisplay(emptyMsg, 'block');
+}
 </script>
 {% endblock %}

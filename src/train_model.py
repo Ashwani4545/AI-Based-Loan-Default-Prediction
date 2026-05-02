@@ -141,11 +141,9 @@ def _load_alternative_data(df: pd.DataFrame) -> pd.DataFrame:
     
     # Use synthetic as fallback or primary
     if not use_real_alternative_data:
-        log.info("Using synthetic alternative features for credit-invisible users")
-        df["mobile_usage_score"] = np.random.randint(1, 100, len(df))
-        df["digital_txn_count"] = np.random.randint(1, 50, len(df))
-        df["utility_payment_score"] = np.random.randint(1, 100, len(df))
-        df["employment_stability"] = np.random.randint(1, 10, len(df))
+        # Bug #8 fix: random noise features removed — they pollute the model.
+        # If real alternative data is needed, provide it via alternative_data.csv.
+        log.info("No real alternative data available — skipping alternative features")
     
     return df
 
@@ -158,15 +156,9 @@ def load_and_preprocess():
     df = df.sample(n=min(10000, len(df)), random_state=RANDOM_STATE)
     log.info("Subsampled to %d rows for faster training", len(df))
 
-    # Economic context features (static demo values)
-    df["inflation_rate"] = 0.06
-    df["interest_rate_env"] = 0.08
-    df["unemployment_rate"] = 0.07
-    df["economic_stress"] = (
-        df["inflation_rate"] * 0.4 +
-        df["unemployment_rate"] * 0.4 +
-        df["interest_rate_env"] * 0.2
-    )
+    # Bug #9 fix: Economic context features removed.
+    # Hardcoded constants (0.06, 0.08, 0.07) are identical for every row,
+    # so the model learns zero information from them.
 
     # Load alternative credit data (real or synthetic)
     df = _load_alternative_data(df)

@@ -73,6 +73,14 @@ class LoanModelExplainer:
             self.explainer = None
             log.warning("SHAP is not installed; using feature-importance fallback for explanations.")
 
+    def reload(self, model_path: str = None):
+        """Reload model from disk (call after retraining) — Bug #14 fix."""
+        path = model_path or MODEL_PATH
+        self.model = joblib.load(path)
+        if self.has_shap:
+            self.explainer = self.shap.Explainer(self.model)
+        log.info("SHAP explainer reloaded ✅")
+
     def _fallback_importances(self, columns: pd.Index) -> np.ndarray:
         try:
             if hasattr(self.model, "feature_importances_"):
@@ -215,19 +223,21 @@ class LoanModelExplainer:
 
     def check_group_bias(self, input_data: dict):
         """
-        Check bias using sensitive attributes like gender, state, etc.
+        Check bias using available attributes (income, state, etc.).
+        Bug #10 fix: removed 'gender' check — field is never in the form.
         """
+        income = float(input_data.get("annual_inc", 0) or 0)
+        state = input_data.get("addr_state", "")
 
-        gender = input_data.get("gender", None)
-        income = float(input_data.get("annual_inc", 0))
-
-        # Example bias rule
-        if gender == "Female" and income < 20000:
-            return "⚠️ Potential bias risk: low-income female group"
+        # Flag low-income borrowers for bias review
+        if income < 20000 and state:
+            return "⚠️ Potential bias risk: low-income borrower"
 
         return "✅ No bias detected"
 
     def validate_sensitive_features(self, input_data: dict):
+        # NOTE: gender, race, religion are never collected in the form,
+        # so this check is informational only for API usage.
         sensitive_fields = ["gender", "race", "religion"]
 
         warnings = []

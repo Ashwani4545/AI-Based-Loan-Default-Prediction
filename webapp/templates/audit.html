@@ -2,139 +2,45 @@
 {% block title %}Compliance Audit Logs{% endblock %}
 {% block head %}
 <style>
-  .audit-shell {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 20px 40px;
-  }
+.audit-shell { max-width: 1200px; margin: 0 auto; padding: 0 20px 40px; }
 
-  /* ── Table Card ── */
-  .audit-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-    margin-top: 20px;
-  }
+/* ── Table Card ── */
+.audit-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden; margin-top: 20px;
+}
+.audit-header { 
+  padding: 18px 24px; border-bottom: 1px solid var(--border); 
+  display: flex; justify-content: space-between; align-items: center;
+}
+.audit-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; color: var(--tx-1); }
+.audit-sub { font-size: 12px; color: var(--tx-3); margin-top: 4px; }
 
-  .audit-header {
-    padding: 18px 24px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
+/* ── Table ── */
+.audit-table-wrap { overflow-x: auto; }
+.audit-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.audit-table th { 
+  font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: .07em; 
+  text-transform: uppercase; color: var(--tx-3); padding: 14px 24px; 
+  text-align: left; border-bottom: 1px solid var(--border); background: var(--navy-2);
+}
+.audit-table td { padding: 16px 24px; border-bottom: 1px solid rgba(255,255,255,.04); color: var(--tx-2); vertical-align: top; }
+.audit-table tr:last-child td { border: none; }
+.audit-table tr:hover td { background: rgba(255,255,255,.02); }
 
-  .audit-title {
-    font-family: 'Syne', sans-serif;
-    font-weight: 700;
-    font-size: 16px;
-    color: var(--tx-1);
-  }
+/* ── Badges ── */
+.badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; font-family: 'DM Mono', monospace; }
+.badge-system { background: rgba(255,255,255,.06); color: #8a97b8; }
+.badge-admin { background: rgba(201,168,76,.15); color: #c9a84c; }
+.badge-risk { background: rgba(167,139,250,.15); color: #a78bfa; }
+.badge-analyst { background: rgba(34,197,94,.15); color: #22c55e; }
+.badge-override { background: rgba(239,68,68,.15); border: 1px solid rgba(239,68,68,.3); color: #ef4444; }
 
-  .audit-sub {
-    font-size: 12px;
-    color: var(--tx-3);
-    margin-top: 4px;
-  }
+.verdict-repay { color: #22c55e; font-weight: 700; }
+.verdict-review { color: #f59e0b; font-weight: 700; }
+.verdict-default { color: #ef4444; font-weight: 700; }
 
-  /* ── Table ── */
-  .audit-table-wrap {
-    overflow-x: auto;
-  }
-
-  .audit-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-  }
-
-  .audit-table th {
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    letter-spacing: .07em;
-    text-transform: uppercase;
-    color: var(--tx-3);
-    padding: 14px 24px;
-    text-align: left;
-    border-bottom: 1px solid var(--border);
-    background: var(--bg-2);
-  }
-
-  .audit-table td {
-    padding: 16px 24px;
-    border-bottom: 1px solid rgba(255, 255, 255, .04);
-    color: var(--tx-2);
-    vertical-align: top;
-  }
-
-  .audit-table tr:last-child td {
-    border: none;
-  }
-
-  .audit-table tr:hover td {
-    background: rgba(255, 255, 255, .02);
-  }
-
-  /* ── Badges ── */
-  .badge {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 12px;
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .05em;
-    font-family: 'DM Mono', monospace;
-  }
-
-  .badge-system {
-    background: rgba(255, 255, 255, .06);
-    color: #8a97b8;
-  }
-
-  .badge-admin {
-    background: rgba(37, 99, 235, .15);
-    color: var(--blue);
-  }
-
-  .badge-risk {
-    background: rgba(167, 139, 250, .15);
-    color: #a78bfa;
-  }
-
-  .badge-analyst {
-    background: rgba(34, 197, 94, .15);
-    color: #22c55e;
-  }
-
-  .badge-override {
-    background: rgba(239, 68, 68, .15);
-    border: 1px solid rgba(239, 68, 68, .3);
-    color: #ef4444;
-  }
-
-  .verdict-repay {
-    color: #22c55e;
-    font-weight: 700;
-  }
-
-  .verdict-review {
-    color: #f59e0b;
-    font-weight: 700;
-  }
-
-  .verdict-default {
-    color: #ef4444;
-    font-weight: 700;
-  }
-
-  .cell-meta {
-    font-size: 11px;
-    color: var(--tx-3);
-    font-family: 'DM Mono', monospace;
-    margin-top: 4px;
-  }
+.cell-meta { font-size: 11px; color: var(--tx-3); font-family: 'DM Mono', monospace; margin-top: 4px; }
 </style>
 {% endblock %}
 
@@ -154,8 +60,7 @@
         <div class="audit-title">System Decision Logs</div>
         <div class="audit-sub">Showing the most recent assessments across all users and API clients.</div>
       </div>
-      <button onclick="window.print()" class="btn-ghost"
-        style="border: 1px solid var(--border); padding: 6px 14px; border-radius: 6px;">🖨 Export PDF</button>
+      <button onclick="window.print()" class="btn-ghost" style="border: 1px solid var(--border); padding: 6px 14px; border-radius: 6px;">🖨 Export PDF</button>
     </div>
     <div class="audit-table-wrap">
       <table class="audit-table">
@@ -176,53 +81,46 @@
               {{ r.timestamp[:10] }}<br>
               <span class="cell-meta">{{ r.timestamp[11:19] }}</span>
             </td>
-
+            
             <!-- Officer -->
             <td>
-              <div style="font-weight: 600; color: var(--tx-1); margin-bottom: 4px;">{{ r.get('user_email',
-                'system_api') }}</div>
+              <div style="font-weight: 600; color: var(--tx-1); margin-bottom: 4px;">{{ r.get('user_email', 'system_api') }}</div>
               {% set role = r.get('user_role', 'system') %}
-              <span
-                class="badge {% if role == 'admin' %}badge-admin{% elif role == 'risk_manager' %}badge-risk{% elif role == 'analyst' %}badge-analyst{% else %}badge-system{% endif %}">
+              <span class="badge {% if role == 'admin' %}badge-admin{% elif role == 'risk_manager' %}badge-risk{% elif role == 'analyst' %}badge-analyst{% else %}badge-system{% endif %}">
                 {{ role | replace('_', ' ') }}
               </span>
             </td>
-
+            
             <!-- Borrower Inputs -->
             <td>
               <div style="font-weight: 600; color: var(--tx-1); margin-bottom: 4px;">{{ r.borrower }}</div>
               <div class="cell-meta">
-                Amt: ${{ "{:,.0f}".format(r.loan_amnt) }} | FICO: {{ r.fico | int }} | Inc: ${{
-                "{:,.0f}".format(r.annual_inc) }}<br>
+                Amt: ${{ "{:,.0f}".format(r.loan_amnt) }} | FICO: {{ r.fico | int }} | Inc: ${{ "{:,.0f}".format(r.annual_inc) }}<br>
                 {{ r.purpose.replace('_', ' ').title() }}
               </div>
             </td>
-
+            
             <!-- Model Output -->
             <td>
-              <div style="font-weight: 600; color: var(--tx-1); margin-bottom: 4px;">{{ r.probability }}% Default Risk
-              </div>
+              <div style="font-weight: 600; color: var(--tx-1); margin-bottom: 4px;">{{ r.probability }}% Default Risk</div>
               <div class="cell-meta" style="color: {{ r.color }}">
                 {{ r.risk_level }}
               </div>
             </td>
-
+            
             <!-- Final Decision -->
             <td>
               {% set verdict_lower = r.verdict | lower %}
               {% set vclass = 'verdict-review' %}
-              {% if 'repay' in verdict_lower or 'approve' in verdict_lower %}{% set vclass = 'verdict-repay' %}{% endif
-              %}
-              {% if 'default' in verdict_lower or 'decline' in verdict_lower %}{% set vclass = 'verdict-default' %}{%
-              endif %}
-
+              {% if 'repay' in verdict_lower or 'approve' in verdict_lower %}{% set vclass = 'verdict-repay' %}{% endif %}
+              {% if 'default' in verdict_lower or 'decline' in verdict_lower %}{% set vclass = 'verdict-default' %}{% endif %}
+              
               <div class="{{ vclass }}" style="margin-bottom: 4px;">{{ r.verdict }}</div>
-
+              
               {% if r.get('show_warning') and 'OVERRIDE' in r.get('risk_level', '') %}
               <span class="badge badge-override">⚠ Manual Override</span>
               {% else %}
-              <a href="/reports/{{ r.id }}" target="_blank"
-                style="color:var(--blue);text-decoration:none;font-weight:600;font-size:11px">View Report ↗</a>
+              <a href="/reports/{{ r.id }}" target="_blank" style="color:var(--gold);text-decoration:none;font-weight:600;font-size:11px">View Report ↗</a>
               {% endif %}
             </td>
           </tr>

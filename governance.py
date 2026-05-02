@@ -1,8 +1,11 @@
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 
-AUDIT_LOG_PATH = "logs/audit_log.json"
+# Use absolute path so it works regardless of CWD (same fix as Bug #7)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+AUDIT_LOG_PATH = os.path.join(BASE_DIR, "logs", "audit_log.json")
 
 def log_decision(record):
     Path(AUDIT_LOG_PATH).parent.mkdir(parents=True, exist_ok=True)
