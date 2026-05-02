@@ -1,5 +1,9 @@
 /* ═══════════════════════════════════════════════════════════════
+<<<<<<< HEAD
    Ministry of Banking — UI Script
+=======
+   Ministry of Banking — AegisBank
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
 ═══════════════════════════════════════════════════════════════ */
 
 document.addEventListener("DOMContentLoaded", () => {

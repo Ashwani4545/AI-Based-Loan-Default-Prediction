@@ -27,6 +27,17 @@ Financial institutions face key challenges in loan risk assessment:
 - **Model Drift** — Real-world prediction performance degrades over time
 - **Regulatory Compliance** — AI systems must be transparent and auditable
 
+<<<<<<< HEAD
+=======
+or
+
+- **Continuous Learning Engine** -
+- **Intrinsic Explainability Core** -
+- **Alternative Data Intelligence** -
+- **Borrower Intervention System** -
+- **Regulatory & Bias Monitoring** - 
+
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
 **Objective:** Develop a fair, explainable, and stable AI-based loan default prediction system.
 
 ---

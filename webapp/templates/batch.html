@@ -2,6 +2,7 @@
 {% block title %}Batch Upload{% endblock %}
 {% block head %}
 <style>
+<<<<<<< HEAD
   .drop-zone {
     border: 2px dashed var(--blue-border);
     border-radius: var(--radius);
@@ -163,6 +164,49 @@
   .dl-btn:hover {
     background: var(--blue-lt);
   }
+=======
+.drop-zone {
+  border: 2px dashed var(--gold-border); border-radius: var(--radius);
+  padding: 60px 40px; text-align: center; cursor: pointer;
+  transition: border-color .2s, background .2s;
+  background: var(--navy-2); margin-bottom: 24px;
+}
+.drop-zone.drag-over { border-color: var(--gold); background: var(--gold-dim); }
+.drop-icon { font-size: 44px; margin-bottom: 14px; }
+.drop-title { font-family:'Syne',sans-serif; font-weight:700; font-size:18px; color:var(--tx-1); margin-bottom:6px; }
+.drop-sub { font-size:13px; color:var(--tx-3); margin-bottom:20px; }
+.drop-btn {
+  display:inline-flex; align-items:center; gap:8px;
+  background:var(--gold-dim); border:1px solid var(--gold-border);
+  color:var(--gold); font-family:'Syne',sans-serif; font-weight:700; font-size:13px;
+  padding:9px 22px; border-radius:8px; cursor:pointer; transition:background .18s;
+}
+.drop-btn:hover { background:rgba(201,168,76,.22); }
+
+.progress-bar-wrap { background:rgba(255,255,255,.06); border-radius:20px; height:8px; margin-bottom:8px; overflow:hidden; display:none; }
+.progress-bar-fill { height:100%; background:linear-gradient(90deg,#c9a84c,#e2c26e); border-radius:20px; width:0; transition:width .3s ease; }
+.progress-label { font-family:'DM Mono',monospace; font-size:11px; color:var(--tx-3); margin-bottom:20px; display:none; }
+
+.batch-table-wrap { overflow-x:auto; }
+.batch-table { width:100%; border-collapse:collapse; font-size:13px; }
+.batch-table th { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--tx-3); padding:10px 14px; text-align:left; border-bottom:1px solid var(--border); }
+.batch-table td { padding:11px 14px; border-bottom:1px solid rgba(255,255,255,.04); color:var(--tx-2); }
+.batch-table tr:hover td { background:rgba(255,255,255,.02); }
+.risk-pill { display:inline-block; padding:2px 10px; border-radius:12px; font-size:11px; font-weight:600; }
+.risk-low  { background:rgba(34,197,94,.12);  color:#22c55e; }
+.risk-med  { background:rgba(245,158,11,.12); color:#f59e0b; }
+.risk-high { background:rgba(239,68,68,.12);  color:#ef4444; }
+
+.batch-actions { display:flex; gap:12px; justify-content:flex-end; margin-top:18px; }
+.dl-btn {
+  display:inline-flex; align-items:center; gap:7px;
+  background:var(--gold); color:var(--navy-1);
+  font-family:'Syne',sans-serif; font-weight:700; font-size:13px;
+  padding:10px 22px; border-radius:8px; cursor:pointer;
+  border:none; text-decoration:none; transition:background .18s;
+}
+.dl-btn:hover { background:#e2c26e; }
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
 </style>
 {% endblock %}
 
@@ -177,11 +221,17 @@
 
 <div class="dash-shell">
   {% with messages = get_flashed_messages(with_categories=true) %}
+<<<<<<< HEAD
   {% for cat, msg in messages %}
   <div class="alert alert-{{ cat }}"
     style="margin-bottom:16px;padding:12px 16px;border-radius:var(--radius-sm);background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#fca5a5;font-size:13px;">
     {{ msg }}</div>
   {% endfor %}
+=======
+    {% for cat, msg in messages %}
+      <div class="alert alert-{{ cat }}" style="margin-bottom:16px;padding:12px 16px;border-radius:var(--radius-sm);background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#fca5a5;font-size:13px;">{{ msg }}</div>
+    {% endfor %}
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
   {% endwith %}
 
   <!-- Drop zone -->
@@ -211,11 +261,15 @@
         <table class="batch-table" id="resultsTable">
           <thead>
             <tr>
+<<<<<<< HEAD
               <th>#</th>
               <th>Row</th>
               <th>Probability</th>
               <th>Risk Level</th>
               <th>Decision</th>
+=======
+              <th>#</th><th>Row</th><th>Probability</th><th>Risk Level</th><th>Decision</th>
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
             </tr>
           </thead>
           <tbody id="resultsBody"></tbody>
@@ -233,8 +287,12 @@
       <span class="dash-card-title">📄 CSV Template</span>
       <span class="dash-card-sub">Download a sample CSV to see the required format</span>
     </div>
+<<<<<<< HEAD
     <p style="font-size:13px;color:var(--tx-3);margin-bottom:14px;">Your CSV must include columns for the core loan
       features. Download the template below to get started.</p>
+=======
+    <p style="font-size:13px;color:var(--tx-3);margin-bottom:14px;">Your CSV must include columns for the core loan features. Download the template below to get started.</p>
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
     <a href="/batch/template" class="dl-btn">⬇ Download Template CSV</a>
   </div>
 
@@ -243,6 +301,7 @@
 
 {% block scripts %}
 <script>
+<<<<<<< HEAD
   const drop = document.getElementById('dropZone');
   const input = document.getElementById('csvInput');
 
@@ -319,3 +378,81 @@
   }
 </script>
 {% endblock %}
+=======
+const drop = document.getElementById('dropZone');
+const input = document.getElementById('csvInput');
+
+drop.addEventListener('dragover', function(e){ e.preventDefault(); drop.classList.add('drag-over'); });
+drop.addEventListener('dragleave', function(){ drop.classList.remove('drag-over'); });
+drop.addEventListener('drop', function(e){
+  e.preventDefault(); drop.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.name.endsWith('.csv')) processFile(file);
+});
+input.addEventListener('change', function(){ if (this.files[0]) processFile(this.files[0]); });
+
+function processFile(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const lines = e.target.result.split('\n').filter(Boolean);
+    simulateBatchProcess(lines);
+  };
+  reader.readAsText(file);
+}
+
+function simulateBatchProcess(lines) {
+  const total = Math.min(lines.length - 1, 50); // skip header, cap at 50 rows
+  document.getElementById('progressWrap').style.display = 'block';
+  document.getElementById('progressLabel').style.display = 'block';
+  document.getElementById('resultsSection').style.display = 'none';
+
+  const results = [];
+  let done = 0;
+
+  const timer = setInterval(function() {
+    if (done >= total) {
+      clearInterval(timer);
+      renderResults(results);
+      return;
+    }
+    done++;
+    const pct = Math.round(done / total * 100);
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressLabel').textContent = 'Processing ' + done + ' / ' + total + ' rows...';
+
+    // Simulate risk score for each row
+    const prob = Math.random();
+    const risk = prob < 0.3 ? 'LOW RISK' : prob < 0.6 ? 'MEDIUM RISK' : 'HIGH RISK';
+    const verdict = prob < 0.3 ? 'Approve' : prob < 0.6 ? 'Review' : 'Decline';
+    results.push({ row: done, prob: prob, risk: risk, verdict: verdict });
+  }, 80);
+}
+
+function renderResults(results) {
+  const body = document.getElementById('resultsBody');
+  body.innerHTML = '';
+  results.forEach(function(r, i) {
+    const cls = r.risk === 'LOW RISK' ? 'risk-low' : r.risk === 'MEDIUM RISK' ? 'risk-med' : 'risk-high';
+    body.innerHTML += '<tr><td>' + (i+1) + '</td><td>Row ' + r.row + '</td><td>' +
+      (r.prob*100).toFixed(1) + '%</td><td><span class="risk-pill ' + cls + '">' +
+      r.risk + '</span></td><td>' + r.verdict + '</td></tr>';
+  });
+  document.getElementById('resultCount').textContent = results.length + ' applicants scored';
+  document.getElementById('resultsSection').style.display = 'block';
+
+  // Download button
+  document.getElementById('downloadBtn').addEventListener('click', function() {
+    let csv = 'Row,Probability,Risk Level,Decision\n';
+    results.forEach(function(r) {
+      csv += 'Row ' + r.row + ',' + (r.prob*100).toFixed(2) + '%,' + r.risk + ',' + r.verdict + '\n';
+    });
+    const blob = new Blob([csv], {type:'text/csv'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'aegisbank_batch_results.csv';
+    a.click();
+  });
+}
+</script>
+{% endblock %}
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67

@@ -28,7 +28,11 @@
         <div class="field">
           <label>Borrower Name <span class="optional">(optional)</span></label>
           <input type="text" name="borrower_name" placeholder="e.g. John Smith"
+<<<<<<< HEAD
             value="{{ form_data.borrower_name if form_data else '' }}">
+=======
+                 value="{{ form_data.borrower_name if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
       </div>
     </div>
@@ -40,38 +44,60 @@
         <div class="field">
           <label>Loan Amount ($) <span class="req">*</span></label>
           <input type="number" name="loan_amnt" required min="500" step="100" placeholder="e.g. 10000"
+<<<<<<< HEAD
             value="{{ form_data.loan_amnt if form_data else '' }}">
+=======
+                 value="{{ form_data.loan_amnt if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
         <div class="field">
           <label>Term <span class="req">*</span></label>
           <select name="term" required>
             <option value="" disabled {% if not form_data %}selected{% endif %}>-- Select --</option>
+<<<<<<< HEAD
             <option value="36_months" {% if (form_data.term if form_data else '' )=='36_months' %}selected{% endif %}>36
               Months</option>
             <option value="60_months" {% if (form_data.term if form_data else '' )=='60_months' %}selected{% endif %}>60
               Months</option>
+=======
+            <option value="36_months" {% if (form_data.term if form_data else '') == '36_months' %}selected{% endif %}>36 Months</option>
+            <option value="60_months" {% if (form_data.term if form_data else '') == '60_months' %}selected{% endif %}>60 Months</option>
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
           </select>
         </div>
         <div class="field">
           <label>Interest Rate (%) <span class="req">*</span></label>
           <input type="number" name="int_rate" required min="0" max="30" step="0.1" placeholder="e.g. 12.5"
+<<<<<<< HEAD
             value="{{ form_data.int_rate if form_data else '' }}">
+=======
+                 value="{{ form_data.int_rate if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
       </div>
       <div class="field-row">
         <div class="field">
           <label>Monthly Installment ($)</label>
           <input type="number" name="installment" min="0" step="10" placeholder="e.g. 250"
+<<<<<<< HEAD
             value="{{ form_data.installment if form_data else '' }}">
+=======
+                 value="{{ form_data.installment if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
         <div class="field">
           <label>Purpose <span class="req">*</span></label>
           <select name="purpose" required>
             <option value="" disabled {% if not form_data %}selected{% endif %}>-- Select --</option>
+<<<<<<< HEAD
             {% for p in
             ['debt_consolidation','credit_card','home_improvement','major_purchase','medical','moving','vacation','wedding','house','other']
             %}
             <option value="{{ p }}" {% if (form_data.purpose if form_data else '' )==p %}selected{% endif %}>
+=======
+            {% for p in ['debt_consolidation','credit_card','home_improvement','major_purchase','medical','moving','vacation','wedding','house','other'] %}
+            <option value="{{ p }}" {% if (form_data.purpose if form_data else '') == p %}selected{% endif %}>
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
               {{ p.replace('_',' ').title() }}
             </option>
             {% endfor %}
@@ -81,10 +107,15 @@
           <label>Initial List Status</label>
           <select name="initial_list_status">
             <option value="" disabled {% if not form_data %}selected{% endif %}>-- Select --</option>
+<<<<<<< HEAD
             <option value="w" {% if (form_data.initial_list_status if form_data else '' )=='w' %}selected{% endif %}>
               Whole</option>
             <option value="f" {% if (form_data.initial_list_status if form_data else '' )=='f' %}selected{% endif %}>
               Fractional</option>
+=======
+            <option value="w" {% if (form_data.initial_list_status if form_data else '') == 'w' %}selected{% endif %}>Whole</option>
+            <option value="f" {% if (form_data.initial_list_status if form_data else '') == 'f' %}selected{% endif %}>Fractional</option>
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
           </select>
         </div>
       </div>
@@ -97,34 +128,58 @@
         <div class="field">
           <label>Annual Income ($) <span class="req">*</span></label>
           <input type="number" name="annual_inc" required min="1" step="1000" placeholder="e.g. 60000"
+<<<<<<< HEAD
             value="{{ form_data.annual_inc if form_data else '' }}">
+=======
+                 value="{{ form_data.annual_inc if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
         <div class="field">
           <label>Debt-to-Income Ratio</label>
           <input type="number" name="dti" min="0" max="100" step="0.01" placeholder="e.g. 15.5"
+<<<<<<< HEAD
             value="{{ form_data.dti if form_data else '' }}">
+=======
+                 value="{{ form_data.dti if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
         <div class="field">
           <label>FICO Score (Low) <span class="req">*</span></label>
           <input type="number" name="fico_range_low" required min="300" max="850" placeholder="e.g. 680"
+<<<<<<< HEAD
             value="{{ form_data.fico_range_low if form_data else '' }}">
+=======
+                 value="{{ form_data.fico_range_low if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
       </div>
       <div class="field-row">
         <div class="field">
           <label>FICO Score (High)</label>
           <input type="number" name="fico_range_high" min="300" max="850" placeholder="e.g. 690"
+<<<<<<< HEAD
             value="{{ form_data.fico_range_high if form_data else '' }}">
+=======
+                 value="{{ form_data.fico_range_high if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
         <div class="field">
           <label>Revolving Balance ($)</label>
           <input type="number" name="revol_bal" min="0" step="100" placeholder="e.g. 5000"
+<<<<<<< HEAD
             value="{{ form_data.revol_bal if form_data else '' }}">
+=======
+                 value="{{ form_data.revol_bal if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
         <div class="field">
           <label>Revolving Utilization (%)</label>
           <input type="number" name="revol_util" min="0" max="100" step="1" placeholder="e.g. 30"
+<<<<<<< HEAD
             value="{{ form_data.revol_util if form_data else '' }}">
+=======
+                 value="{{ form_data.revol_util if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
       </div>
     </div>
@@ -136,97 +191,165 @@
         <div class="field">
           <label>Open Accounts</label>
           <input type="number" name="open_acc" min="0" step="1" placeholder="e.g. 8"
+<<<<<<< HEAD
             value="{{ form_data.open_acc if form_data else '' }}">
+=======
+                 value="{{ form_data.open_acc if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
         <div class="field">
           <label>Total Accounts</label>
           <input type="number" name="total_acc" min="0" step="1" placeholder="e.g. 20"
+<<<<<<< HEAD
             value="{{ form_data.total_acc if form_data else '' }}">
+=======
+                 value="{{ form_data.total_acc if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
         <div class="field">
           <label>Delinquencies (2 yrs)</label>
           <input type="number" name="delinq_2yrs" min="0" step="1" placeholder="e.g. 0"
+<<<<<<< HEAD
             value="{{ form_data.delinq_2yrs if form_data else '' }}">
+=======
+                 value="{{ form_data.delinq_2yrs if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
       </div>
       <div class="field-row">
         <div class="field">
           <label>Inquiries (Last 6 mo)</label>
           <input type="number" name="inq_last_6mths" min="0" placeholder="e.g. 1"
+<<<<<<< HEAD
             value="{{ form_data.inq_last_6mths if form_data else '' }}">
+=======
+                 value="{{ form_data.inq_last_6mths if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
         <div class="field">
           <label>Public Records</label>
           <input type="number" name="pub_rec" min="0" placeholder="e.g. 0"
+<<<<<<< HEAD
             value="{{ form_data.pub_rec if form_data else '' }}">
+=======
+                 value="{{ form_data.pub_rec if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
         <div class="field">
           <label>Bankruptcies</label>
           <input type="number" name="pub_rec_bankruptcies" min="0" placeholder="e.g. 0"
+<<<<<<< HEAD
             value="{{ form_data.pub_rec_bankruptcies if form_data else '' }}">
+=======
+                 value="{{ form_data.pub_rec_bankruptcies if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
       </div>
       <div class="field-row">
         <div class="field">
           <label>Tax Liens</label>
           <input type="number" name="tax_liens" min="0" placeholder="e.g. 0"
+<<<<<<< HEAD
             value="{{ form_data.tax_liens if form_data else '' }}">
+=======
+                 value="{{ form_data.tax_liens if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
         <div class="field">
           <label>Collections (12 mo)</label>
           <input type="number" name="collections_12_mths_ex_med" min="0" placeholder="e.g. 0"
+<<<<<<< HEAD
             value="{{ form_data.collections_12_mths_ex_med if form_data else '' }}">
+=======
+                 value="{{ form_data.collections_12_mths_ex_med if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
         <div class="field">
           <label>Accounts Now Delinq</label>
           <input type="number" name="acc_now_delinq" min="0" placeholder="e.g. 0"
+<<<<<<< HEAD
             value="{{ form_data.acc_now_delinq if form_data else '' }}">
+=======
+                 value="{{ form_data.acc_now_delinq if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
       </div>
       <div class="field-row">
         <div class="field">
           <label>Tot. Collection Amt ($)</label>
           <input type="number" name="tot_coll_amt" min="0" step="100" placeholder="e.g. 0"
+<<<<<<< HEAD
             value="{{ form_data.tot_coll_amt if form_data else '' }}">
+=======
+                 value="{{ form_data.tot_coll_amt if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
         <div class="field">
           <label>Tot. Current Balance ($)</label>
           <input type="number" name="tot_cur_bal" min="0" step="100" placeholder="e.g. 15000"
+<<<<<<< HEAD
             value="{{ form_data.tot_cur_bal if form_data else '' }}">
+=======
+                 value="{{ form_data.tot_cur_bal if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
         <div class="field">
           <label>Avg. Current Balance ($)</label>
           <input type="number" name="avg_cur_bal" min="0" step="100" placeholder="e.g. 5000"
+<<<<<<< HEAD
             value="{{ form_data.avg_cur_bal if form_data else '' }}">
+=======
+                 value="{{ form_data.avg_cur_bal if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
       </div>
       <div class="field-row">
         <div class="field">
           <label>BC Open to Buy ($)</label>
           <input type="number" name="bc_open_to_buy" min="0" step="100" placeholder="e.g. 2000"
+<<<<<<< HEAD
             value="{{ form_data.bc_open_to_buy if form_data else '' }}">
+=======
+                 value="{{ form_data.bc_open_to_buy if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
         <div class="field">
           <label>BC Utilization (%)</label>
           <input type="number" name="bc_util" min="0" max="100" placeholder="e.g. 40"
+<<<<<<< HEAD
             value="{{ form_data.bc_util if form_data else '' }}">
+=======
+                 value="{{ form_data.bc_util if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
         <div class="field">
           <label>Num Active BC</label>
           <input type="number" name="num_actv_bc_tl" min="0" placeholder="e.g. 2"
+<<<<<<< HEAD
             value="{{ form_data.num_actv_bc_tl if form_data else '' }}">
+=======
+                 value="{{ form_data.num_actv_bc_tl if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
       </div>
       <div class="field-row">
         <div class="field">
           <label>Num Revolving Accts</label>
           <input type="number" name="num_rev_accts" min="0" placeholder="e.g. 5"
+<<<<<<< HEAD
             value="{{ form_data.num_rev_accts if form_data else '' }}">
+=======
+                 value="{{ form_data.num_rev_accts if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
         <div class="field">
           <label>% BC > 75%</label>
           <input type="number" name="percent_bc_gt_75" min="0" max="100" placeholder="e.g. 25"
+<<<<<<< HEAD
             value="{{ form_data.percent_bc_gt_75 if form_data else '' }}">
+=======
+                 value="{{ form_data.percent_bc_gt_75 if form_data else '' }}">
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         </div>
         <div class="field"></div>
       </div>
@@ -241,8 +364,12 @@
           <select name="grade" required>
             <option value="" disabled {% if not form_data %}selected{% endif %}>-- Select --</option>
             {% for g in ['A','B','C','D','E','F','G'] %}
+<<<<<<< HEAD
             <option value="{{ g }}" {% if (form_data.grade if form_data else '' )==g %}selected{% endif %}>{{ g }}
             </option>
+=======
+            <option value="{{ g }}" {% if (form_data.grade if form_data else '') == g %}selected{% endif %}>{{ g }}</option>
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
             {% endfor %}
           </select>
         </div>
@@ -250,11 +377,16 @@
           <label>Sub Grade</label>
           <select name="sub_grade">
             <option value="" disabled {% if not form_data %}selected{% endif %}>-- Select --</option>
+<<<<<<< HEAD
             {% for sg in
             ['A1','A2','A3','A4','A5','B1','B2','B3','B4','B5','C1','C2','C3','C4','C5','D1','D2','D3','D4','D5','E1','E2','E3','E4','E5','F1','F2','F3','F4','F5','G1','G2','G3','G4','G5']
             %}
             <option value="{{ sg }}" {% if (form_data.sub_grade if form_data else '' )==sg %}selected{% endif %}>{{ sg
               }}</option>
+=======
+            {% for sg in ['A1','A2','A3','A4','A5','B1','B2','B3','B4','B5','C1','C2','C3','C4','C5','D1','D2','D3','D4','D5','E1','E2','E3','E4','E5','F1','F2','F3','F4','F5','G1','G2','G3','G4','G5'] %}
+            <option value="{{ sg }}" {% if (form_data.sub_grade if form_data else '') == sg %}selected{% endif %}>{{ sg }}</option>
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
             {% endfor %}
           </select>
         </div>
@@ -262,12 +394,20 @@
           <label>Employment Length</label>
           <select name="emp_length">
             <option value="" disabled {% if not form_data %}selected{% endif %}>-- Select --</option>
+<<<<<<< HEAD
             {% for e in ['
             <1_year','1_year','2_years','3_years','4_years','5_years','6_years','7_years','8_years','9_years','10+_years']
               %} <option value="{{ e }}" {% if (form_data.emp_length if form_data else '' )==e %}selected{% endif %}>
               {{ e.replace('_',' ') }}
               </option>
               {% endfor %}
+=======
+            {% for e in ['<1_year','1_year','2_years','3_years','4_years','5_years','6_years','7_years','8_years','9_years','10+_years'] %}
+            <option value="{{ e }}" {% if (form_data.emp_length if form_data else '') == e %}selected{% endif %}>
+              {{ e.replace('_',' ') }}
+            </option>
+            {% endfor %}
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
           </select>
         </div>
       </div>
@@ -277,7 +417,11 @@
           <select name="home_ownership">
             <option value="" disabled {% if not form_data %}selected{% endif %}>-- Select --</option>
             {% for h in ['MORTGAGE','OWN','RENT','OTHER'] %}
+<<<<<<< HEAD
             <option value="{{ h }}" {% if (form_data.home_ownership if form_data else '' )==h %}selected{% endif %}>
+=======
+            <option value="{{ h }}" {% if (form_data.home_ownership if form_data else '') == h %}selected{% endif %}>
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
               {{ h.title() }}
             </option>
             {% endfor %}
@@ -288,8 +432,12 @@
           <select name="verification_status">
             <option value="" disabled {% if not form_data %}selected{% endif %}>-- Select --</option>
             {% for v in ['Verified','Source_Verified','Not_Verified'] %}
+<<<<<<< HEAD
             <option value="{{ v }}" {% if (form_data.verification_status if form_data else '' )==v %}selected{% endif
               %}>
+=======
+            <option value="{{ v }}" {% if (form_data.verification_status if form_data else '') == v %}selected{% endif %}>
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
               {{ v.replace('_',' ') }}
             </option>
             {% endfor %}
@@ -299,11 +447,16 @@
           <label>Address State</label>
           <select name="addr_state">
             <option value="" disabled {% if not form_data %}selected{% endif %}>-- Select --</option>
+<<<<<<< HEAD
             {% for s in
             ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY']
             %}
             <option value="{{ s }}" {% if (form_data.addr_state if form_data else '' )==s %}selected{% endif %}>{{ s }}
             </option>
+=======
+            {% for s in ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'] %}
+            <option value="{{ s }}" {% if (form_data.addr_state if form_data else '') == s %}selected{% endif %}>{{ s }}</option>
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
             {% endfor %}
           </select>
         </div>
@@ -323,6 +476,7 @@
 </div>
 
 <!-- ── PROCESSING MODAL ── -->
+<<<<<<< HEAD
 <div id="processingModal"
   style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(13,21,38,0.9); z-index:9999; flex-direction:column; align-items:center; justify-content:center; backdrop-filter: blur(4px);">
   <div
@@ -336,16 +490,29 @@
       Initializing...</div>
     <div style="width:100%; height:4px; background:rgba(255,255,255,0.05); border-radius:2px; overflow:hidden;">
       <div id="progressBar" style="width:0%; height:100%; background:var(--blue); transition:width 0.4s ease;"></div>
+=======
+<div id="processingModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(13,21,38,0.9); z-index:9999; flex-direction:column; align-items:center; justify-content:center; backdrop-filter: blur(4px);">
+  <div style="background:var(--card); border:1px solid var(--border); padding:40px; border-radius:12px; text-align:center; max-width:400px; width:100%; box-shadow: 0 20px 40px rgba(0,0,0,0.4);">
+    <div style="display: inline-block; width: 36px; height: 36px; border: 3px solid rgba(201,168,76,.2); border-top-color: var(--gold); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
+    <h3 style="font-family:'Syne',sans-serif; color:var(--tx-1); margin-bottom:10px;">AI Risk Analysis</h3>
+    <div id="progressStep" style="font-family:'DM Mono',monospace; color:var(--gold); font-size:14px; margin-bottom:24px; min-height: 20px;">Initializing...</div>
+    <div style="width:100%; height:4px; background:rgba(255,255,255,0.05); border-radius:2px; overflow:hidden;">
+      <div id="progressBar" style="width:0%; height:100%; background:var(--gold); transition:width 0.4s ease;"></div>
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
     </div>
   </div>
 </div>
 
 <style>
+<<<<<<< HEAD
   @keyframes spin {
     to {
       transform: rotate(360deg);
     }
   }
+=======
+@keyframes spin { to { transform: rotate(360deg); } }
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
 </style>
 
 {% endblock %}
@@ -359,7 +526,11 @@
   const progressStep = document.getElementById('progressStep');
   const progressBar = document.getElementById('progressBar');
 
+<<<<<<< HEAD
   form.addEventListener('submit', function (e) {
+=======
+  form.addEventListener('submit', function(e) {
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
     e.preventDefault();
     modal.style.display = 'flex';
     progressStep.innerText = 'Connecting to AI Engine...';
@@ -372,16 +543,28 @@
     socket.emit('submit_prediction', data);
   });
 
+<<<<<<< HEAD
   socket.on('progress', function (data) {
+=======
+  socket.on('progress', function(data) {
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
     progressStep.innerText = data.step;
     progressBar.style.width = data.percent + '%';
   });
 
+<<<<<<< HEAD
   socket.on('prediction_complete', function (data) {
     window.location.href = '/result/' + data.record_id;
   });
 
   socket.on('prediction_error', function (data) {
+=======
+  socket.on('prediction_complete', function(data) {
+    window.location.href = '/result/' + data.record_id;
+  });
+
+  socket.on('prediction_error', function(data) {
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
     modal.style.display = 'none';
     alert("Error: " + (data.error || 'An error occurred during prediction.'));
   });

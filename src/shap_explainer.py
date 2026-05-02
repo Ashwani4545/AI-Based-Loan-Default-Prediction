@@ -67,6 +67,7 @@ class LoanModelExplainer:
         self.shap = importlib.import_module("shap") if self.has_shap else None
 
         if self.has_shap:
+<<<<<<< HEAD
             # Use TreeExplainer for tree-based models (XGBoost, RF) — much faster
             # than the generic shap.Explainer which may use slow KernelSHAP.
             try:
@@ -75,10 +76,25 @@ class LoanModelExplainer:
             except Exception:
                 self.explainer = self.shap.Explainer(self.model)
                 log.info("SHAP generic Explainer initialised ✅ (fallback)")
+=======
+            self.explainer = self.shap.Explainer(self.model)
+            log.info("SHAP explainer initialised ✅")
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         else:
             self.explainer = None
             log.warning("SHAP is not installed; using feature-importance fallback for explanations.")
 
+<<<<<<< HEAD
+=======
+    def reload(self, model_path: str = None):
+        """Reload model from disk (call after retraining) — Bug #14 fix."""
+        path = model_path or MODEL_PATH
+        self.model = joblib.load(path)
+        if self.has_shap:
+            self.explainer = self.shap.Explainer(self.model)
+        log.info("SHAP explainer reloaded ✅")
+
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
     def _fallback_importances(self, columns: pd.Index) -> np.ndarray:
         try:
             if hasattr(self.model, "feature_importances_"):
@@ -221,6 +237,7 @@ class LoanModelExplainer:
 
     def check_group_bias(self, input_data: dict):
         """
+<<<<<<< HEAD
         Check potential bias patterns using available financial data.
         FIX Bug 10: removed 'gender' check — gender is never collected in the
         form so that branch was permanently dead code. Using income/loan ratio
@@ -240,6 +257,23 @@ class LoanModelExplainer:
         return "✅ No bias pattern detected"
 
     def validate_sensitive_features(self, input_data: dict):
+=======
+        Check bias using available attributes (income, state, etc.).
+        Bug #10 fix: removed 'gender' check — field is never in the form.
+        """
+        income = float(input_data.get("annual_inc", 0) or 0)
+        state = input_data.get("addr_state", "")
+
+        # Flag low-income borrowers for bias review
+        if income < 20000 and state:
+            return "⚠️ Potential bias risk: low-income borrower"
+
+        return "✅ No bias detected"
+
+    def validate_sensitive_features(self, input_data: dict):
+        # NOTE: gender, race, religion are never collected in the form,
+        # so this check is informational only for API usage.
+>>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         sensitive_fields = ["gender", "race", "religion"]
 
         warnings = []
