@@ -67,38 +67,45 @@ class LoanModelExplainer:
         self.shap = importlib.import_module("shap") if self.has_shap else None
 
         if self.has_shap:
-<<<<<<< HEAD
             # Use TreeExplainer for tree-based models (XGBoost, RF) — much faster
             # than the generic shap.Explainer which may use slow KernelSHAP.
             try:
                 self.explainer = self.shap.TreeExplainer(self.model)
                 log.info("SHAP TreeExplainer initialised ✅ (fast path)")
             except Exception:
-                self.explainer = self.shap.Explainer(self.model)
-                log.info("SHAP generic Explainer initialised ✅ (fallback)")
-=======
-            self.explainer = self.shap.Explainer(self.model)
-            log.info("SHAP explainer initialised ✅")
->>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
+                try:
+                    self.explainer = self.shap.Explainer(self.model)
+                    log.info("SHAP generic Explainer initialised ✅ (fallback)")
+                except Exception:
+                    self.explainer = None
+                    log.info("SHAP explainer initialization deferred until data is available.")
         else:
             self.explainer = None
             log.warning("SHAP is not installed; using feature-importance fallback for explanations.")
 
-<<<<<<< HEAD
-=======
     def reload(self, model_path: str = None):
         """Reload model from disk (call after retraining) — Bug #14 fix."""
         path = model_path or MODEL_PATH
         self.model = joblib.load(path)
         if self.has_shap:
-            self.explainer = self.shap.Explainer(self.model)
-        log.info("SHAP explainer reloaded ✅")
-
->>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
+            try:
+                self.explainer = self.shap.TreeExplainer(self.model)
+                log.info("SHAP TreeExplainer reloaded ✅ (fast path)")
+            except Exception:
+                try:
+                    self.explainer = self.shap.Explainer(self.model)
+                    log.info("SHAP generic Explainer reloaded ✅ (fallback)")
+                except Exception:
+                    self.explainer = None
+                    log.info("SHAP explainer initialization deferred until data is available.")
     def _fallback_importances(self, columns: pd.Index) -> np.ndarray:
         try:
             if hasattr(self.model, "feature_importances_"):
                 importances = np.asarray(self.model.feature_importances_, dtype=float)
+                if len(importances) == len(columns):
+                    return importances
+            if hasattr(self.model, "coef_"):
+                importances = np.abs(np.asarray(self.model.coef_)[0])
                 if len(importances) == len(columns):
                     return importances
             if hasattr(self.model, "get_booster"):
@@ -153,13 +160,28 @@ class LoanModelExplainer:
             log.info("SHAP unavailable; returning no SHAP values.")
             return None
 
+        if self.explainer is None:
+            try:
+                log.info("Initializing generic Explainer with background data...")
+                background = self.shap.maskers.Independent(X, max_samples=100)
+                self.explainer = self.shap.Explainer(self.model, background)
+                log.info("SHAP Explainer initialized with background data ✅")
+            except Exception as e:
+                log.warning(f"Could not initialize explainer with background data: {e}")
+                self.has_shap = False
+                return None
+
         log.info("Computing SHAP values for %d samples …", len(X))
         return self.explainer(X)
 
     def explain_single(self, input_df: pd.DataFrame):
         if self.has_shap:
-            shap_values = self.explainer(input_df)
-            importance = np.abs(shap_values.values[0])
+            if self.explainer is None:
+                log.warning("SHAP explainer not initialized (requires background data); falling back to feature importance.")
+                importance = np.abs(self._fallback_importances(input_df.columns))
+            else:
+                shap_values = self.explainer(input_df)
+                importance = np.abs(shap_values.values[0])
         else:
             importance = np.abs(self._fallback_importances(input_df.columns))
 
@@ -237,7 +259,6 @@ class LoanModelExplainer:
 
     def check_group_bias(self, input_data: dict):
         """
-<<<<<<< HEAD
         Check potential bias patterns using available financial data.
         FIX Bug 10: removed 'gender' check — gender is never collected in the
         form so that branch was permanently dead code. Using income/loan ratio
@@ -257,23 +278,8 @@ class LoanModelExplainer:
         return "✅ No bias pattern detected"
 
     def validate_sensitive_features(self, input_data: dict):
-=======
-        Check bias using available attributes (income, state, etc.).
-        Bug #10 fix: removed 'gender' check — field is never in the form.
-        """
-        income = float(input_data.get("annual_inc", 0) or 0)
-        state = input_data.get("addr_state", "")
-
-        # Flag low-income borrowers for bias review
-        if income < 20000 and state:
-            return "⚠️ Potential bias risk: low-income borrower"
-
-        return "✅ No bias detected"
-
-    def validate_sensitive_features(self, input_data: dict):
         # NOTE: gender, race, religion are never collected in the form,
         # so this check is informational only for API usage.
->>>>>>> 44ab82bb832d0cf735042468c185eb3463bf6a67
         sensitive_fields = ["gender", "race", "religion"]
 
         warnings = []
@@ -304,9 +310,12 @@ class LoanModelExplainer:
             sensitive_col = raw_df[sensitive_column]
 
         y_pred      = self.predict(X)
-        shap_values = self.generate_shap_values(X)
+        
+        # Subsample for SHAP to avoid Out-Of-Memory (OOM) errors on large datasets
+        X_shap = X.sample(n=min(1000, len(X)), random_state=42) if len(X) > 1000 else X
+        shap_values = self.generate_shap_values(X_shap)
 
-        self.save_summary_plot(shap_values, X, output_dir)
+        self.save_summary_plot(shap_values, X_shap, output_dir)
         self.save_force_plot(shap_values, index=0, output_dir=output_dir)
 
         # Fairness report

@@ -1,20 +1,20 @@
 {
-    "accuracy": 0.8076,
-    "precision": 0.6089,
-    "recall": 0.1044,
-    "f1_score": 0.1782,
-    "roc_auc": 0.7269,
-    "mse": 0.141643,
-    "rmse": 0.376355,
-    "mae": 0.282545,
-    "mape": 140654333347.5224,
-    "r2": 0.114399,
-    "profit": -49078590.0,
+    "accuracy": 0.8065,
+    "precision": 0.5541,
+    "recall": 0.2153,
+    "f1_score": 0.3102,
+    "roc_auc": 0.7101,
+    "mse": 0.146162,
+    "rmse": 0.382312,
+    "mae": 0.276371,
+    "mape": 136939056320.0893,
+    "r2": 0.093263,
+    "profit": -2551820.0,
     "confusion_matrix": {
-        "tn": 23601,
-        "fp": 402,
-        "fn": 5371,
-        "tp": 626
+        "tn": 1526,
+        "fp": 70,
+        "fn": 317,
+        "tp": 87
     },
-    "model_name": "random_forest"
+    "model_name": "xgboost"
 }
