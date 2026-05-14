@@ -1,0 +1,18 @@
+
+    ===== Loan Risk Report =====
+    
+    Borrower: AA
+    Loan Amount: 10000000000.0
+    
+    Probability of Default (PD): 100.0%
+    Risk Level: VERY HIGH RISK
+    
+    Decision: Decline
+    
+    Key Factors:
+    
+ - bc_open_to_buy: impact 0.0
+ - payment_capacity: impact 0.0
+ - annual_inc: impact 0.0
+ - avg_cur_bal: impact 0.0
+ - risk_score: impact 0.0

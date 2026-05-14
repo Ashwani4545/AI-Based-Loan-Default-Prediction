@@ -1,0 +1,18 @@
+
+    ===== Loan Risk Report =====
+    
+    Borrower: John Doe
+    Loan Amount: 15000.0
+    
+    Probability of Default (PD): 10.31%
+    Risk Level: LOW RISK
+    
+    Decision: Approve
+    
+    Key Factors:
+    
+ - int_rate: impact 0.5699
+ - risk_score: impact 0.3974
+ - open_acc_ratio: impact 0.3615
+ - installment_income_ratio: impact 0.2209
+ - avg_cur_bal: impact 0.2083

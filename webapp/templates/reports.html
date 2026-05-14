@@ -16,10 +16,14 @@ content %}
     {% for r in records %}
     <div class="report-card">
       <div class="rc-header">
+<<<<<<< HEAD
         <div
           class="rc-avatar"
           style="background: {{ r.color }}20; color: {{ r.color }}"
         >
+=======
+        <div class="rc-avatar" style="background: {{ r.color }}20; color: {{ r.color }}">
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
           {{ r.borrower[0].upper() if r.borrower else 'A' }}
         </div>
         <div class="rc-meta">
@@ -28,10 +32,15 @@ content %}
             {{ r.timestamp[:10] }} · {{ r.purpose.replace('_',' ').title() }}
           </div>
         </div>
+<<<<<<< HEAD
         <span
           class="risk-pill"
           style="color:{{ r.color }}; border-color:{{ r.color }}30; background:{{ r.color }}10; margin-left:auto"
         >
+=======
+        <span class="risk-pill"
+          style="color:{{ r.color }}; border-color:{{ r.color }}30; background:{{ r.color }}10; margin-left:auto">
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
           {{ r.risk_level }}
         </span>
       </div>
@@ -53,18 +62,26 @@ content %}
         </div>
         <div class="rc-stat">
           <div class="rc-stat-label">Verdict</div>
+<<<<<<< HEAD
           <div
             class="rc-stat-value {% if r.prediction == 0 %}color-green{% else %}color-red{% endif %}"
           >
+=======
+          <div class="rc-stat-value {% if r.prediction == 0 %}color-green{% else %}color-red{% endif %}">
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
             {% if r.prediction == 0 %}✅ Repay{% else %}⚠️ Default{% endif %}
           </div>
         </div>
       </div>
 
       <div class="rc-foot">
+<<<<<<< HEAD
         <a href="/reports/{{ r.id }}" class="btn btn-outline btn-sm"
           >View Full Report →</a
         >
+=======
+        <a href="/reports/{{ r.id }}" class="btn btn-outline btn-sm">View Full Report →</a>
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
       </div>
     </div>
     {% endfor %}

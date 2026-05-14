@@ -141,6 +141,7 @@ def _load_alternative_data(df: pd.DataFrame) -> pd.DataFrame:
     
     # Use synthetic as fallback or primary
     if not use_real_alternative_data:
+<<<<<<< HEAD
         log.info("Using placeholder (0) for alternative features — no real alternative data available.")
         log.info("FIX Bug 8: previously used np.random noise here which trained the model on garbage.")
         log.info("Now using 0 consistently — matches what inference sends when these fields are absent.")
@@ -151,12 +152,18 @@ def _load_alternative_data(df: pd.DataFrame) -> pd.DataFrame:
         df["digital_txn_count"]     = 0
         df["utility_payment_score"] = 0
         df["employment_stability"]  = 0
+=======
+        # Bug #8 fix: random noise features removed — they pollute the model.
+        # If real alternative data is needed, provide it via alternative_data.csv.
+        log.info("No real alternative data available — skipping alternative features")
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
     
     return df
 
 
 def load_and_preprocess():
     df = pd.read_csv(PROCESSED_DATA_PATH)
+<<<<<<< HEAD
     log.info("Loaded data: %s rows × %s cols", *df.shape)
 
     # Economic context features (static demo values)
@@ -168,6 +175,17 @@ def load_and_preprocess():
         df["unemployment_rate"] * 0.4 +
         df["interest_rate_env"] * 0.2
     )
+=======
+    log.info("Loaded data: %d rows — %d cols", len(df), len(df.columns))
+
+    # Subsample for speed in demo environment
+    df = df.sample(n=min(10000, len(df)), random_state=RANDOM_STATE)
+    log.info("Subsampled to %d rows for faster training", len(df))
+
+    # Bug #9 fix: Economic context features removed.
+    # Hardcoded constants (0.06, 0.08, 0.07) are identical for every row,
+    # so the model learns zero information from them.
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 
     # Load alternative credit data (real or synthetic)
     df = _load_alternative_data(df)

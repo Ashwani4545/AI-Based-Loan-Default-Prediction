@@ -21,11 +21,14 @@ import os
 import pickle
 import re
 import sys
+<<<<<<< HEAD
 import warnings
 
 # Suppress XGBoost pickling warning since we know it's safe
 warnings.filterwarnings("ignore", category=UserWarning, module="pickle")
 warnings.filterwarnings("ignore", category=UserWarning, module="xgboost")
+=======
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 import uuid
 import time
 import secrets
@@ -36,7 +39,11 @@ import joblib
 import numpy as np
 import pandas as pd
 import xgboost as xgb
+<<<<<<< HEAD
 from flask import Flask, jsonify, render_template, request, abort, redirect, url_for, session, flash, get_flashed_messages
+=======
+from flask import Flask, jsonify, render_template, request, abort, redirect, url_for, session, flash
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from flask_sqlalchemy import SQLAlchemy
@@ -59,7 +66,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from utils.config import (
     CHAMPION_MODEL_PATH, CHALLENGER_MODEL_PATH, MODEL_PATH, FEATURES_PATH, METRICS_PATH, 
+<<<<<<< HEAD
     CHALLENGER_METRICS_PATH, HISTORY_PATH, get_risk_level, PROCESSED_DATA_PATH
+=======
+    HISTORY_PATH, get_risk_level, PROCESSED_DATA_PATH
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 )
 from feedback_loop import build_feedback_dataset, update_training_data
 from governance import log_decision
@@ -250,6 +261,7 @@ def _load_model(path):
         return None
 
 
+<<<<<<< HEAD
 def _load_scaler():
     scaler_path = Path(MODEL_PATH).with_name("scaler.pkl")
     try:
@@ -262,6 +274,10 @@ def _load_scaler():
     except Exception as e:
         log.warning("Scaler load failed: %s — using unscaled inputs", e)
         return None
+=======
+# NOTE: Scaler removed — train_model.py never saves a scaler.pkl,
+# so the scaler code path was dead code (Bug #3 fix).
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 
 
 def _load_features() -> list:
@@ -313,6 +329,7 @@ if MODEL is None:
     MODEL = _load_model(str(fallback_path))
 
 CHALLENGER_MODEL = _load_model(CHALLENGER_MODEL_PATH)
+<<<<<<< HEAD
 SCALER           = _load_scaler()
 
 def reload_model():
@@ -321,6 +338,15 @@ def reload_model():
     CHALLENGER_MODEL = _load_model(CHALLENGER_MODEL_PATH)
     SCALER           = _load_scaler()
     log.info("🔄 Models reloaded after retraining")
+=======
+
+def reload_model():
+    global MODEL, CHALLENGER_MODEL
+    MODEL            = _load_model(CHAMPION_MODEL_PATH)
+    CHALLENGER_MODEL = _load_model(CHALLENGER_MODEL_PATH)
+    EXPLAINER.reload()
+    log.info("🔄 Models + SHAP explainer reloaded after retraining")
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 
 
 MODEL_FEATURES = _load_features()
@@ -367,6 +393,7 @@ def get_current_data():
     if len(history) < 50:
         return None
 
+<<<<<<< HEAD
     flat_records = []
     for r in history:
         raw = r.get("raw_input", {})
@@ -385,6 +412,22 @@ def get_current_data():
 
     df = pd.DataFrame(flat_records)
     return df.dropna()
+=======
+    df = pd.DataFrame(history)
+
+    # Rename legacy "fico" column if present (Bug #11 fix)
+    if "fico" in df.columns and "fico_range_low" not in df.columns:
+        df = df.rename(columns={"fico": "fico_range_low"})
+
+    # Extract only numeric features used in drift
+    cols = [
+        "loan_amnt", "int_rate", "installment", "annual_inc",
+        "dti", "fico_range_low", "open_acc", "revol_bal", "total_acc"
+    ]
+
+    available = [c for c in cols if c in df.columns]
+    return df[available].dropna()
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -408,19 +451,42 @@ _NUMERIC_FIELDS = {
 _CATEGORICAL_FIELDS = [
     "term", "grade", "sub_grade", "emp_length",
     "home_ownership", "verification_status", "purpose",
+<<<<<<< HEAD
     "addr_state", "initial_list_status", "earliest_cr_line",
+=======
+    "addr_state", "initial_list_status",
+    # "earliest_cr_line" removed — not collected in form (Bug #16 fix)
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 ]
 
 
 def create_features_live(df: pd.DataFrame) -> pd.DataFrame:
+<<<<<<< HEAD
     df["loan_to_income"] = df["loan_amnt"] / (df["annual_inc"] + 1e-6)
     df["installment_to_income"] = df["installment"] / (df["annual_inc"] + 1e-6)
     df["credit_utilization"] = df["revol_bal"] / (df["revol_bal"] + 1e-6)
+=======
+    """Compute engineered features — must match train_model.create_features() exactly."""
+    # Financial ratios
+    df["loan_to_income"] = df["loan_amnt"] / (df["annual_inc"] + 1e-6)
+    df["installment_to_income"] = df["installment"] / (df["annual_inc"] + 1e-6)
+
+    # Credit behavior — Bug #1 fix: formula now matches training
+    df["credit_utilization"] = df["revol_bal"] / (df["revol_bal"] + df["bc_open_to_buy"] + 1e-6)
+
+    # Behavioral features — Bug #2 fix: these 3 were missing
+    df["payment_capacity"] = df["annual_inc"] - df["installment"] * 12
+    df["credit_stress"] = df["dti"] * df["loan_amnt"]
+    df["recent_inquiries_flag"] = (df["inq_last_6mths"] > 3).astype(int)
+
+    # Risk indicators
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
     df["high_dti_flag"] = (df["dti"] > 20).astype(int)
     df["low_fico_flag"] = (df["fico_range_low"] < 600).astype(int)
     return df
 
 
+<<<<<<< HEAD
 def add_economic_features(df):
     df["inflation_rate"] = 0.06
     df["interest_rate_env"] = 0.08
@@ -432,6 +498,10 @@ def add_economic_features(df):
         df["interest_rate_env"] * 0.2
     )
     return df
+=======
+# NOTE: add_economic_features() removed — hardcoded constants (0.06, 0.08, 0.07)
+# provide zero signal to the model since they are the same for every row (Bug #9 fix).
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 
 
 def preprocess_input(form_data: dict) -> pd.DataFrame:
@@ -441,6 +511,7 @@ def preprocess_input(form_data: dict) -> pd.DataFrame:
     if not MODEL_FEATURES:
         raise RuntimeError("Model feature list is empty — run utils/preprocessor.py first.")
 
+<<<<<<< HEAD
     # Map new UI fields to ML model features
     normalized_form_data = dict(form_data)
     
@@ -467,6 +538,12 @@ def preprocess_input(form_data: dict) -> pd.DataFrame:
     normalized_form_data["revol_util"] = 50
     normalized_form_data["open_acc"] = 5
     normalized_form_data["total_acc"] = 10
+=======
+    # Fill critical numeric fields when left blank in the form.
+    normalized_form_data = dict(form_data)
+    normalized_form_data["dti"] = normalized_form_data.get("dti") or 20
+    normalized_form_data["revol_util"] = normalized_form_data.get("revol_util") or 50
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 
     row = {feat: 0.0 for feat in MODEL_FEATURES}
 
@@ -519,6 +596,7 @@ def _validate_input(form_data: dict) -> list:
         errors.append("Loan amount is not a valid number.")
 
     try:
+<<<<<<< HEAD
         inc = float(form_data.get("monthly_income", 0) or 0)
         if inc <= 0:
             errors.append("Monthly income must be greater than 0.")
@@ -531,6 +609,20 @@ def _validate_input(form_data: dict) -> list:
             errors.append("Credit history cannot be negative.")
     except ValueError:
         errors.append("Credit history is not a valid number.")
+=======
+        inc = float(form_data.get("annual_inc", 0) or 0)
+        if inc <= 0:
+            errors.append("Annual income must be greater than 0.")
+    except ValueError:
+        errors.append("Annual income is not a valid number.")
+
+    try:
+        fico = float(form_data.get("fico_range_low", 300) or 300)
+        if not (300 <= fico <= 850):
+            errors.append("FICO score must be between 300 and 850.")
+    except ValueError:
+        errors.append("FICO score is not a valid number.")
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 
     return errors
 
@@ -577,13 +669,19 @@ def generate_risk_report(record):
 
 
 def save_report(report, record_id):
+<<<<<<< HEAD
     path = f"reports/{record_id}.txt"
+=======
+    # Bug #7 fix: use absolute path instead of relative
+    path = str(Path(__file__).resolve().parent.parent / "reports" / f"{record_id}.txt")
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w") as f:
         f.write(report)
     return path
 
 
+<<<<<<< HEAD
 def credit_policy(pd):
     if pd > 0.6:
         return "Reject - High Risk"
@@ -591,6 +689,10 @@ def credit_policy(pd):
         return "Manual Review"
     else:
         return "Approve"
+=======
+# NOTE: credit_policy() removed — was a duplicate of get_risk_level() from config.py
+# with inconsistent thresholds (Bug #4 fix). Use get_risk_level() everywhere instead.
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 
 
 
@@ -601,11 +703,18 @@ def credit_policy(pd):
 # ─────────────────────────────────────────────────────────────────────────────
 
 @app.route("/")
+<<<<<<< HEAD
 def index():
     if not current_user.is_authenticated:
         return render_template("landing.html")
     # Compliance officers: read-only, redirect to dashboard
     if current_user.role == "compliance":
+=======
+@login_required
+def index():
+    # Compliance officers: read-only, redirect to dashboard
+    if current_user.is_authenticated and current_user.role == "compliance":
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
         return redirect(url_for("dashboard"))
     return render_template("index.html")
 
@@ -633,8 +742,12 @@ def signin():
         else:
             flash("Invalid email or password. Please try again.", "error")
 
+<<<<<<< HEAD
     flashed_messages = get_flashed_messages(with_categories=True)
     return render_template("signin.html", flashed_messages=flashed_messages)
+=======
+    return render_template("signin.html")
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 
 
 @app.route("/signup", methods=["GET", "POST"])
@@ -860,10 +973,15 @@ def _score_borrower(form_data: dict) -> dict:
     try:
         input_df = preprocess_input(form_data)
         input_df = create_features_live(input_df)
+<<<<<<< HEAD
         input_df = add_economic_features(input_df)
         input_df = input_df.reindex(columns=MODEL_FEATURES, fill_value=0.0)
         input_data = SCALER.transform(input_df) if SCALER is not None else input_df
         prob = float(MODEL.predict_proba(input_data)[0][1])
+=======
+        input_df = input_df.reindex(columns=MODEL_FEATURES, fill_value=0.0)
+        prob = float(MODEL.predict_proba(input_df)[0][1])
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 
         loan_amount  = float(form_data.get("loan_amnt", 0) or 0)
         fico         = float(form_data.get("fico_range_low", 0) or 0)
@@ -873,7 +991,11 @@ def _score_borrower(form_data: dict) -> dict:
         # Shadow Model Inference (MLOps: A/B Testing)
         challenger_prob = 0.0
         if CHALLENGER_MODEL:
+<<<<<<< HEAD
             challenger_prob = float(CHALLENGER_MODEL.predict_proba(input_data)[0][1])
+=======
+            challenger_prob = float(CHALLENGER_MODEL.predict_proba(input_df)[0][1])
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 
         risk_info = get_risk_level(prob)
         risk    = risk_info["label"].title()
@@ -929,7 +1051,11 @@ def handle_prediction(form_data):
         return
 
     emit('progress', {'step': 'Validating inputs...', 'percent': 10})
+<<<<<<< HEAD
     time.sleep(0.1)
+=======
+    time.sleep(0.6)
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 
     errors = _validate_input(form_data)
     if errors:
@@ -937,22 +1063,38 @@ def handle_prediction(form_data):
         return
 
     emit('progress', {'step': 'Running XGBoost model...', 'percent': 40})
+<<<<<<< HEAD
     time.sleep(0.1)
+=======
+    time.sleep(0.6)
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 
     try:
         input_df = preprocess_input(form_data)
         input_df = create_features_live(input_df)
+<<<<<<< HEAD
         input_df = add_economic_features(input_df)
+=======
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
         columns = MODEL_FEATURES
         input_df = input_df.reindex(columns=columns, fill_value=0.0)
 
         emit('progress', {'step': 'Computing SHAP values...', 'percent': 60})
+<<<<<<< HEAD
         time.sleep(0.1)
         # Explain prediction
         explanation = EXPLAINER.explain_single(input_df)
 
         emit('progress', {'step': 'Checking fairness...', 'percent': 80})
         time.sleep(0.1)
+=======
+        time.sleep(0.6)
+        # Bug #15 fix: SHAP called AFTER reindex so columns match the model
+        explanation = EXPLAINER.explain_single(input_df)
+
+        emit('progress', {'step': 'Checking fairness...', 'percent': 80})
+        time.sleep(0.6)
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 
         # Fairness checks
         fairness_flag = EXPLAINER.check_individual_fairness(form_data)
@@ -960,6 +1102,7 @@ def handle_prediction(form_data):
         sensitive_warning = EXPLAINER.validate_sensitive_features(form_data)
 
         # Inference using class probability for default risk (PD)
+<<<<<<< HEAD
         input_data = input_df
         if SCALER is not None:
             input_data = SCALER.transform(input_data)
@@ -968,16 +1111,27 @@ def handle_prediction(form_data):
             print("Scaler applied: False")
 
         prob = float(MODEL.predict_proba(input_data)[0][1])
+=======
+        prob = float(MODEL.predict_proba(input_df)[0][1])
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
         
         # Shadow Model Inference (MLOps: A/B Testing)
         challenger_prob = 0.0
         if CHALLENGER_MODEL:
+<<<<<<< HEAD
             challenger_prob = float(CHALLENGER_MODEL.predict_proba(input_data)[0][1])
             
         print("Probability:", prob)
         print("Challenger Probability:", challenger_prob)
         if prob < 0.3:
             print("Warning: prob < 0.3 — possible feature issue")
+=======
+            challenger_prob = float(CHALLENGER_MODEL.predict_proba(input_df)[0][1])
+            
+        log.info("Probability: %.4f | Challenger: %.4f", prob, challenger_prob)
+        if prob < 0.3:
+            log.info("Note: prob < 0.3 — possible feature issue")
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
         probability = prob
 
         pd_value = probability
@@ -989,7 +1143,10 @@ def handle_prediction(form_data):
         expected_profit = loan_amount * (1 - probability) * 0.1 - loan_amount * probability
         income = float(form_data.get("annual_inc", 0) or 0)
         override_triggered = income > 0 and loan_amount > 5 * income
+<<<<<<< HEAD
         print(f"Decision debug -> prob={prob:.4f}, override={override_triggered}")
+=======
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
         log.info("Decision debug -> prob=%.4f override=%s", prob, override_triggered)
 
         # Risk bands (business-friendly labels)
@@ -1000,7 +1157,10 @@ def handle_prediction(form_data):
             risk = "High Risk (Override)"
             verdict = "Decline" # Override usually means decline
             show_warning = True
+<<<<<<< HEAD
             print("Override triggered: loan_amount > 5 * annual_inc")
+=======
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
             log.warning("Override triggered for borrower=%s (loan_amount=%.2f, annual_inc=%.2f)",
                         form_data.get("borrower_name", "Anonymous"), loan_amount, income)
         else:
@@ -1032,6 +1192,10 @@ def handle_prediction(form_data):
             risk_note = "Standard credit evaluation"
 
         # Build history record
+<<<<<<< HEAD
+=======
+        threshold = 0.4
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
         record = {
             "id":          str(uuid.uuid4()),
             "trace_id":    str(uuid.uuid4()),
@@ -1042,8 +1206,13 @@ def handle_prediction(form_data):
             "addr_state":  form_data.get("addr_state", ""),
             "loan_amnt":   float(form_data.get("loan_amnt", 0) or 0),
             "int_rate":    float(form_data.get("int_rate", 0) or 0),
+<<<<<<< HEAD
             "annual_inc":  float(form_data.get("monthly_income", 0) or 0) * 12,
             "fico":        float(form_data.get("credit_history_years", 5) or 5) * 15 + 600,
+=======
+            "annual_inc":  float(form_data.get("annual_inc", 0) or 0),
+            "fico":        float(form_data.get("fico_range_low", 0) or 0),
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
             "purpose":     form_data.get("purpose", ""),
             "grade":       form_data.get("grade", ""),
             "prediction":  prediction,
@@ -1057,7 +1226,11 @@ def handle_prediction(form_data):
             "expected_loss": round(expected_loss, 2),
             "expected_profit": round(expected_profit, 2),
             "model_version": "v1.0",
+<<<<<<< HEAD
             "decision_threshold": 0.5,
+=======
+            "decision_threshold": threshold,
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
             "features_used": list(input_df.columns),
             "top_features": explanation,
             "fairness_check": fairness_flag,
@@ -1083,6 +1256,7 @@ def handle_prediction(form_data):
         _append_to_history(record)
         log_decision(record)
 
+<<<<<<< HEAD
         # Feedback loop & MLOps (Run in background so we don't freeze the UI)
         def background_tasks():
             try:
@@ -1117,6 +1291,33 @@ def handle_prediction(form_data):
 
         emit('progress', {'step': 'Decision ready ✓', 'percent': 100})
         time.sleep(0.1)
+=======
+        # Bug #6 fix: Only retrain every 100th prediction (not every prediction)
+        if should_retrain():
+            log.info("⚡ Triggering scheduled retraining (every 100 predictions)...")
+            feedback_data = build_feedback_dataset()
+            if feedback_data is not None:
+                update_training_data(feedback_data)
+                log.info("🔁 Feedback data added to training set")
+            retrain_model()
+            reload_model()
+
+        # Drift detection (independent of scheduled retraining)
+        from monitoring.drift_detection import detect_drift
+
+        current_data = get_current_data()
+
+        if current_data is not None:
+            results, drift_flag = detect_drift(REFERENCE_DATA, current_data)
+
+            if drift_flag:
+                log.warning("🚨 DRIFT DETECTED — triggering retraining")
+                retrain_model()
+                reload_model()
+
+        emit('progress', {'step': 'Decision ready ✓', 'percent': 100})
+        time.sleep(0.6)
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 
         emit('prediction_complete', {'record_id': record['id']})
 
@@ -1146,6 +1347,7 @@ def prediction_result(record_id):
 @app.route("/dashboard")
 @login_required
 def dashboard():
+<<<<<<< HEAD
     has_api_key = False
     if current_user.is_authenticated:
         key_record = ApiKey.query.filter_by(user_id=current_user.id).first()
@@ -1156,6 +1358,9 @@ def dashboard():
 @app.route("/api/docs")
 def api_docs():
     return render_template("api_docs.html")
+=======
+    return render_template("dashboard.html", metrics=METRICS)
+>>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 
 
 @app.route("/history")
