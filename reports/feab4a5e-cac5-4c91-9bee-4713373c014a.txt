@@ -1,0 +1,18 @@
+
+    ===== Loan Risk Report =====
+    
+    Borrower: AA
+    Loan Amount: 15000.0
+    
+    Probability of Default (PD): 32.91%
+    Risk Level: MEDIUM RISK
+    
+    Decision: Review
+    
+    Key Factors:
+    
+ - term__60_months: impact 0.2142
+ - risk_score: impact 0.1757
+ - loan_income_ratio: impact 0.1723
+ - credit_stress: impact 0.1561
+ - avg_cur_bal: impact 0.1098

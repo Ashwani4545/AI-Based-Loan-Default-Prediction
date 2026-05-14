@@ -21,6 +21,11 @@ import os
 import pickle
 import re
 import sys
+import warnings
+
+# Suppress XGBoost pickling warning since we know it's safe
+warnings.filterwarnings("ignore", category=UserWarning, module="pickle")
+warnings.filterwarnings("ignore", category=UserWarning, module="xgboost")
 import uuid
 import time
 import secrets

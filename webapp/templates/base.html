@@ -10,12 +10,8 @@
   {% block head %}{% endblock %}
 </head>
 <body>
-  {% if request.endpoint == 'landing' or request.endpoint == 'signin' or request.endpoint == 'signup' %}
-    <!-- No sidebar for landing/auth pages -->
-    {% block content %}{% endblock %}
-  {% else %}
-    <!-- Sidebar -->
-    <aside class="sidebar">
+  <!-- Sidebar -->
+  <aside class="sidebar">
       <a href="/" class="sidebar-header">
         <i class="fa-solid fa-building-columns sidebar-icon"></i>
         Ministry of Banking
@@ -54,8 +50,7 @@
       <div class="content-area">
         {% block content %}{% endblock %}
       </div>
-    </main>
-  {% endif %}
+  </main>
   <script src="{{ url_for('static', filename='js/script.js') }}"></script>
   {% block scripts %}{% endblock %}
 </body>
