@@ -1,14 +1,18 @@
 # src/train_model.py
 """
-Loan Default Prediction — Model Training
+Loan Default Prediction — Model Training (XGBoost champion)
 
 Steps:
   1. Load processed CSV
-  2. One-hot encode & sanitize column names (XGBoost-safe)
-  3. Train-test split
-  4. Train Logistic Regression, Random Forest, XGBoost
-  5. Evaluate & pick best model by ROC-AUC
-  6. Save model + feature list + metrics JSON
+  2. Drop high-cardinality columns that explode feature space
+  3. Engineer features
+  4. One-hot encode & sanitize column names (XGBoost-safe)
+  5. Feature selection (top 80 by importance)
+  6. Train-test split (stratified)
+  7. SMOTE on training split only (no leakage)
+  8. Train XGBoost with GridSearchCV
+  9. Evaluate, compute Youden's J threshold
+  10. Save champion model + feature list + metrics JSON
 """
 
 import sys
@@ -27,41 +31,32 @@ from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score,
     f1_score, roc_auc_score, confusion_matrix, classification_report,
-    mean_squared_error, mean_absolute_error, r2_score, roc_curve,
+    roc_curve,
 )
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
 from xgboost import XGBClassifier
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from utils.config import (
     PROCESSED_DATA_PATH, TARGET_COLUMN,
     TEST_SIZE, RANDOM_STATE,
-    CHAMPION_MODEL_PATH, CHALLENGER_MODEL_PATH, FEATURES_PATH, 
-    METRICS_PATH, CHALLENGER_METRICS_PATH, XGB_PARAMS,
+    CHAMPION_MODEL_PATH, FEATURES_PATH,
+    METRICS_PATH,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
 log = logging.getLogger(__name__)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# CONFIGURATION: Alternative Data Sources
-# ─────────────────────────────────────────────────────────────────────────────
-USE_REAL_ALTERNATIVE_DATA = True  # Toggle to True for production with real data
-ALTERNATIVE_DATA_PATH = os.path.join(Path(__file__).resolve().parent.parent, "data", "alternative_data.csv")
+ALTERNATIVE_DATA_PATH = os.path.join(
+    Path(__file__).resolve().parent.parent, "data", "alternative_data.csv"
+)
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # HELPERS
 # ─────────────────────────────────────────────────────────────────────────────
 
 def sanitize_columns(columns) -> list:
-    """
-    Make column names safe for XGBoost:
-      - Replace forbidden chars [ ] < >
-      - Replace whitespace with _
-      - Keep only alphanumeric + _
-      - Deduplicate by appending _N
-    """
+    """Make column names safe for XGBoost (no [ ] < > special chars)."""
     seen: dict = {}
     result: list = []
     for col in columns:
@@ -77,38 +72,16 @@ def sanitize_columns(columns) -> list:
     return result
 
 
-def calculate_profit(y_true, y_pred, loan_amounts):
-    profit = 0
-
-    for yt, yp, loan in zip(y_true, y_pred, loan_amounts):
-        if yp == 0:  # predicted repay
-            if yt == 0:
-                profit += loan * 0.1   # interest gain
-            else:
-                profit -= loan         # default loss
-        else:
-            profit += 0  # rejected loan
-
-    return profit
-
-
 def create_features(df: pd.DataFrame) -> pd.DataFrame:
-    # Financial ratios
-    df["loan_to_income"] = df["loan_amnt"] / (df["annual_inc"] + 1e-6)
-    df["installment_to_income"] = df["installment"] / (df["annual_inc"] + 1e-6)
-
-    # Credit behavior
-    df["credit_utilization"] = df["revol_bal"] / (df["revol_bal"] + df["bc_open_to_buy"] + 1e-6)
-
-    # Behavioral features
-    df["payment_capacity"] = df["annual_inc"] - df["installment"] * 12
-    df["credit_stress"] = df["dti"] * df["loan_amnt"]
-    df["recent_inquiries_flag"] = (df["inq_last_6mths"] > 3).astype(int)
-
-    # Risk indicators
-    df["high_dti_flag"] = (df["dti"] > 20).astype(int)
-    df["low_fico_flag"] = (df["fico_range_low"] < 600).astype(int)
-
+    """Engineered features — must exactly mirror create_features_live() in app.py."""
+    df["loan_to_income"]         = df["loan_amnt"]    / (df["annual_inc"] + 1e-6)
+    df["installment_to_income"]  = df["installment"]  / (df["annual_inc"] + 1e-6)
+    df["credit_utilization"]     = df["revol_bal"]    / (df["revol_bal"] + df["bc_open_to_buy"] + 1e-6)
+    df["payment_capacity"]       = df["annual_inc"]   - df["installment"] * 12
+    df["credit_stress"]          = df["dti"]          * df["loan_amnt"]
+    df["recent_inquiries_flag"]  = (df["inq_last_6mths"] > 3).astype(int)
+    df["high_dti_flag"]          = (df["dti"] > 20).astype(int)
+    df["low_fico_flag"]          = (df["fico_range_low"] < 600).astype(int)
     return df
 
 
@@ -118,90 +91,79 @@ def create_features(df: pd.DataFrame) -> pd.DataFrame:
 
 def _load_alternative_data(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Load alternative credit data for credit-invisible users.
-    Supports both real and synthetic data sources.
+    Merge real alternative data if available; otherwise use 0 placeholders.
+    Using 0 is honest — it matches what the inference pipeline sends when
+    these fields are absent from the form, so there is no train/serve skew.
+    Random noise was previously used here which polluted the model.
     """
-    use_real_alternative_data = USE_REAL_ALTERNATIVE_DATA
+    try:
+        alt_df = pd.read_csv(ALTERNATIVE_DATA_PATH)
+        log.info("Loaded real alternative data: %s rows", len(alt_df))
+        if "customer_id" in alt_df.columns and "customer_id" in df.columns:
+            df = df.merge(alt_df, on="customer_id", how="left")
+            return df
+        if "id" in alt_df.columns and "id" in df.columns:
+            df = df.merge(alt_df, on="id", how="left")
+            return df
+        log.warning("Cannot merge alternative data — no common ID column. Using 0 placeholders.")
+    except FileNotFoundError:
+        log.info("No alternative_data.csv found — using 0 placeholders.")
+    except Exception as exc:
+        log.warning("Alternative data load failed: %s — using 0 placeholders.", exc)
 
-    if use_real_alternative_data:
-        try:
-            alt_df = pd.read_csv(ALTERNATIVE_DATA_PATH)
-            log.info("Loaded real alternative data: %s rows", len(alt_df))
-            # Merge on common ID (adjust key as needed)
-            if "customer_id" in alt_df.columns and "customer_id" in df.columns:
-                df = df.merge(alt_df, on="customer_id", how="left")
-            elif "id" in alt_df.columns and "id" in df.columns:
-                df = df.merge(alt_df, on="id", how="left")
-            else:
-                log.warning("Cannot merge alternative data — no common ID column. Using synthetic fallback.")
-                use_real_alternative_data = False
-        except FileNotFoundError:
-            log.warning("Alternative data file not found at %s. Falling back to synthetic data.", ALTERNATIVE_DATA_PATH)
-            use_real_alternative_data = False
-    
-    # Use synthetic as fallback or primary
-    if not use_real_alternative_data:
-<<<<<<< HEAD
-        log.info("Using placeholder (0) for alternative features — no real alternative data available.")
-        log.info("FIX Bug 8: previously used np.random noise here which trained the model on garbage.")
-        log.info("Now using 0 consistently — matches what inference sends when these fields are absent.")
-        # NOTE: To properly use these features, collect them in the web form
-        # (mobile_usage_score, digital_txn_count, utility_payment_score, employment_stability)
-        # and provide real data. Until then, 0 is the honest placeholder.
-        df["mobile_usage_score"]    = 0
-        df["digital_txn_count"]     = 0
-        df["utility_payment_score"] = 0
-        df["employment_stability"]  = 0
-=======
-        # Bug #8 fix: random noise features removed — they pollute the model.
-        # If real alternative data is needed, provide it via alternative_data.csv.
-        log.info("No real alternative data available — skipping alternative features")
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
-    
+    df["mobile_usage_score"]    = 0
+    df["digital_txn_count"]     = 0
+    df["utility_payment_score"] = 0
+    df["employment_stability"]  = 0
     return df
 
 
 def load_and_preprocess():
     df = pd.read_csv(PROCESSED_DATA_PATH)
-<<<<<<< HEAD
-    log.info("Loaded data: %s rows × %s cols", *df.shape)
+    log.info("Loaded data: %d rows × %d cols", len(df), len(df.columns))
 
-    # Economic context features (static demo values)
-    df["inflation_rate"] = 0.06
-    df["interest_rate_env"] = 0.08
-    df["unemployment_rate"] = 0.07
-    df["economic_stress"] = (
-        df["inflation_rate"] * 0.4 +
-        df["unemployment_rate"] * 0.4 +
-        df["interest_rate_env"] * 0.2
-    )
-=======
-    log.info("Loaded data: %d rows — %d cols", len(df), len(df.columns))
+    # Drop high-cardinality columns that explode the feature space after
+    # one-hot encoding without adding predictive signal.
+    # addr_state → 50 dummy cols;  sub_grade → 35;  date cols → dozens of useless ones.
+    HIGH_CARDINALITY = [
+        "addr_state", "sub_grade", "emp_title", "url", "desc", "title",
+        "zip_code", "earliest_cr_line", "last_pymnt_d", "next_pymnt_d",
+        "last_credit_pull_d", "issue_d",
+    ]
+    drop_cols = [c for c in HIGH_CARDINALITY if c in df.columns]
+    if drop_cols:
+        df = df.drop(columns=drop_cols)
+        log.info("Dropped high-cardinality columns: %s", drop_cols)
 
-    # Subsample for speed in demo environment
-    df = df.sample(n=min(10000, len(df)), random_state=RANDOM_STATE)
-    log.info("Subsampled to %d rows for faster training", len(df))
-
-    # Bug #9 fix: Economic context features removed.
-    # Hardcoded constants (0.06, 0.08, 0.07) are identical for every row,
-    # so the model learns zero information from them.
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
-
-    # Load alternative credit data (real or synthetic)
     df = _load_alternative_data(df)
-
-    # Create engineered features before training
     df = create_features(df)
 
     X = df.drop(columns=[TARGET_COLUMN])
     y = df[TARGET_COLUMN]
 
-    # One-hot encode remaining categoricals
     X = pd.get_dummies(X, drop_first=True)
     X.columns = sanitize_columns(X.columns)
     X = X.astype("float32")
+    log.info("After encoding: %d features", X.shape[1])
 
-    log.info("After encoding: %s features", X.shape[1])
+    # Feature selection: top-80 by XGBoost importance reduces noise from 800+ cols
+    MAX_FEATURES = 80
+    if X.shape[1] > MAX_FEATURES:
+        log.info("Feature selection: %d → top %d …", X.shape[1], MAX_FEATURES)
+        X_sub, _, y_sub, _ = train_test_split(
+            X, y, test_size=0.5, random_state=RANDOM_STATE, stratify=y
+        )
+        selector = XGBClassifier(
+            n_estimators=50, max_depth=4, learning_rate=0.1,
+            eval_metric="logloss", tree_method="hist",
+            random_state=RANDOM_STATE, device="cpu",
+        )
+        selector.fit(X_sub, y_sub)
+        importances  = pd.Series(selector.feature_importances_, index=X.columns)
+        top_features = importances.nlargest(MAX_FEATURES).index.tolist()
+        X = X[top_features]
+        log.info("Feature selection complete → %d features retained", len(top_features))
+
     return X, y
 
 
@@ -210,177 +172,159 @@ def load_and_preprocess():
 # ─────────────────────────────────────────────────────────────────────────────
 
 def split(X, y):
-    return train_test_split(X, y, test_size=TEST_SIZE, random_state=RANDOM_STATE, stratify=y)
+    return train_test_split(
+        X, y, test_size=TEST_SIZE, random_state=RANDOM_STATE, stratify=y
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 3. TRAIN
+# 3. TRAIN — XGBoost only
 # ─────────────────────────────────────────────────────────────────────────────
 
-def train_all(X_train, y_train) -> dict:
+def train_xgboost(X_train, y_train) -> XGBClassifier:
+    """
+    Train a single XGBoost model with GridSearchCV.
+
+    SMOTE is applied on the training split ONLY to avoid data leakage.
+    SMOTE is capped at 30 000 rows to prevent multi-minute runtimes on
+    large datasets (still representative due to stratified sampling).
+    """
+    SMOTE_CAP = 30_000
+    counter_orig = Counter(y_train)
+    log.info("Class distribution before SMOTE: %s", dict(counter_orig))
+
     try:
-        from imblearn.over_sampling import SMOTE
+        from imblearn.over_sampling import SMOTE, RandomOverSampler
+
+        n_minority = counter_orig.get(1, 0)
+
+        if n_minority < 6:
+            log.warning("Minority class too small (%d) — using RandomOverSampler", n_minority)
+            ros = RandomOverSampler(random_state=RANDOM_STATE)
+            X_res, y_res = ros.fit_resample(X_train, y_train)
+        elif len(X_train) > SMOTE_CAP:
+            log.info("Dataset (%d rows) exceeds SMOTE cap (%d). Subsampling first.", len(X_train), SMOTE_CAP)
+            cap_ratio = SMOTE_CAP / len(X_train)
+            sub_idx = (
+                pd.Series(y_train.values)
+                .groupby(y_train.values)
+                .apply(lambda g: g.sample(frac=cap_ratio, random_state=RANDOM_STATE))
+                .index.get_level_values(1)
+            )
+            X_sub, y_sub = X_train.iloc[sub_idx], y_train.iloc[sub_idx]
+            smote = SMOTE(random_state=RANDOM_STATE,
+                          k_neighbors=min(5, Counter(y_sub)[1] - 1))
+            X_sm, y_sm = smote.fit_resample(X_sub, y_sub)
+            log.info("SMOTE on subsample: %d → %d", len(X_sub), len(X_sm))
+            # Combine synthetic minority samples with the full original training set
+            synthetic_only = pd.DataFrame(X_sm, columns=X_train.columns).iloc[len(X_sub):]
+            y_synthetic    = pd.Series(y_sm).iloc[len(y_sub):]
+            X_res = pd.concat([X_train, synthetic_only], ignore_index=True)
+            y_res = pd.concat([y_train, y_synthetic],   ignore_index=True)
+            log.info("Combined training set: %d rows", len(X_res))
+        else:
+            smote = SMOTE(random_state=RANDOM_STATE,
+                          k_neighbors=min(5, n_minority - 1))
+            X_res, y_res = smote.fit_resample(X_train, y_train)
+            log.info("SMOTE applied: %d → %d", len(X_train), len(X_res))
+
     except ImportError:
-        SMOTE = None
+        log.warning("imbalanced-learn not installed — training without SMOTE.")
+        X_res, y_res = X_train, y_train
 
-    if SMOTE is not None:
-        smote = SMOTE(random_state=RANDOM_STATE)
-        X_train_res, y_train_res = smote.fit_resample(X_train, y_train)
-        log.info("SMOTE applied: %d -> %d samples", len(X_train), len(X_train_res))
-    else:
-        X_train_res, y_train_res = X_train, y_train
-        log.warning("imblearn not installed; training without SMOTE.")
-
-    counter = Counter(y_train_res)
-    scale_pos_weight = counter[0] / counter[1]
+    counter      = Counter(y_res)
+    scale_pos_wt = counter.get(0, 1) / max(counter.get(1, 1), 1)
 
     xgb_base = XGBClassifier(
-        scale_pos_weight=scale_pos_weight,
-        eval_metric="aucpr",  # BEST for imbalance
+        scale_pos_weight = scale_pos_wt,
+        eval_metric      = "aucpr",
+        subsample        = 0.8,
+        colsample_bytree = 0.8,
+        min_child_weight = 3,
+        random_state     = RANDOM_STATE,
+        tree_method      = "hist",
+        device           = "cpu",
     )
-    xgb_param_grid = {
-        "n_estimators": [150, 200],
-        "max_depth": [4, 6],
-        "learning_rate": [0.05, 0.1],
-    }
-    xgb_grid = GridSearchCV(
-        estimator=xgb_base,
-        param_grid=xgb_param_grid,
-        scoring="recall",
-        cv=3,
-        n_jobs=-1,
-        verbose=0,
-    )
-    xgb_grid.fit(X_train_res, y_train_res)
-    log.info("Best XGBoost params (recall): %s", xgb_grid.best_params_)
 
-    candidates = {
-        "logistic_regression": LogisticRegression(max_iter=5000, solver="saga", random_state=RANDOM_STATE),
-        "random_forest":       RandomForestClassifier(n_estimators=100, random_state=RANDOM_STATE, n_jobs=-1),
-        "xgboost":             xgb_grid.best_estimator_,
+    param_grid = {
+        "n_estimators":  [100, 200, 300],
+        "max_depth":     [4, 6],
     }
-    trained = {}
-    for name, model in candidates.items():
-        log.info("Training %s …", name)
-        model.fit(X_train_res, y_train_res)
-        trained[name] = model
-    return trained
+
+    grid_search = GridSearchCV(
+        estimator  = xgb_base,
+        param_grid = param_grid,
+        scoring    = "roc_auc",
+        cv         = 3,
+        n_jobs     = -1,
+        verbose    = 1,
+    )
+    grid_search.fit(X_res, y_res)
+    log.info("Best XGBoost params: %s", grid_search.best_params_)
+    log.info("Best ROC-AUC (CV):   %.4f", grid_search.best_score_)
+    return grid_search.best_estimator_
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 4. EVALUATE
 # ─────────────────────────────────────────────────────────────────────────────
 
-def evaluate_all(models: dict, X_test, y_test) -> tuple[dict, dict]:
-    """Return (metrics_per_model, scores_for_comparison)."""
-    all_metrics: dict = {}
-    scores: dict = {}
+def evaluate(model: XGBClassifier, X_test, y_test) -> dict:
+    preds = model.predict(X_test)
+    probs = model.predict_proba(X_test)[:, 1]
 
-    for name, model in models.items():
-        preds = model.predict(X_test)
-        probs = model.predict_proba(X_test)[:, 1]
-        y_prob = probs
+    # Optimal decision threshold via Youden's J (maximise TPR − FPR)
+    fpr, tpr, thresholds = roc_curve(y_test, probs)
+    best_threshold = float(thresholds[(tpr - fpr).argmax()])
 
-        # ROC curve threshold tuning
-        fpr, tpr, thresholds = roc_curve(y_test, y_prob)
-        best_threshold = thresholds[(tpr - fpr).argmax()]
-        print(f"Best Threshold: {best_threshold:.6f}")
+    recall  = recall_score(y_test, preds,  zero_division=0)
+    f1      = f1_score(y_test, preds,      zero_division=0)
+    roc_auc = roc_auc_score(y_test, probs)
 
-        # Classification metrics
-        recall = recall_score(y_test, preds, zero_division=0)
-        f1 = f1_score(y_test, preds, zero_division=0)
-        roc_auc = roc_auc_score(y_test, y_prob)
+    tn, fp, fn, tp = confusion_matrix(y_test, preds).ravel()
 
-        print(f"\n{name} - Classification Metrics")
-        print(f"Recall: {recall:.4f}")
-        print(f"F1 Score: {f1:.4f}")
-        print(f"ROC-AUC: {roc_auc:.4f}")
+    metrics = {
+        "model_name":         "xgboost",
+        "accuracy":           round(float(accuracy_score(y_test, preds)),                   4),
+        "precision":          round(float(precision_score(y_test, preds, zero_division=0)), 4),
+        "recall":             round(float(recall),                                           4),
+        "f1_score":           round(float(f1),                                               4),
+        "roc_auc":            round(float(roc_auc),                                          4),
+        "decision_threshold": round(best_threshold,                                          6),
+        "confusion_matrix": {
+            "tn": int(tn), "fp": int(fp),
+            "fn": int(fn), "tp": int(tp),
+        },
+    }
 
-        # Regression-style probability error metrics
-        mse = mean_squared_error(y_test, y_prob)
-        rmse = np.sqrt(mse)
-        mae = mean_absolute_error(y_test, y_prob)
-        mape = np.mean(np.abs((y_test - y_prob) / (y_test + 1e-10))) * 100
-        r2 = r2_score(y_test, y_prob)
-
-        print(f"{name} - Regression Metrics")
-        print(f"RMSE: {rmse:.6f}")
-        print(f"MAE: {mae:.6f}")
-        print(f"MAPE: {mape:.4f}")
-        print(f"R2: {r2:.6f}")
-
-        tn, fp, fn, tp = confusion_matrix(y_test, preds).ravel()
-        loan_amounts = X_test["loan_amnt"]
-        profit = calculate_profit(y_test, preds, loan_amounts)
-        metrics = {
-            "accuracy":  round(float(accuracy_score(y_test, preds)),            4),
-            "precision": round(float(precision_score(y_test, preds, zero_division=0)), 4),
-            "recall":    round(float(recall), 4),
-            "f1_score":  round(float(f1), 4),
-            "roc_auc":   round(float(roc_auc), 4),
-            "mse":       round(float(mse), 6),
-            "rmse":      round(float(rmse), 6),
-            "mae":       round(float(mae), 6),
-            "mape":      round(float(mape), 4),
-            "r2":        round(float(r2), 6),
-            "profit":    round(float(profit), 2),
-            "confusion_matrix": {
-                "tn": int(tn), "fp": int(fp),
-                "fn": int(fn), "tp": int(tp),
-            },
-        }
-
-        log.info("%-22s  recall=%.4f  f1=%.4f", name, metrics["recall"], metrics["f1_score"])
-        log.info("\n%s", classification_report(y_test, preds))
-
-        all_metrics[name] = metrics
-        scores[name] = metrics["roc_auc"]
-
-    return all_metrics, scores
+    log.info(
+        "XGBoost — recall=%.4f  f1=%.4f  roc_auc=%.4f  threshold=%.4f",
+        metrics["recall"], metrics["f1_score"],
+        metrics["roc_auc"], best_threshold,
+    )
+    log.info("\n%s", classification_report(y_test, preds))
+    return metrics
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 5. SAVE
 # ─────────────────────────────────────────────────────────────────────────────
 
-def save_artifacts(models: dict, all_metrics: dict, scores: dict, feature_names: list) -> None:
-    # Sort models by profit (our primary selection metric)
-    sorted_model_names = sorted(all_metrics, key=lambda m: all_metrics[m]["profit"], reverse=True)
-    
-    best_name = sorted_model_names[0]
-    challenger_name = sorted_model_names[1] if len(sorted_model_names) > 1 else best_name
-    
-    log.info("🏆 Champion model: %s (profit=%.2f)", best_name, all_metrics[best_name]["profit"])
-    log.info("🥈 Challenger model: %s (profit=%.2f)", challenger_name, all_metrics[challenger_name]["profit"])
+def save_artifacts(model: XGBClassifier, metrics: dict, feature_names: list) -> None:
+    import pickle
 
     os.makedirs(os.path.dirname(CHAMPION_MODEL_PATH), exist_ok=True)
-    
-    # Save Champion
-    joblib.dump(models[best_name], CHAMPION_MODEL_PATH)
-    log.info("Champion saved → %s", CHAMPION_MODEL_PATH)
+    joblib.dump(model, CHAMPION_MODEL_PATH)
+    log.info("Champion model saved → %s", CHAMPION_MODEL_PATH)
 
-    # Save Challenger
-    joblib.dump(models[challenger_name], CHALLENGER_MODEL_PATH)
-    log.info("Challenger saved → %s", CHALLENGER_MODEL_PATH)
-
-    import pickle
     os.makedirs(os.path.dirname(FEATURES_PATH), exist_ok=True)
     with open(FEATURES_PATH, "wb") as f:
         pickle.dump(feature_names, f)
-    log.info("Feature list saved → %s", FEATURES_PATH)
+    log.info("Feature list saved  → %s", FEATURES_PATH)
 
-    # Save Metrics for both
-    best_metrics = all_metrics[best_name]
-    best_metrics["model_name"] = best_name
     with open(METRICS_PATH, "w") as f:
-        json.dump(best_metrics, f, indent=4)
-        
-    challenger_metrics = all_metrics[challenger_name]
-    challenger_metrics["model_name"] = challenger_name
-    with open(CHALLENGER_METRICS_PATH, "w") as f:
-        json.dump(challenger_metrics, f, indent=4)
-        
-    log.info("Metrics saved for both Champion and Challenger.")
+        json.dump(metrics, f, indent=4)
+    log.info("Metrics saved       → %s", METRICS_PATH)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -388,13 +332,11 @@ def save_artifacts(models: dict, all_metrics: dict, scores: dict, feature_names:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    X, y         = load_and_preprocess()
+    X, y                             = load_and_preprocess()
     X_train, X_test, y_train, y_test = split(X, y)
-
-    models           = train_all(X_train, y_train)
-    all_metrics, scores = evaluate_all(models, X_test, y_test)
-
-    save_artifacts(models, all_metrics, scores, list(X.columns))
+    model                            = train_xgboost(X_train, y_train)
+    metrics                          = evaluate(model, X_test, y_test)
+    save_artifacts(model, metrics, list(X.columns))
     log.info("Training pipeline complete ✅")
 
 

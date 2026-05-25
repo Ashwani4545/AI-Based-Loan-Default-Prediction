@@ -46,7 +46,8 @@ def _sanitize_columns(columns) -> list:
         c = re.sub(r"\s+",      "_", c.strip())
         c = re.sub(r"[^0-9a-zA-Z_]", "_", c)
         if c in seen:
-            seen[c] += 1; c = f"{c}_{seen[c]}"
+            seen[c] += 1
+            c = f"{c}_{seen[c]}"
         else:
             seen[c] = 0
         result.append(c)
@@ -67,31 +68,25 @@ class LoanModelExplainer:
         self.shap = importlib.import_module("shap") if self.has_shap else None
 
         if self.has_shap:
-            # Use TreeExplainer for tree-based models (XGBoost, RF) — much faster
-            # than the generic shap.Explainer which may use slow KernelSHAP.
+            # Use TreeExplainer for XGBoost — exact, fast.
+            # Fall back to generic Explainer for other model types.
+            # If both fail, defer initialisation until data is available.
             try:
                 self.explainer = self.shap.TreeExplainer(self.model)
                 log.info("SHAP TreeExplainer initialised ✅ (fast path)")
             except Exception:
-<<<<<<< HEAD
-                self.explainer = self.shap.Explainer(self.model)
-                log.info("SHAP generic Explainer initialised ✅ (fallback)")
-=======
                 try:
                     self.explainer = self.shap.Explainer(self.model)
                     log.info("SHAP generic Explainer initialised ✅ (fallback)")
                 except Exception:
                     self.explainer = None
-                    log.info("SHAP explainer initialization deferred until data is available.")
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
+                    log.info("SHAP explainer initialisation deferred until data is available.")
         else:
             self.explainer = None
             log.warning("SHAP is not installed; using feature-importance fallback for explanations.")
 
-<<<<<<< HEAD
-=======
-    def reload(self, model_path: str = None):
-        """Reload model from disk (call after retraining) — Bug #14 fix."""
+    def reload(self, model_path: str = None) -> None:
+        """Reload model from disk after retraining and reinitialise SHAP explainer."""
         path = model_path or MODEL_PATH
         self.model = joblib.load(path)
         if self.has_shap:
@@ -104,28 +99,25 @@ class LoanModelExplainer:
                     log.info("SHAP generic Explainer reloaded ✅ (fallback)")
                 except Exception:
                     self.explainer = None
-                    log.info("SHAP explainer initialization deferred until data is available.")
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
+                    log.info("SHAP explainer initialisation deferred until data is available.")
+
     def _fallback_importances(self, columns: pd.Index) -> np.ndarray:
+        """Return feature importances when SHAP is unavailable."""
         try:
             if hasattr(self.model, "feature_importances_"):
                 importances = np.asarray(self.model.feature_importances_, dtype=float)
                 if len(importances) == len(columns):
                     return importances
-<<<<<<< HEAD
-=======
             if hasattr(self.model, "coef_"):
                 importances = np.abs(np.asarray(self.model.coef_)[0])
                 if len(importances) == len(columns):
                     return importances
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
             if hasattr(self.model, "get_booster"):
                 booster = self.model.get_booster()
                 score_map = booster.get_score(importance_type="weight")
                 return np.asarray([float(score_map.get(col, 0.0)) for col in columns], dtype=float)
         except Exception:
             pass
-
         return np.zeros(len(columns), dtype=float)
 
     # ── DATA LOADING ─────────────────────────────────────────────────────────
@@ -171,51 +163,56 @@ class LoanModelExplainer:
             log.info("SHAP unavailable; returning no SHAP values.")
             return None
 
-<<<<<<< HEAD
-=======
+        # Lazy initialisation: if explainer was deferred, initialise with background data now
         if self.explainer is None:
             try:
-                log.info("Initializing generic Explainer with background data...")
+                log.info("Initialising generic Explainer with background data...")
                 background = self.shap.maskers.Independent(X, max_samples=100)
                 self.explainer = self.shap.Explainer(self.model, background)
-                log.info("SHAP Explainer initialized with background data ✅")
+                log.info("SHAP Explainer initialised with background data ✅")
             except Exception as e:
-                log.warning(f"Could not initialize explainer with background data: {e}")
+                log.warning("Could not initialise explainer with background data: %s", e)
                 self.has_shap = False
                 return None
 
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
         log.info("Computing SHAP values for %d samples …", len(X))
         return self.explainer(X)
 
-    def explain_single(self, input_df: pd.DataFrame):
-        if self.has_shap:
-<<<<<<< HEAD
-            shap_values = self.explainer(input_df)
-            importance = np.abs(shap_values.values[0])
-=======
-            if self.explainer is None:
-                log.warning("SHAP explainer not initialized (requires background data); falling back to feature importance.")
-                importance = np.abs(self._fallback_importances(input_df.columns))
-            else:
-                shap_values = self.explainer(input_df)
-                importance = np.abs(shap_values.values[0])
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
-        else:
-            importance = np.abs(self._fallback_importances(input_df.columns))
+    def explain_single(self, input_df: pd.DataFrame) -> list:
+        """
+        Return top-5 SHAP feature drivers for a single prediction row.
 
-        # Get top 5 important features
+        Each entry: {"feature": str, "shap_value": float, "impact": float}
+        - shap_value: signed (positive = pushes toward default, negative = toward repay)
+        - impact: absolute magnitude (used for bar width)
+        """
+        raw_values: np.ndarray
+
+        if self.has_shap and self.explainer is not None:
+            try:
+                sv = self.explainer(input_df)
+                raw_values = sv.values[0]
+            except Exception:
+                log.exception("SHAP explain_single failed — using fallback importances")
+                raw_values = self._fallback_importances(input_df.columns)
+        else:
+            raw_values = self._fallback_importances(input_df.columns)
+
         feature_names = input_df.columns
-        
-        top_idx = importance.argsort()[-5:][::-1]
-        
+        # Sort by absolute magnitude descending, take top 5
+        top_idx = np.abs(raw_values).argsort()[-5:][::-1]
+
         explanation = []
         for i in top_idx:
+            sv = float(raw_values[i])
             explanation.append({
-                "feature": feature_names[i],
-                "impact": round(float(importance[i]), 4)
+                "feature":    str(feature_names[i]),
+                "shap_value": round(sv, 6),
+                "impact":     round(abs(sv), 6),
+                # direction: True = increases default risk, False = decreases it
+                "increases_risk": sv > 0,
             })
-        
+
         return explanation
 
     def save_summary_plot(self, shap_values, X: pd.DataFrame, output_dir: str) -> None:
@@ -264,51 +261,42 @@ class LoanModelExplainer:
             results[group] = round(tp / (tp + fn + 1e-9), 4)
         return results
 
-    def check_individual_fairness(self, input_data: dict):
-        # Simple fairness heuristic
-        income = float(input_data.get("annual_inc", 0))
-        loan   = float(input_data.get("loan_amnt", 0))
-        
-        ratio = loan / (income + 1e-6)
-        
+    def check_individual_fairness(self, input_data: dict) -> str:
+        """Simple financial-ratio fairness heuristic."""
+        income = float(input_data.get("annual_inc", 0) or 0)
+        loan   = float(input_data.get("loan_amnt",  0) or 0)
+        ratio  = loan / (income + 1e-6)
         if ratio > 5:
             return "⚠️ High financial risk ratio"
-        
         return "✅ No obvious bias pattern"
 
-    def check_group_bias(self, input_data: dict):
+    def check_group_bias(self, input_data: dict) -> str:
         """
-        Check potential bias patterns using available financial data.
-        FIX Bug 10: removed 'gender' check — gender is never collected in the
-        form so that branch was permanently dead code. Using income/loan ratio
-        as a proxy for financially-vulnerable group detection instead.
+        Detect potential financially-vulnerable applicant patterns.
+        Gender, race, and religion are never collected in the form —
+        this check uses financial proxies only.
         """
-        income    = float(input_data.get("annual_inc", 0) or 0)
-        loan      = float(input_data.get("loan_amnt",  0) or 0)
-        fico      = float(input_data.get("fico_range_low", 0) or 0)
+        income = float(input_data.get("annual_inc",     0) or 0)
+        loan   = float(input_data.get("loan_amnt",      0) or 0)
+        fico   = float(input_data.get("fico_range_low", 0) or 0)
 
-        # Flag applicants who are low-income AND have no credit history —
-        # a proxy for financially-excluded / vulnerable groups.
-        if income < 30000 and fico == 0:
+        if income < 30_000 and fico == 0:
             return "⚠️ Potentially credit-invisible low-income applicant — alternative data used"
         if income > 0 and loan / income > 4:
             return "⚠️ High loan-to-income ratio — elevated risk for financial distress"
-
         return "✅ No bias pattern detected"
 
-    def validate_sensitive_features(self, input_data: dict):
-<<<<<<< HEAD
-=======
-        # NOTE: gender, race, religion are never collected in the form,
-        # so this check is informational only for API usage.
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
+    def validate_sensitive_features(self, input_data: dict) -> list:
+        """
+        Warn if prohibited sensitive attributes appear in the payload.
+        NOTE: gender, race, religion are never collected in the form,
+        so this fires only if the REST API is called with extra fields.
+        """
         sensitive_fields = ["gender", "race", "religion"]
-
         warnings = []
         for field in sensitive_fields:
             if field in input_data:
                 warnings.append(f"{field} should not influence decision")
-
         return warnings
 
     # ── FULL REPORT ──────────────────────────────────────────────────────────
@@ -331,19 +319,13 @@ class LoanModelExplainer:
         else:
             sensitive_col = raw_df[sensitive_column]
 
-        y_pred      = self.predict(X)
-<<<<<<< HEAD
-        shap_values = self.generate_shap_values(X)
+        y_pred = self.predict(X)
 
-        self.save_summary_plot(shap_values, X, output_dir)
-=======
-        
-        # Subsample for SHAP to avoid Out-Of-Memory (OOM) errors on large datasets
+        # Subsample for SHAP to avoid OOM errors on large datasets
         X_shap = X.sample(n=min(1000, len(X)), random_state=42) if len(X) > 1000 else X
         shap_values = self.generate_shap_values(X_shap)
 
         self.save_summary_plot(shap_values, X_shap, output_dir)
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
         self.save_force_plot(shap_values, index=0, output_dir=output_dir)
 
         # Fairness report

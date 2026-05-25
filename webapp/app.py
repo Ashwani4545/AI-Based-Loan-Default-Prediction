@@ -1,15 +1,22 @@
-# app.py
+# webapp/app.py
 """
-AegisBank — Loan Default Prediction  Flask Application
+AegisBank — Loan Default Prediction Flask Application
 
 Routes:
-  GET  /             → Loan assessment form
-  POST /predict      → Run model, save to history, show result
+  GET  /             → Loan assessment form (login required)
+  GET  /signin       → Sign-in page
+  GET  /signup       → Sign-up page
+  GET  /signout      → Sign out
   GET  /dashboard    → Model metrics + confusion matrix
   GET  /history      → All past predictions (filterable)
   GET  /reports      → Individual borrower reports
-  GET  /api/metrics  → JSON metrics for dashboard charts
-  GET  /api/history  → JSON history for AJAX
+  GET  /compare      → Side-by-side borrower comparison
+  GET  /audit        → Compliance audit log
+  GET  /heatmap      → Geographic risk heatmap
+  GET  /timeline     → Borrower risk over time
+  GET  /batch        → Batch prediction upload
+  GET  /admin        → Admin panel
+  POST /api/v1/predict  → REST API endpoint
   GET  /health       → Healthcheck
 """
 
@@ -21,31 +28,23 @@ import os
 import pickle
 import re
 import sys
-<<<<<<< HEAD
-import warnings
-
-# Suppress XGBoost pickling warning since we know it's safe
-warnings.filterwarnings("ignore", category=UserWarning, module="pickle")
-warnings.filterwarnings("ignore", category=UserWarning, module="xgboost")
-=======
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 import uuid
 import time
 import secrets
+import warnings
 from datetime import datetime, timezone
+from functools import wraps
 from pathlib import Path
 
 import joblib
 import numpy as np
 import pandas as pd
 import xgboost as xgb
-<<<<<<< HEAD
-from flask import Flask, jsonify, render_template, request, abort, redirect, url_for, session, flash, get_flashed_messages
-=======
-from flask import Flask, jsonify, render_template, request, abort, redirect, url_for, session, flash
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
+from flask import (
+    Flask, jsonify, render_template, request, abort,
+    redirect, url_for, session, flash,
+)
 from werkzeug.security import generate_password_hash, check_password_hash
-from functools import wraps
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import (
     LoginManager, UserMixin, login_user, logout_user,
@@ -56,21 +55,22 @@ from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from flask_socketio import SocketIO, emit
 from flask_swagger_ui import get_swaggerui_blueprint
 
+# Suppress benign XGBoost pickling warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="xgboost")
+
 try:
     from .retrain import retrain_model
 except ImportError:
     from retrain import retrain_model
 
-# ── project imports ─────────────────────────────────────────────────────────
+# ── project imports ──────────────────────────────────────────────────────────
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from utils.config import (
-    CHAMPION_MODEL_PATH, CHALLENGER_MODEL_PATH, MODEL_PATH, FEATURES_PATH, METRICS_PATH, 
-<<<<<<< HEAD
-    CHALLENGER_METRICS_PATH, HISTORY_PATH, get_risk_level, PROCESSED_DATA_PATH
-=======
-    HISTORY_PATH, get_risk_level, PROCESSED_DATA_PATH
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
+    CHAMPION_MODEL_PATH, CHALLENGER_MODEL_PATH, MODEL_PATH,
+    FEATURES_PATH, METRICS_PATH, CHALLENGER_METRICS_PATH,
+    HISTORY_PATH, get_risk_level, PROCESSED_DATA_PATH,
 )
 from feedback_loop import build_feedback_dataset, update_training_data
 from governance import log_decision
@@ -82,57 +82,52 @@ log = logging.getLogger(__name__)
 app = Flask(__name__)
 app.config["JSON_SORT_KEYS"] = False
 app.secret_key = os.environ.get("AEGIS_SECRET_KEY", "aegisbank-dev-secret-key-change-in-prod")
-socketio = SocketIO(app, async_mode='threading')
+socketio = SocketIO(app, async_mode="threading")
 
-# ── SWAGGER UI CONFIG ─────────────────────────────────────────────────────
-SWAGGER_URL = '/api/docs'
-API_URL = '/static/swagger.json'
+# ── SWAGGER UI ────────────────────────────────────────────────────────────────
+SWAGGER_URL = "/api/docs"
+API_URL     = "/static/swagger.json"
 swaggerui_blueprint = get_swaggerui_blueprint(
-    SWAGGER_URL,
-    API_URL,
-    config={'app_name': "AegisBank Risk Engine API"}
+    SWAGGER_URL, API_URL,
+    config={"app_name": "AegisBank Risk Engine API"},
 )
 app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 
-# ── DATABASE CONFIG ───────────────────────────────────────────────────────
+# ── DATABASE ──────────────────────────────────────────────────────────────────
 DB_PATH = Path(__file__).resolve().parent / "aegisbank.db"
-app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
+app.config["SQLALCHEMY_DATABASE_URI"]        = f"sqlite:///{DB_PATH}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
 db = SQLAlchemy(app)
 
-# ── FLASK-MAIL CONFIG ──────────────────────────────────────────────────────────
-# Set MAIL_USERNAME / MAIL_PASSWORD env vars for real email.
-# Without them the app falls back to printing reset links to the console.
-app.config["MAIL_SERVER"]   = os.environ.get("MAIL_SERVER",   "smtp.gmail.com")
-app.config["MAIL_PORT"]     = int(os.environ.get("MAIL_PORT",  "587"))
-app.config["MAIL_USE_TLS"]  = True
-app.config["MAIL_USERNAME"] = os.environ.get("MAIL_USERNAME", "")
-app.config["MAIL_PASSWORD"] = os.environ.get("MAIL_PASSWORD", "")
+# ── FLASK-MAIL ────────────────────────────────────────────────────────────────
+app.config["MAIL_SERVER"]         = os.environ.get("MAIL_SERVER",   "smtp.gmail.com")
+app.config["MAIL_PORT"]           = int(os.environ.get("MAIL_PORT", "587"))
+app.config["MAIL_USE_TLS"]        = True
+app.config["MAIL_USERNAME"]       = os.environ.get("MAIL_USERNAME", "")
+app.config["MAIL_PASSWORD"]       = os.environ.get("MAIL_PASSWORD", "")
 app.config["MAIL_DEFAULT_SENDER"] = os.environ.get("MAIL_USERNAME", "noreply@aegisbank.com")
-
 mail = Mail(app)
 
-# ── FLASK-LOGIN SETUP ─────────────────────────────────────────────────────
+# ── FLASK-LOGIN ───────────────────────────────────────────────────────────────
 login_manager = LoginManager(app)
-login_manager.login_view = "signin"
-login_manager.login_message = "Please sign in to access this page."
+login_manager.login_view             = "signin"
+login_manager.login_message          = "Please sign in to access this page."
 login_manager.login_message_category = "error"
 
 
-# ── USER MODEL ────────────────────────────────────────────────────────────
+# ── USER MODEL ────────────────────────────────────────────────────────────────
 class User(UserMixin, db.Model):
     __tablename__ = "users"
 
-    id            = db.Column(db.Integer, primary_key=True)
-    email         = db.Column(db.String(120), unique=True, nullable=False, index=True)
-    first_name    = db.Column(db.String(80),  nullable=False)
-    last_name     = db.Column(db.String(80),  nullable=False)
-    role          = db.Column(db.String(30),  nullable=False, default="analyst")
-    password_hash = db.Column(db.String(256), nullable=False)
-    created_at    = db.Column(db.DateTime,    default=datetime.utcnow)
-    is_active     = db.Column(db.Boolean,     default=True, nullable=False)
-    email_verified = db.Column(db.Boolean,    default=False, nullable=False)
+    id             = db.Column(db.Integer,     primary_key=True)
+    email          = db.Column(db.String(120), unique=True, nullable=False, index=True)
+    first_name     = db.Column(db.String(80),  nullable=False)
+    last_name      = db.Column(db.String(80),  nullable=False)
+    role           = db.Column(db.String(30),  nullable=False, default="analyst")
+    password_hash  = db.Column(db.String(256), nullable=False)
+    created_at     = db.Column(db.DateTime,    default=datetime.utcnow)
+    is_active      = db.Column(db.Boolean,     default=True,  nullable=False)
+    email_verified = db.Column(db.Boolean,     default=False, nullable=False)
 
     @property
     def full_name(self):
@@ -151,21 +146,17 @@ class User(UserMixin, db.Model):
 class ApiKey(db.Model):
     __tablename__ = "api_keys"
 
-    id         = db.Column(db.Integer, primary_key=True)
-    user_id    = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    id         = db.Column(db.Integer,     primary_key=True)
+    user_id    = db.Column(db.Integer,     db.ForeignKey("users.id"), nullable=False)
     key_hash   = db.Column(db.String(256), unique=True, nullable=False, index=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    user       = db.relationship('User', backref=db.backref('api_keys', lazy=True))
+    created_at = db.Column(db.DateTime,    default=datetime.utcnow)
+    user       = db.relationship("User",   backref=db.backref("api_keys", lazy=True))
 
     def set_key(self, raw_key: str):
         self.key_hash = generate_password_hash(raw_key)
 
     def check_key(self, raw_key: str) -> bool:
         return check_password_hash(self.key_hash, raw_key)
-        
-    def __repr__(self):
-        return f"<ApiKey user_id={self.user_id}>"
 
 
 @login_manager.user_loader
@@ -173,27 +164,28 @@ def load_user(user_id: str):
     return db.session.get(User, int(user_id))
 
 
-# ── TOKEN HELPERS ──────────────────────────────────────────────────────────────
+# ── TOKEN HELPERS ─────────────────────────────────────────────────────────────
 _ts = URLSafeTimedSerializer(app.secret_key)
+
 
 def _generate_token(email: str, salt: str) -> str:
     return _ts.dumps(email, salt=salt)
 
+
 def _verify_token(token: str, salt: str, max_age: int = 3600):
-    """Returns email string on success, None on failure."""
     try:
         return _ts.loads(token, salt=salt, max_age=max_age)
     except (SignatureExpired, BadSignature):
         return None
 
+
 def _send_email(to: str, subject: str, html_body: str):
-    """Send email; falls back to console print if MAIL_USERNAME not set."""
+    """Send email; prints to console in dev mode (MAIL_USERNAME not set)."""
     if not app.config["MAIL_USERNAME"]:
-        # DEV MODE: print the link to console instead of sending real email
-        log.info("\n" + "="*60)
+        log.info("\n" + "=" * 60)
         log.info("[DEV EMAIL] To: %s | Subject: %s", to, subject)
         log.info(html_body)
-        log.info("="*60 + "\n")
+        log.info("=" * 60 + "\n")
         return
     try:
         msg = Message(subject=subject, recipients=[to], html=html_body)
@@ -203,7 +195,7 @@ def _send_email(to: str, subject: str, html_body: str):
 
 
 def _seed_default_users():
-    """Create the 4 demo accounts if they don't already exist."""
+    """Create 4 demo accounts if they don't already exist (idempotent)."""
     defaults = [
         ("Admin",      "User",    "admin",        "admin@aegisbank.com",      "Admin@1234"),
         ("Risk",       "Manager", "risk_manager",  "risk@aegisbank.com",       "Risk@1234"),
@@ -219,9 +211,9 @@ def _seed_default_users():
     db.session.commit()
 
 
-# ── AUTH HELPERS ──────────────────────────────────────────────────────────
+# ── AUTH DECORATORS ───────────────────────────────────────────────────────────
 def login_required(f):
-    """Decorator — redirects to /signin if not authenticated."""
+    """Redirect to /signin if not authenticated."""
     @wraps(f)
     def decorated(*args, **kwargs):
         if not current_user.is_authenticated:
@@ -232,7 +224,7 @@ def login_required(f):
 
 
 def role_required(*allowed_roles):
-    """Decorator factory — restricts route to specific roles."""
+    """Restrict route to specific roles."""
     def decorator(f):
         @wraps(f)
         def decorated(*args, **kwargs):
@@ -251,7 +243,7 @@ def role_required(*allowed_roles):
 # STARTUP: load model artefacts
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _load_model(path):
+def _load_model(path: str):
     try:
         m = joblib.load(path)
         log.info("Model loaded ✅  (%s)", path)
@@ -261,33 +253,14 @@ def _load_model(path):
         return None
 
 
-<<<<<<< HEAD
-def _load_scaler():
-    scaler_path = Path(MODEL_PATH).with_name("scaler.pkl")
-    try:
-        s = joblib.load(scaler_path)
-        log.info("Scaler loaded ✅  (%s)", scaler_path)
-        return s
-    except FileNotFoundError:
-        log.info("Scaler not found at %s — using unscaled inputs", scaler_path)
-        return None
-    except Exception as e:
-        log.warning("Scaler load failed: %s — using unscaled inputs", e)
-        return None
-=======
-# NOTE: Scaler removed — train_model.py never saves a scaler.pkl,
-# so the scaler code path was dead code (Bug #3 fix).
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
-
-
 def _load_features() -> list:
     try:
         with open(FEATURES_PATH, "rb") as f:
             feats = pickle.load(f)
         log.info("Feature list loaded — %d features", len(feats))
-        return feats
+        return list(feats)
     except Exception as e:
-        log.error("Feature load failed: %s — run utils/preprocessor.py", e)
+        log.error("Feature load failed: %s — run src/train_model.py first", e)
         return []
 
 
@@ -314,51 +287,48 @@ def _load_metrics() -> dict:
             },
         }
     except FileNotFoundError:
-        log.warning("model_metrics.json not found — returning zeros. Run evaluate_model.py")
+        log.warning("model_metrics.json not found — returning zeros. Run src/evaluate_model.py")
         return defaults
     except Exception as e:
         log.error("Metrics load error: %s", e)
         return defaults
 
 
-# Load models with fallbacks
-MODEL = _load_model(CHAMPION_MODEL_PATH)
-if MODEL is None:
-    # Fallback to general model if champion is missing
-    fallback_path = Path(CHAMPION_MODEL_PATH).with_name("loan_default_model.pkl")
-    MODEL = _load_model(str(fallback_path))
+def _load_threshold() -> float:
+    """Load the Youden's J optimal threshold saved by train_model.py."""
+    try:
+        with open(METRICS_PATH) as f:
+            data = json.load(f)
+        t = data.get("decision_threshold")
+        if t is not None:
+            return float(t)
+    except Exception:
+        pass
+    return 0.5
 
+
+# Load artefacts at startup
+MODEL            = _load_model(CHAMPION_MODEL_PATH) or _load_model(MODEL_PATH)
 CHALLENGER_MODEL = _load_model(CHALLENGER_MODEL_PATH)
-<<<<<<< HEAD
-SCALER           = _load_scaler()
+MODEL_FEATURES   = _load_features()
+METRICS          = _load_metrics()
+REFERENCE_DATA   = pd.read_csv(PROCESSED_DATA_PATH).iloc[:10_000]
+EXPLAINER        = LoanModelExplainer()
 
-def reload_model():
-    global MODEL, CHALLENGER_MODEL, SCALER
-    MODEL            = _load_model(CHAMPION_MODEL_PATH)
-    CHALLENGER_MODEL = _load_model(CHALLENGER_MODEL_PATH)
-    SCALER           = _load_scaler()
-    log.info("🔄 Models reloaded after retraining")
-=======
 
-def reload_model():
-    global MODEL, CHALLENGER_MODEL
-    MODEL            = _load_model(CHAMPION_MODEL_PATH)
+def reload_model() -> None:
+    """Reload all artefacts after retraining."""
+    global MODEL, CHALLENGER_MODEL, MODEL_FEATURES, METRICS
+    MODEL            = _load_model(CHAMPION_MODEL_PATH) or _load_model(MODEL_PATH)
     CHALLENGER_MODEL = _load_model(CHALLENGER_MODEL_PATH)
+    MODEL_FEATURES   = _load_features()
+    METRICS          = _load_metrics()
     EXPLAINER.reload()
     log.info("🔄 Models + SHAP explainer reloaded after retraining")
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
-
-
-MODEL_FEATURES = _load_features()
-METRICS       = _load_metrics()
-
-REFERENCE_DATA = pd.read_csv(PROCESSED_DATA_PATH).iloc[:10000]
-
-EXPLAINER = LoanModelExplainer()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PREDICTION HISTORY  (JSON file — swap for SQLite in production)
+# PREDICTION HISTORY
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _load_history() -> list:
@@ -377,57 +347,41 @@ def _save_history(records: list) -> None:
 
 def _append_to_history(record: dict) -> None:
     history = _load_history()
-    history.insert(0, record)           # newest first
-    history = history[:500]            # cap at 500 entries
-    _save_history(history)
+    history.insert(0, record)
+    _save_history(history[:500])
 
 
-def should_retrain():
+def should_retrain() -> bool:
     history = _load_history()
-    return len(history) % 100 == 0 and len(history) != 0
+    return len(history) >= 100 and len(history) % 100 == 0
 
 
-def get_current_data():
+def get_current_data() -> pd.DataFrame | None:
     history = _load_history()
-
     if len(history) < 50:
         return None
 
-<<<<<<< HEAD
-    flat_records = []
-    for r in history:
-        raw = r.get("raw_input", {})
-        flat = {
-            "loan_amnt": float(r.get("loan_amnt") or raw.get("loan_amnt") or 0),
-            "int_rate": float(r.get("int_rate") or raw.get("int_rate") or 0),
-            "installment": float(raw.get("installment") or 0),
-            "annual_inc": float(r.get("annual_inc") or raw.get("annual_inc") or 0),
-            "dti": float(raw.get("dti") or 0),
-            "fico_range_low": float(r.get("fico") or raw.get("fico_range_low") or 0),
-            "open_acc": float(raw.get("open_acc") or 0),
-            "revol_bal": float(raw.get("revol_bal") or 0),
-            "total_acc": float(raw.get("total_acc") or 0),
-        }
-        flat_records.append(flat)
-
-    df = pd.DataFrame(flat_records)
-    return df.dropna()
-=======
-    df = pd.DataFrame(history)
-
-    # Rename legacy "fico" column if present (Bug #11 fix)
-    if "fico" in df.columns and "fico_range_low" not in df.columns:
-        df = df.rename(columns={"fico": "fico_range_low"})
-
-    # Extract only numeric features used in drift
     cols = [
         "loan_amnt", "int_rate", "installment", "annual_inc",
-        "dti", "fico_range_low", "open_acc", "revol_bal", "total_acc"
+        "dti", "fico_range_low", "open_acc", "revol_bal", "total_acc",
     ]
+    rows = []
+    for r in history:
+        raw = r.get("raw_input", {})
+        rows.append({
+            "loan_amnt":      float(r.get("loan_amnt")      or raw.get("loan_amnt",      0) or 0),
+            "int_rate":       float(r.get("int_rate")        or raw.get("int_rate",       0) or 0),
+            "installment":    float(raw.get("installment",   0) or 0),
+            "annual_inc":     float(r.get("annual_inc")      or raw.get("annual_inc",     0) or 0),
+            "dti":            float(raw.get("dti",           0) or 0),
+            "fico_range_low": float(r.get("fico")            or raw.get("fico_range_low", 0) or 0),
+            "open_acc":       float(raw.get("open_acc",      0) or 0),
+            "revol_bal":      float(raw.get("revol_bal",     0) or 0),
+            "total_acc":      float(raw.get("total_acc",     0) or 0),
+        })
 
-    available = [c for c in cols if c in df.columns]
-    return df[available].dropna()
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
+    df = pd.DataFrame(rows)[cols].dropna()
+    return df if not df.empty else None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -442,141 +396,78 @@ _NUMERIC_FIELDS = {
     "collections_12_mths_ex_med", "acc_now_delinq", "tot_coll_amt",
     "tot_cur_bal", "avg_cur_bal", "bc_open_to_buy", "bc_util",
     "num_actv_bc_tl", "num_rev_accts", "percent_bc_gt_75",
-    # Alternative features for robustness
-    "loan_to_income_ratio", "credit_utilization", "fico_avg",
-    "mobile_usage_score", "digital_txn_count", "utility_payment_score", "employment_stability",
-    "alternative_score",
+    "mobile_usage_score", "digital_txn_count",
+    "utility_payment_score", "employment_stability",
 }
 
 _CATEGORICAL_FIELDS = [
     "term", "grade", "sub_grade", "emp_length",
     "home_ownership", "verification_status", "purpose",
-<<<<<<< HEAD
-    "addr_state", "initial_list_status", "earliest_cr_line",
-=======
     "addr_state", "initial_list_status",
-    # "earliest_cr_line" removed — not collected in form (Bug #16 fix)
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
+    # earliest_cr_line removed — not collected in form, adding it here
+    # caused a mismatch between form data and model features
 ]
 
 
 def create_features_live(df: pd.DataFrame) -> pd.DataFrame:
-<<<<<<< HEAD
-    df["loan_to_income"] = df["loan_amnt"] / (df["annual_inc"] + 1e-6)
+    """
+    Compute engineered features — MUST exactly mirror create_features()
+    in train_model.py. Any divergence causes train/serve skew.
+    """
+    df["loan_to_income"]        = df["loan_amnt"]   / (df["annual_inc"] + 1e-6)
     df["installment_to_income"] = df["installment"] / (df["annual_inc"] + 1e-6)
-    df["credit_utilization"] = df["revol_bal"] / (df["revol_bal"] + 1e-6)
-=======
-    """Compute engineered features — must match train_model.create_features() exactly."""
-    # Financial ratios
-    df["loan_to_income"] = df["loan_amnt"] / (df["annual_inc"] + 1e-6)
-    df["installment_to_income"] = df["installment"] / (df["annual_inc"] + 1e-6)
-
-    # Credit behavior — Bug #1 fix: formula now matches training
-    df["credit_utilization"] = df["revol_bal"] / (df["revol_bal"] + df["bc_open_to_buy"] + 1e-6)
-
-    # Behavioral features — Bug #2 fix: these 3 were missing
-    df["payment_capacity"] = df["annual_inc"] - df["installment"] * 12
-    df["credit_stress"] = df["dti"] * df["loan_amnt"]
+    # credit_utilization: revol_bal / (revol_bal + bc_open_to_buy)
+    # HEAD version used revol_bal / (revol_bal + 1e-6) — missing bc_open_to_buy
+    df["credit_utilization"]    = df["revol_bal"]   / (df["revol_bal"] + df["bc_open_to_buy"] + 1e-6)
+    df["payment_capacity"]      = df["annual_inc"]  - df["installment"] * 12
+    df["credit_stress"]         = df["dti"]         * df["loan_amnt"]
     df["recent_inquiries_flag"] = (df["inq_last_6mths"] > 3).astype(int)
-
-    # Risk indicators
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
-    df["high_dti_flag"] = (df["dti"] > 20).astype(int)
-    df["low_fico_flag"] = (df["fico_range_low"] < 600).astype(int)
+    df["high_dti_flag"]         = (df["dti"] > 20).astype(int)
+    df["low_fico_flag"]         = (df["fico_range_low"] < 600).astype(int)
     return df
-
-
-<<<<<<< HEAD
-def add_economic_features(df):
-    df["inflation_rate"] = 0.06
-    df["interest_rate_env"] = 0.08
-    df["unemployment_rate"] = 0.07
-
-    df["economic_stress"] = (
-        df["inflation_rate"] * 0.4 +
-        df["unemployment_rate"] * 0.4 +
-        df["interest_rate_env"] * 0.2
-    )
-    return df
-=======
-# NOTE: add_economic_features() removed — hardcoded constants (0.06, 0.08, 0.07)
-# provide zero signal to the model since they are the same for every row (Bug #9 fix).
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 
 
 def preprocess_input(form_data: dict) -> pd.DataFrame:
     """
     Convert raw form POST data into a 1-row DataFrame aligned to model features.
+
+    Uses actual form fields (annual_inc, fico_range_low) directly.
+    The HEAD version fabricated these from monthly_income and credit_history_years
+    which caused the audit log to store invented financial data.
     """
     if not MODEL_FEATURES:
-        raise RuntimeError("Model feature list is empty — run utils/preprocessor.py first.")
+        raise RuntimeError("Model feature list is empty — run src/train_model.py first.")
 
-<<<<<<< HEAD
-    # Map new UI fields to ML model features
-    normalized_form_data = dict(form_data)
-    
-    # 1. Income mapping
-    monthly_inc = float(normalized_form_data.get("monthly_income", 4000) or 4000)
-    normalized_form_data["annual_inc"] = monthly_inc * 12
-    
-    # 2. Credit mapping
-    existing_credit = float(normalized_form_data.get("existing_credit", 0) or 0)
-    normalized_form_data["revol_bal"] = existing_credit
-    
-    # 3. DTI mapping
-    if monthly_inc > 0:
-        normalized_form_data["dti"] = (existing_credit / monthly_inc) * 100
-    else:
-        normalized_form_data["dti"] = 20
-        
-    # 4. FICO Proxy mapping
-    history_years = float(normalized_form_data.get("credit_history_years", 5) or 5)
-    base_fico = 600 + (history_years * 15)
-    normalized_form_data["fico_range_low"] = min(max(base_fico, 300), 850)
-    
-    # Static defaults for missing model features
-    normalized_form_data["revol_util"] = 50
-    normalized_form_data["open_acc"] = 5
-    normalized_form_data["total_acc"] = 10
-=======
-    # Fill critical numeric fields when left blank in the form.
-    normalized_form_data = dict(form_data)
-    normalized_form_data["dti"] = normalized_form_data.get("dti") or 20
-    normalized_form_data["revol_util"] = normalized_form_data.get("revol_util") or 50
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
+    normalized = dict(form_data)
+    # Fill optional fields that the form may leave blank
+    normalized["dti"]       = normalized.get("dti")       or 0
+    normalized["revol_util"] = normalized.get("revol_util") or 0
 
     row = {feat: 0.0 for feat in MODEL_FEATURES}
 
-    # Numeric fields
+    # Map numeric fields
     for field in _NUMERIC_FIELDS:
         if field in row:
             try:
-                val = float(normalized_form_data.get(field, 0) or 0)
+                val = float(normalized.get(field, 0) or 0)
                 row[field] = max(val, 0.0)
             except (ValueError, TypeError):
                 row[field] = 0.0
 
-    # Handle missing credit users
+    # Alternative score for credit-invisible users (FICO == 0)
     if row.get("fico_range_low", 0) == 0:
-        # Credit invisible user
         row["alternative_score"] = (
-            row.get("mobile_usage_score", 0) * 0.3 +
-            row.get("digital_txn_count", 0) * 0.3 +
+            row.get("mobile_usage_score",    0) * 0.3 +
+            row.get("digital_txn_count",     0) * 0.3 +
             row.get("utility_payment_score", 0) * 0.4
         )
 
-    # Categorical → one-hot
+    # Map categorical → one-hot columns
     for cat in _CATEGORICAL_FIELDS:
-        value = normalized_form_data.get(cat, "")
+        value = normalized.get(cat, "")
         if not value:
             continue
-        # Naming convention used by pd.get_dummies: "<col>_<value>"
-        # Special case: 'term' uses double underscore in some encodings
-        candidates = [
-            f"{cat}_{value}",
-            f"{cat}__{value}",
-        ]
-        for col_name in candidates:
+        for col_name in (f"{cat}_{value}", f"{cat}__{value}"):
             if col_name in row:
                 row[col_name] = 1.0
                 break
@@ -586,185 +477,294 @@ def preprocess_input(form_data: dict) -> pd.DataFrame:
 
 
 def _validate_input(form_data: dict) -> list:
-    """Return a list of validation error strings (empty = valid)."""
     errors = []
     try:
-        loan = float(form_data.get("loan_amnt", 0) or 0)
-        if loan < 500:
+        if float(form_data.get("loan_amnt", 0) or 0) < 500:
             errors.append("Loan amount must be at least $500.")
     except ValueError:
         errors.append("Loan amount is not a valid number.")
-
     try:
-<<<<<<< HEAD
-        inc = float(form_data.get("monthly_income", 0) or 0)
-        if inc <= 0:
-            errors.append("Monthly income must be greater than 0.")
-    except ValueError:
-        errors.append("Monthly income is not a valid number.")
-
-    try:
-        hist = float(form_data.get("credit_history_years", 0) or 0)
-        if hist < 0:
-            errors.append("Credit history cannot be negative.")
-    except ValueError:
-        errors.append("Credit history is not a valid number.")
-=======
-        inc = float(form_data.get("annual_inc", 0) or 0)
-        if inc <= 0:
+        if float(form_data.get("annual_inc", 0) or 0) <= 0:
             errors.append("Annual income must be greater than 0.")
     except ValueError:
         errors.append("Annual income is not a valid number.")
-
     try:
         fico = float(form_data.get("fico_range_low", 300) or 300)
         if not (300 <= fico <= 850):
             errors.append("FICO score must be between 300 and 850.")
     except ValueError:
         errors.append("FICO score is not a valid number.")
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
-
+    try:
+        dti = float(form_data.get("dti", 0) or 0)
+        if not (0 <= dti <= 100):
+            errors.append("Debt-to-income ratio must be between 0 and 100.")
+    except ValueError:
+        errors.append("DTI is not a valid number.")
     return errors
 
 
-def generate_explanation(record):
-    return f"""
-    Loan Decision Report:
-    - Probability of Default: {record['probability']}%
-    - Decision: {record['prediction']}
-    - Risk Level: {record['risk_level']}
-    - Key Factors: {[f['feature'] for f in record['top_features']]}
+# ─────────────────────────────────────────────────────────────────────────────
+# FINANCIAL CALCULATIONS
+# ─────────────────────────────────────────────────────────────────────────────
+
+def calculate_lgd(fico: float) -> float:
     """
-
-
-def calculate_lgd(loan_amount, fico):
-    # Simple heuristic
-    if fico > 700:
-        return 0.2
-    elif fico > 600:
-        return 0.4
-    else:
-        return 0.6
-
-
-def generate_risk_report(record):
-    report = f"""
-    ===== Loan Risk Report =====
-    
-    Borrower: {record['borrower']}
-    Loan Amount: {record['loan_amnt']}
-    
-    Probability of Default (PD): {record['probability']}%
-    Risk Level: {record['risk_level']}
-    
-    Decision: {record.get('decision', 'N/A')}
-    
-    Key Factors:
+    Loss Given Default — estimated from FICO tier.
+    loan_amount parameter removed: LGD is a rate (%), not an amount.
+    Using 5 tiers instead of 3 for finer granularity.
     """
-    
-    for f in record.get("explanation", []):
-        report += f"\n - {f['feature']}: impact {f['impact']}"
-    
-    return report
+    if fico >= 750: return 0.15
+    if fico >= 700: return 0.25
+    if fico >= 650: return 0.35
+    if fico >= 600: return 0.45
+    return 0.55
 
 
-def save_report(report, record_id):
-<<<<<<< HEAD
-    path = f"reports/{record_id}.txt"
-=======
-    # Bug #7 fix: use absolute path instead of relative
-    path = str(Path(__file__).resolve().parent.parent / "reports" / f"{record_id}.txt")
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w") as f:
-        f.write(report)
-    return path
+def calculate_expected_profit(loan_amount: float, annual_rate_pct: float,
+                               pd_value: float, lgd: float) -> float:
+    """
+    Expected Profit = Revenue if repaid - Expected Loss if defaulted.
 
-
-<<<<<<< HEAD
-def credit_policy(pd):
-    if pd > 0.6:
-        return "Reject - High Risk"
-    elif pd > 0.4:
-        return "Manual Review"
-    else:
-        return "Approve"
-=======
-# NOTE: credit_policy() removed — was a duplicate of get_risk_level() from config.py
-# with inconsistent thresholds (Bug #4 fix). Use get_risk_level() everywhere instead.
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
-
-
-
+    Uses the actual interest rate from the form, not a hardcoded 10%.
+    Uses LGD (not full loan amount) for the loss side since partial
+    recovery typically occurs on defaulted loans.
+    """
+    annual_rate = annual_rate_pct / 100.0
+    revenue_if_repaid = loan_amount * annual_rate * (1 - pd_value)
+    loss_if_default   = loan_amount * pd_value * lgd
+    return round(revenue_if_repaid - loss_if_default, 2)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# ROUTES
+# OVERRIDE RULES
+# ─────────────────────────────────────────────────────────────────────────────
+
+def check_overrides(form_data: dict) -> tuple[bool, str | None, float | None]:
+    """
+    Apply hard underwriting rules that override the model probability.
+
+    Returns:
+        (override_triggered, reason_string, adjusted_display_probability)
+    """
+    loan_amount = float(form_data.get("loan_amnt",      0) or 0)
+    annual_inc  = float(form_data.get("annual_inc",     0) or 0)
+    fico        = float(form_data.get("fico_range_low", 0) or 0)
+    dti         = float(form_data.get("dti",            0) or 0)
+    delinq      = float(form_data.get("delinq_2yrs",    0) or 0)
+    pub_rec     = float(form_data.get("pub_rec",        0) or 0)
+
+    if fico > 0 and fico < 500:
+        return True, f"FICO score {int(fico)} is critically low (< 500) — automatic decline", 0.94
+
+    if fico > 0 and fico < 580 and annual_inc > 0 and loan_amount > annual_inc * 0.5:
+        return True, (
+            f"Sub-prime FICO ({int(fico)}) combined with loan amount "
+            f"exceeding 50% of annual income"
+        ), 0.82
+
+    if dti > 40:
+        adj = min(0.82 + (dti - 40) * 0.005, 0.99)
+        return True, f"Debt-to-income ratio {dti:.1f}% exceeds the 40% hard limit", adj
+
+    if delinq >= 3:
+        return True, f"{int(delinq)} delinquencies in last 2 years", 0.87
+
+    if pub_rec >= 2:
+        return True, f"{int(pub_rec)} public records (bankruptcies/judgements) on file", 0.83
+
+    if annual_inc > 0 and loan_amount > 5 * annual_inc:
+        ratio = loan_amount / annual_inc
+        adj   = min(0.88 + (ratio - 5) * 0.015, 0.99)
+        return True, (
+            f"Loan amount (${loan_amount:,.0f}) exceeds 5× annual income "
+            f"(${annual_inc:,.0f})"
+        ), adj
+
+    return False, None, None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RISK CLASSIFICATION
+# ─────────────────────────────────────────────────────────────────────────────
+
+RISK_COLOR_MAP = {
+    "LOW RISK":                  "#22c55e",
+    "MEDIUM RISK":               "#f59e0b",
+    "HIGH RISK":                 "#f97316",
+    "VERY HIGH RISK":            "#ef4444",
+    "VERY HIGH RISK (OVERRIDE)": "#dc2626",
+}
+
+
+def classify_risk(prob: float, override: bool, fico: float, loan_amount: float,
+                  annual_inc: float) -> tuple[str, str, bool]:
+    """
+    Map probability → (risk_label, verdict, show_warning).
+    Applies sub-prime FICO soft tightening when income does not
+    comfortably cover the loan.
+    """
+    if override:
+        return "VERY HIGH RISK (OVERRIDE)", "Default", True
+
+    risk_info    = get_risk_level(prob)
+    risk_label_v = risk_info["label"]
+
+    # Soft tighten: FICO 500-619 AND loan > 30% of income → bump LOW to MEDIUM
+    if (fico > 0 and fico < 620
+            and annual_inc > 0
+            and loan_amount / annual_inc > 0.30
+            and risk_label_v == "LOW RISK"):
+        risk_label_v = "MEDIUM RISK"
+
+    if risk_label_v == "LOW RISK":
+        return "LOW RISK", "Repay", False
+    elif risk_label_v == "MEDIUM RISK":
+        return "MEDIUM RISK", "Review", True
+    else:
+        return risk_label_v, "Default", True
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# REPORT
+# ─────────────────────────────────────────────────────────────────────────────
+
+_REPORTS_DIR = Path(__file__).resolve().parent.parent / "reports"
+
+
+def generate_risk_report(record: dict) -> str:
+    lines = [
+        "===== AegisBank Loan Risk Report =====",
+        f"Borrower:    {record.get('borrower', 'Anonymous')}",
+        f"Loan Amount: ${record.get('loan_amnt', 0):,.2f}",
+        f"Annual Inc:  ${record.get('annual_inc', 0):,.2f}",
+        "",
+        f"Default Probability: {record.get('probability', 0):.2f}%",
+        f"Risk Level:          {record.get('risk_level', 'N/A')}",
+        f"Decision:            {record.get('decision', 'N/A')}",
+        f"Override:            {record.get('override_triggered', False)}",
+        "",
+        "Key Risk Drivers (SHAP):",
+    ]
+    for feat in record.get("top_features", []):
+        direction = "↑ risk" if feat.get("increases_risk") else "↓ risk"
+        lines.append(
+            f"  {feat.get('feature', ''):<35} "
+            f"{feat.get('shap_value', feat.get('impact', 0)):+.6f}  ({direction})"
+        )
+    return "\n".join(lines)
+
+
+def save_report(report: str, record_id: str) -> str:
+    _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    path = _REPORTS_DIR / f"{record_id}.txt"
+    with open(path, "w") as f:
+        f.write(report)
+    return str(path)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# _score_borrower — used by /compare and /api/v1/predict
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _score_borrower(form_data: dict) -> dict:
+    """Run the full prediction pipeline on one borrower dict."""
+    try:
+        input_df = preprocess_input(form_data)
+        input_df = create_features_live(input_df)
+        input_df = input_df.reindex(columns=MODEL_FEATURES, fill_value=0.0)
+
+        model_prob = float(MODEL.predict_proba(input_df)[0][1])
+
+        loan_amount = float(form_data.get("loan_amnt",      0) or 0)
+        annual_inc  = float(form_data.get("annual_inc",     0) or 0)
+        fico        = float(form_data.get("fico_range_low", 0) or 0)
+        int_rate    = float(form_data.get("int_rate",       0) or 0)
+
+        override, override_reason, adj_prob = check_overrides(form_data)
+        display_prob = max(adj_prob or model_prob, model_prob) if override else model_prob
+
+        lgd            = calculate_lgd(fico)
+        expected_loss  = display_prob * lgd * loan_amount
+        expected_profit = calculate_expected_profit(loan_amount, int_rate, display_prob, lgd)
+
+        risk_label, verdict, show_warning = classify_risk(
+            display_prob, override, fico, loan_amount, annual_inc
+        )
+
+        # Shadow model (A/B testing)
+        challenger_prob = 0.0
+        if CHALLENGER_MODEL:
+            challenger_prob = float(CHALLENGER_MODEL.predict_proba(input_df)[0][1])
+
+        return {
+            "prob":            round(display_prob * 100, 1),
+            "model_prob":      round(model_prob * 100, 1),
+            "challenger_prob": round(challenger_prob * 100, 1),
+            "risk":            risk_label,
+            "verdict":         verdict,
+            "show_warning":    show_warning,
+            "color":           RISK_COLOR_MAP.get(risk_label, "#6b7280"),
+            "loan_amnt":       loan_amount,
+            "annual_inc":      annual_inc,
+            "fico":            fico,
+            "int_rate":        int_rate,
+            "dti":             float(form_data.get("dti", 0) or 0),
+            "expected_loss":   round(expected_loss, 2),
+            "expected_profit": round(expected_profit, 2),
+            "override":        override,
+            "override_reason": override_reason,
+            "name":            form_data.get("borrower_name", "Borrower"),
+            "error":           None,
+        }
+    except Exception as exc:
+        log.exception("_score_borrower failed")
+        return {"error": str(exc)}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ROUTES — AUTH
 # ─────────────────────────────────────────────────────────────────────────────
 
 @app.route("/")
-<<<<<<< HEAD
-def index():
-    if not current_user.is_authenticated:
-        return render_template("landing.html")
-    # Compliance officers: read-only, redirect to dashboard
-    if current_user.role == "compliance":
-=======
 @login_required
 def index():
-    # Compliance officers: read-only, redirect to dashboard
     if current_user.is_authenticated and current_user.role == "compliance":
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
         return redirect(url_for("dashboard"))
     return render_template("index.html")
 
-
-# ── AUTH ROUTES ───────────────────────────────────────────────────────────
 
 @app.route("/signin", methods=["GET", "POST"])
 def signin():
     if current_user.is_authenticated:
         return redirect(url_for("index"))
-
     if request.method == "POST":
         email    = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
-
         user = User.query.filter_by(email=email).first()
         if user and user.check_password(password) and user.is_active:
             login_user(user, remember=bool(request.form.get("remember")))
-            # Keep session vars for Jinja templates
             session["user_email"] = user.email
             session["user_name"]  = user.full_name
             session["user_role"]  = user.role
             flash(f"Welcome back, {user.first_name}! 👋", "success")
             return redirect(url_for("index"))
-        else:
-            flash("Invalid email or password. Please try again.", "error")
-
-<<<<<<< HEAD
-    flashed_messages = get_flashed_messages(with_categories=True)
-    return render_template("signin.html", flashed_messages=flashed_messages)
-=======
+        flash("Invalid email or password. Please try again.", "error")
     return render_template("signin.html")
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 
 
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     if current_user.is_authenticated:
         return redirect(url_for("index"))
-
     if request.method == "POST":
         first_name       = request.form.get("first_name", "").strip()
-        last_name        = request.form.get("last_name", "").strip()
+        last_name        = request.form.get("last_name",  "").strip()
         email            = request.form.get("email", "").strip().lower()
         role             = request.form.get("role", "analyst")
         password         = request.form.get("password", "")
         confirm_password = request.form.get("confirm_password", "")
         agree_terms      = request.form.get("agree_terms")
 
-        # Validate role input
         if role not in ("analyst", "risk_manager", "compliance"):
             role = "analyst"
 
@@ -787,30 +787,24 @@ def signup():
             db.session.add(new_user)
             db.session.commit()
 
-            # Send verification email
-            token = _generate_token(email, salt="email-verify")
+            token      = _generate_token(email, salt="email-verify")
             verify_url = url_for("verify_email", token=token, _external=True)
             _send_email(
                 to=email,
                 subject="Verify your AegisBank account",
                 html_body=(
                     f"<p>Hi {first_name},</p>"
-                    f"<p>Click the link below to verify your email address. "
-                    f"This link expires in <strong>1 hour</strong>.</p>"
-                    f"<p><a href='{verify_url}' style='background:#c9a84c;color:#0d1526;"
-                    f"padding:10px 22px;border-radius:6px;text-decoration:none;font-weight:700;'>"
-                    f"Verify Email</a></p>"
-                    f"<p>Or copy this URL:<br><code>{verify_url}</code></p>"
+                    f"<p>Click the link below to verify your email (expires in 1 hour).</p>"
+                    f"<p><a href='{verify_url}'>Verify Email</a></p>"
+                    f"<p>Or copy: <code>{verify_url}</code></p>"
                     f"<p>— AegisBank AI Risk Engine</p>"
-                )
+                ),
             )
-
             login_user(new_user)
             session["user_email"] = new_user.email
             session["user_name"]  = new_user.full_name
             session["user_role"]  = new_user.role
-            flash(f"Account created! A verification email has been sent to {email}. "
-                  f"Check your inbox (or the server console in dev mode). 🎉", "success")
+            flash(f"Account created! Verification email sent to {email}. 🎉", "success")
             return redirect(url_for("index"))
 
     return render_template("signup.html")
@@ -828,35 +822,23 @@ def signout():
 def forgot_password():
     if current_user.is_authenticated:
         return redirect(url_for("index"))
-
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
         user  = User.query.filter_by(email=email).first()
-
-        # Always show success (prevents user enumeration)
         flash("If an account with that email exists, a reset link has been sent.", "success")
-
         if user:
-            token = _generate_token(email, salt="password-reset")
+            token     = _generate_token(email, salt="password-reset")
             reset_url = url_for("reset_password", token=token, _external=True)
             _send_email(
                 to=email,
                 subject="AegisBank — Reset your password",
                 html_body=(
                     f"<p>Hi {user.first_name},</p>"
-                    f"<p>Click the link below to reset your password. "
-                    f"This link expires in <strong>1 hour</strong>.</p>"
-                    f"<p><a href='{reset_url}' style='background:#c9a84c;color:#0d1526;"
-                    f"padding:10px 22px;border-radius:6px;text-decoration:none;font-weight:700;'>"
-                    f"Reset Password</a></p>"
-                    f"<p>Or copy this URL:<br><code>{reset_url}</code></p>"
+                    f"<p><a href='{reset_url}'>Reset Password</a> (expires in 1 hour)</p>"
                     f"<p>If you did not request this, ignore this email.</p>"
-                    f"<p>— AegisBank AI Risk Engine</p>"
-                )
+                ),
             )
-
         return redirect(url_for("signin"))
-
     return render_template("forgot_password.html")
 
 
@@ -864,21 +846,18 @@ def forgot_password():
 def verify_email(token: str):
     email = _verify_token(token, salt="email-verify", max_age=3600)
     if not email:
-        flash("The verification link is invalid or has expired. Please request a new one.", "error")
+        flash("The verification link is invalid or has expired.", "error")
         return redirect(url_for("signin"))
-
     user = User.query.filter_by(email=email).first()
     if not user:
         flash("Account not found.", "error")
         return redirect(url_for("signin"))
-
-    if user.email_verified:
-        flash("Your email is already verified. You can sign in.", "success")
-    else:
+    if not user.email_verified:
         user.email_verified = True
         db.session.commit()
-        flash("Email verified successfully! Your account is now fully active. ✅", "success")
-
+        flash("Email verified! ✅", "success")
+    else:
+        flash("Email already verified.", "success")
     return redirect(url_for("signin"))
 
 
@@ -886,18 +865,15 @@ def verify_email(token: str):
 def reset_password(token: str):
     email = _verify_token(token, salt="password-reset", max_age=3600)
     if not email:
-        flash("The reset link is invalid or has expired. Please request a new one.", "error")
+        flash("Reset link is invalid or expired.", "error")
         return redirect(url_for("forgot_password"))
-
     user = User.query.filter_by(email=email).first()
     if not user:
         flash("Account not found.", "error")
         return redirect(url_for("signin"))
-
     if request.method == "POST":
         password = request.form.get("password", "")
         confirm  = request.form.get("confirm_password", "")
-
         if len(password) < 8:
             flash("Password must be at least 8 characters.", "error")
         elif password != confirm:
@@ -905,9 +881,8 @@ def reset_password(token: str):
         else:
             user.set_password(password)
             db.session.commit()
-            flash("Password reset successfully! You can now sign in with your new password. ✅", "success")
+            flash("Password reset successfully! ✅", "success")
             return redirect(url_for("signin"))
-
     return render_template("reset_password.html", token=token, email=email)
 
 
@@ -917,32 +892,32 @@ def resend_verification():
     if current_user.email_verified:
         flash("Your email is already verified.", "success")
         return redirect(url_for("index"))
-    token = _generate_token(current_user.email, salt="email-verify")
+    token      = _generate_token(current_user.email, salt="email-verify")
     verify_url = url_for("verify_email", token=token, _external=True)
     _send_email(
         to=current_user.email,
         subject="Verify your AegisBank account",
-        html_body=(
-            f"<p>Hi {current_user.first_name},</p>"
-            f"<p><a href='{verify_url}'>Click here to verify your email</a></p>"
-            f"<p>Or: <code>{verify_url}</code></p>"
-        )
+        html_body=f"<p><a href='{verify_url}'>Verify Email</a></p>",
     )
-    flash("Verification email resent! Check your inbox (or console in dev mode).", "success")
+    flash("Verification email resent!", "success")
     return redirect(url_for("index"))
 
 
 @app.route("/auth/google")
 def auth_google():
-    flash("Google Sign-In is not yet configured for this deployment. Please use email & password.", "error")
+    flash("Google Sign-In is not yet configured. Use email & password.", "error")
     return redirect(url_for("signin"))
 
 
 @app.route("/auth/microsoft")
 def auth_microsoft():
-    flash("Microsoft Sign-In is not yet configured for this deployment. Please use email & password.", "error")
+    flash("Microsoft Sign-In is not yet configured. Use email & password.", "error")
     return redirect(url_for("signin"))
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ROUTES — MAIN APP
+# ─────────────────────────────────────────────────────────────────────────────
 
 @app.route("/batch")
 @role_required("analyst", "risk_manager", "admin")
@@ -953,7 +928,6 @@ def batch():
 @app.route("/batch/template")
 @login_required
 def batch_template():
-    import io
     csv_content = (
         "loan_amnt,funded_amnt,int_rate,installment,annual_inc,dti,"
         "fico_range_low,fico_range_high,open_acc,pub_rec,revol_bal,"
@@ -963,62 +937,9 @@ def batch_template():
     )
     return app.response_class(
         csv_content,
-        mimetype='text/csv',
-        headers={"Content-Disposition": "attachment; filename=aegisbank_template.csv"}
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=aegisbank_template.csv"},
     )
-
-
-def _score_borrower(form_data: dict) -> dict:
-    """Run the model on one borrower dict and return a result dict."""
-    try:
-        input_df = preprocess_input(form_data)
-        input_df = create_features_live(input_df)
-<<<<<<< HEAD
-        input_df = add_economic_features(input_df)
-        input_df = input_df.reindex(columns=MODEL_FEATURES, fill_value=0.0)
-        input_data = SCALER.transform(input_df) if SCALER is not None else input_df
-        prob = float(MODEL.predict_proba(input_data)[0][1])
-=======
-        input_df = input_df.reindex(columns=MODEL_FEATURES, fill_value=0.0)
-        prob = float(MODEL.predict_proba(input_df)[0][1])
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
-
-        loan_amount  = float(form_data.get("loan_amnt", 0) or 0)
-        fico         = float(form_data.get("fico_range_low", 0) or 0)
-        lgd          = calculate_lgd(loan_amount, fico)
-        expected_loss = prob * lgd * loan_amount
-
-        # Shadow Model Inference (MLOps: A/B Testing)
-        challenger_prob = 0.0
-        if CHALLENGER_MODEL:
-<<<<<<< HEAD
-            challenger_prob = float(CHALLENGER_MODEL.predict_proba(input_data)[0][1])
-=======
-            challenger_prob = float(CHALLENGER_MODEL.predict_proba(input_df)[0][1])
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
-
-        risk_info = get_risk_level(prob)
-        risk    = risk_info["label"].title()
-        verdict = risk_info["verdict"]
-        color   = risk_info["color"]
-
-        return {
-            "prob":           round(prob * 100, 1),
-            "challenger_prob": round(challenger_prob * 100, 1),
-            "risk":           risk,
-            "verdict":        verdict,
-            "color":          color,
-            "loan_amnt":      loan_amount,
-            "annual_inc":     float(form_data.get("annual_inc", 0) or 0),
-            "fico":           fico,
-            "int_rate":       float(form_data.get("int_rate", 0) or 0),
-            "dti":            float(form_data.get("dti", 0) or 0),
-            "expected_loss":  round(expected_loss, 2),
-            "name":           form_data.get("borrower_name", "Borrower"),
-            "error":          None,
-        }
-    except Exception as exc:
-        return {"error": str(exc)}
 
 
 @app.route("/compare", methods=["GET", "POST"])
@@ -1029,11 +950,10 @@ def compare():
         return redirect(url_for("dashboard"))
 
     result_a = result_b = None
-    form_a = form_b = {}
+    form_a   = form_b   = {}
 
     if request.method == "POST":
-        # Split prefixed form fields: a_loan_amnt → loan_amnt
-        raw = request.form.to_dict()
+        raw    = request.form.to_dict()
         form_a = {k[2:]: v for k, v in raw.items() if k.startswith("a_")}
         form_b = {k[2:]: v for k, v in raw.items() if k.startswith("b_")}
         result_a = _score_borrower(form_a)
@@ -1044,358 +964,253 @@ def compare():
                            form_a=form_a, form_b=form_b)
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# SOCKETIO — MAIN PREDICTION ROUTE
+# ─────────────────────────────────────────────────────────────────────────────
+
 @socketio.on("submit_prediction")
 def handle_prediction(form_data):
     if MODEL is None:
-        emit('prediction_error', {"error": "Model not loaded — run train_model.py first."})
+        emit("prediction_error", {"error": "Model not loaded — run train_model.py first."})
         return
 
-    emit('progress', {'step': 'Validating inputs...', 'percent': 10})
-<<<<<<< HEAD
-    time.sleep(0.1)
-=======
-    time.sleep(0.6)
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
+    emit("progress", {"step": "Validating inputs...", "percent": 10})
+    time.sleep(0.3)
 
     errors = _validate_input(form_data)
     if errors:
-        emit('prediction_error', {"error": "\n".join(errors)})
+        emit("prediction_error", {"error": "\n".join(errors)})
         return
 
-    emit('progress', {'step': 'Running XGBoost model...', 'percent': 40})
-<<<<<<< HEAD
-    time.sleep(0.1)
-=======
-    time.sleep(0.6)
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
+    emit("progress", {"step": "Running XGBoost model...", "percent": 40})
+    time.sleep(0.3)
 
     try:
+        # ── Step 1: preprocess & feature engineering ─────────────────────────
         input_df = preprocess_input(form_data)
         input_df = create_features_live(input_df)
-<<<<<<< HEAD
-        input_df = add_economic_features(input_df)
-=======
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
-        columns = MODEL_FEATURES
-        input_df = input_df.reindex(columns=columns, fill_value=0.0)
+        # SHAP must be called AFTER reindex so columns match the model
+        input_df = input_df.reindex(columns=MODEL_FEATURES, fill_value=0.0)
 
-        emit('progress', {'step': 'Computing SHAP values...', 'percent': 60})
-<<<<<<< HEAD
-        time.sleep(0.1)
-        # Explain prediction
+        emit("progress", {"step": "Computing SHAP values...", "percent": 60})
+        time.sleep(0.3)
+
+        # ── Step 2: SHAP explanation ─────────────────────────────────────────
+        # explain_single returns real per-prediction SHAP values, not hardcoded values
         explanation = EXPLAINER.explain_single(input_df)
 
-        emit('progress', {'step': 'Checking fairness...', 'percent': 80})
-        time.sleep(0.1)
-=======
-        time.sleep(0.6)
-        # Bug #15 fix: SHAP called AFTER reindex so columns match the model
-        explanation = EXPLAINER.explain_single(input_df)
-
-        emit('progress', {'step': 'Checking fairness...', 'percent': 80})
-        time.sleep(0.6)
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
-
-        # Fairness checks
-        fairness_flag = EXPLAINER.check_individual_fairness(form_data)
-        bias_flag = EXPLAINER.check_group_bias(form_data)
+        # ── Step 3: fairness checks ──────────────────────────────────────────
+        fairness_flag    = EXPLAINER.check_individual_fairness(form_data)
+        bias_flag        = EXPLAINER.check_group_bias(form_data)
         sensitive_warning = EXPLAINER.validate_sensitive_features(form_data)
 
-        # Inference using class probability for default risk (PD)
-<<<<<<< HEAD
-        input_data = input_df
-        if SCALER is not None:
-            input_data = SCALER.transform(input_data)
-            print("Scaler applied: True")
-        else:
-            print("Scaler applied: False")
+        emit("progress", {"step": "Applying underwriting rules...", "percent": 75})
+        time.sleep(0.3)
 
-        prob = float(MODEL.predict_proba(input_data)[0][1])
-=======
-        prob = float(MODEL.predict_proba(input_df)[0][1])
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
-        
-        # Shadow Model Inference (MLOps: A/B Testing)
+        # ── Step 4: model inference ──────────────────────────────────────────
+        model_prob = float(MODEL.predict_proba(input_df)[0][1])
+
+        # Shadow model (A/B testing)
         challenger_prob = 0.0
         if CHALLENGER_MODEL:
-<<<<<<< HEAD
-            challenger_prob = float(CHALLENGER_MODEL.predict_proba(input_data)[0][1])
-            
-        print("Probability:", prob)
-        print("Challenger Probability:", challenger_prob)
-        if prob < 0.3:
-            print("Warning: prob < 0.3 — possible feature issue")
-=======
             challenger_prob = float(CHALLENGER_MODEL.predict_proba(input_df)[0][1])
-            
-        log.info("Probability: %.4f | Challenger: %.4f", prob, challenger_prob)
-        if prob < 0.3:
-            log.info("Note: prob < 0.3 — possible feature issue")
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
-        probability = prob
 
-        pd_value = probability
-        loan_amount = float(form_data.get("loan_amnt", 0) or 0)
-        fico_for_lgd = float(form_data.get("fico_range_low", 0) or 0)
-        lgd = calculate_lgd(loan_amount, fico_for_lgd)
-        ead = loan_amount
-        expected_loss = pd_value * lgd * ead
-        expected_profit = loan_amount * (1 - probability) * 0.1 - loan_amount * probability
-        income = float(form_data.get("annual_inc", 0) or 0)
-        override_triggered = income > 0 and loan_amount > 5 * income
-<<<<<<< HEAD
-        print(f"Decision debug -> prob={prob:.4f}, override={override_triggered}")
-=======
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
-        log.info("Decision debug -> prob=%.4f override=%s", prob, override_triggered)
+        log.info("Probability: %.4f | Challenger: %.4f", model_prob, challenger_prob)
 
-        # Risk bands (business-friendly labels)
-        # Use centralized risk logic from config.py
-        risk_info = get_risk_level(prob)
-        
-        if override_triggered:
-            risk = "High Risk (Override)"
-            verdict = "Decline" # Override usually means decline
-            show_warning = True
-<<<<<<< HEAD
-            print("Override triggered: loan_amount > 5 * annual_inc")
-=======
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
-            log.warning("Override triggered for borrower=%s (loan_amount=%.2f, annual_inc=%.2f)",
-                        form_data.get("borrower_name", "Anonymous"), loan_amount, income)
-        else:
-            risk = risk_info["label"].title()
-            verdict = risk_info["verdict"]
-            show_warning = prob > 0.3 # Show warning for non-low risk
+        # ── Step 5: override rules ───────────────────────────────────────────
+        override, override_reason, adj_prob = check_overrides(form_data)
 
-        prediction = verdict
-        decision = verdict
-        policy_decision = verdict
-        risk_label = risk.upper()
-        risk_color_map = {
-            "LOW RISK": "#22c55e",
-            "MEDIUM RISK": "#f59e0b",
-            "HIGH RISK": "#f97316",
-            "HIGH RISK (OVERRIDE)": "#dc2626",
-            "VERY HIGH RISK": "#ef4444",
-        }
-        if show_warning:
-            message = "Default Risk Detected — Review Recommended"
+        # When override fires, display probability is rule-based (not misleading model score)
+        display_prob = max(adj_prob or model_prob, model_prob) if override else model_prob
+
+        # ── Step 6: financial calculations ───────────────────────────────────
+        loan_amount = float(form_data.get("loan_amnt",      0) or 0)
+        annual_inc  = float(form_data.get("annual_inc",     0) or 0)
+        fico        = float(form_data.get("fico_range_low", 0) or 0)
+        int_rate    = float(form_data.get("int_rate",       0) or 0)
+        dti         = float(form_data.get("dti",            0) or 0)
+
+        lgd             = calculate_lgd(fico)
+        ead             = loan_amount
+        expected_loss   = display_prob * lgd * ead
+        expected_profit = calculate_expected_profit(loan_amount, int_rate, display_prob, lgd)
+
+        # ── Step 7: risk classification ──────────────────────────────────────
+        risk_label, verdict, show_warning = classify_risk(
+            display_prob, override, fico, loan_amount, annual_inc
+        )
+
+        if override:
+            message = f"⛔ Hard Decline — {override_reason}"
+        elif show_warning:
+            message = "Default Risk Detected — Enhanced Review Required"
         else:
             message = "Safe Borrower — No Immediate Risk"
 
-        # Check if credit invisible (no FICO score)
-        fico = float(form_data.get("fico_range_low", 0) or 0)
-        if fico == 0:
-            risk_note = "📌 Credit Invisible — evaluated using alternative data"
-        else:
-            risk_note = "Standard credit evaluation"
+        risk_note = (
+            "📌 Credit Invisible — evaluated using alternative data"
+            if fico == 0 else "Standard credit evaluation"
+        )
 
-        # Build history record
-<<<<<<< HEAD
-=======
-        threshold = 0.4
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
+        # Load Youden's J threshold (not hardcoded 0.4 or 0.5)
+        threshold = _load_threshold()
+
+        emit("progress", {"step": "Building audit record...", "percent": 90})
+        time.sleep(0.2)
+
+        # ── Step 8: build and persist record ─────────────────────────────────
         record = {
-            "id":          str(uuid.uuid4()),
-            "trace_id":    str(uuid.uuid4()),
-            "timestamp":   datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-            "user_email":  current_user.email if hasattr(current_user, 'email') else "system/api",
-            "user_role":   current_user.role if hasattr(current_user, 'role') else "system",
-            "borrower":    form_data.get("borrower_name", "Anonymous"),
-            "addr_state":  form_data.get("addr_state", ""),
-            "loan_amnt":   float(form_data.get("loan_amnt", 0) or 0),
-            "int_rate":    float(form_data.get("int_rate", 0) or 0),
-<<<<<<< HEAD
-            "annual_inc":  float(form_data.get("monthly_income", 0) or 0) * 12,
-            "fico":        float(form_data.get("credit_history_years", 5) or 5) * 15 + 600,
-=======
-            "annual_inc":  float(form_data.get("annual_inc", 0) or 0),
-            "fico":        float(form_data.get("fico_range_low", 0) or 0),
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
-            "purpose":     form_data.get("purpose", ""),
-            "grade":       form_data.get("grade", ""),
-            "prediction":  prediction,
-            "verdict":     verdict,
-            "decision":    decision,
-            "policy_decision": policy_decision,
-            "probability": round(probability * 100, 2),
-            "PD": round(pd_value, 4),
-            "LGD": round(lgd, 2),
-            "EAD": round(ead, 2),
-            "expected_loss": round(expected_loss, 2),
-            "expected_profit": round(expected_profit, 2),
-            "model_version": "v1.0",
-<<<<<<< HEAD
-            "decision_threshold": 0.5,
-=======
+            "id":               str(uuid.uuid4()),
+            "trace_id":         str(uuid.uuid4()),
+            "timestamp":        datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "user_email":       current_user.email if hasattr(current_user, "email") else "api",
+            "user_role":        current_user.role  if hasattr(current_user, "role")  else "api",
+            "borrower":         form_data.get("borrower_name", "Anonymous"),
+            "addr_state":       form_data.get("addr_state", ""),
+            "loan_amnt":        loan_amount,
+            "int_rate":         int_rate,
+            "annual_inc":       annual_inc,
+            "dti":              dti,
+            "fico":             fico,
+            "purpose":          form_data.get("purpose", ""),
+            "grade":            form_data.get("grade", ""),
+            "prediction":       verdict,
+            "prediction_numeric": 1 if verdict == "Default" else 0,
+            "verdict":          verdict,
+            "decision":         verdict,
+            "probability":      round(display_prob * 100, 2),
+            "model_probability": round(model_prob * 100, 2),
+            "PD":               round(display_prob, 4),
+            "LGD":              round(lgd, 2),
+            "EAD":              round(ead, 2),
+            "expected_loss":    round(expected_loss, 2),
+            "expected_profit":  round(expected_profit, 2),
+            "model_version":    "v1.0",
             "decision_threshold": threshold,
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
-            "features_used": list(input_df.columns),
-            "top_features": explanation,
-            "fairness_check": fairness_flag,
-            "drift_status": "checked",
-            "risk_level":  risk_label,
-            "show_warning": show_warning,
-            "message":     message,
-            "color":       risk_color_map.get(risk_label, "#6b7280"),
-            "risk_note":   risk_note,
-            "raw_input":   form_data,
-            "explanation": explanation,
-            "fairness": fairness_flag,
-            "bias_check": bias_flag,
+            "top_features":     explanation,      # real SHAP values per prediction
+            "fairness_check":   fairness_flag,
+            "bias_check":       bias_flag,
             "sensitive_warning": sensitive_warning,
-            "challenger_prob": round(challenger_prob * 100, 2),
-            "actual_outcome": None,  # Ground truth placeholder
+            "challenger_prob":  round(challenger_prob * 100, 2),
+            "risk_level":       risk_label,
+            "show_warning":     show_warning,
+            "message":          message,
+            "override_triggered": override,
+            "override_reason":  override_reason,
+            "color":            RISK_COLOR_MAP.get(risk_label, "#6b7280"),
+            "risk_note":        risk_note,
+            "raw_input":        form_data,
+            "actual_outcome":   None,
         }
 
-        report = generate_risk_report(record)
+        report      = generate_risk_report(record)
         report_path = save_report(report, record["id"])
         record["report_path"] = report_path
 
         _append_to_history(record)
         log_decision(record)
 
-<<<<<<< HEAD
-        # Feedback loop & MLOps (Run in background so we don't freeze the UI)
-        def background_tasks():
+        # ── Step 9: background MLOps ─────────────────────────────────────────
+        # Run in a daemon thread so the socket response is not delayed
+        def _background_mlops():
             try:
-                from retrain import retrain_model
-                feedback_data = build_feedback_dataset()
-
-                if feedback_data is not None:
-                    update_training_data(feedback_data)
-                    log.info("🔁 Feedback data added to training set")
+                # Scheduled retraining every 100 predictions
+                if should_retrain():
+                    log.info("⚡ Scheduled retraining (every 100 predictions)…")
+                    feedback_data = build_feedback_dataset()
+                    if feedback_data is not None:
+                        update_training_data(feedback_data)
+                        log.info("🔁 Feedback data appended to training set")
                     retrain_model()
                     reload_model()
 
+                # Drift detection
                 from monitoring.drift_detection import detect_drift
                 current_data = get_current_data()
-
                 if current_data is not None:
-                    results, drift_flag = detect_drift(REFERENCE_DATA, current_data)
+                    _, drift_flag = detect_drift(REFERENCE_DATA, current_data)
                     if drift_flag:
                         log.warning("🚨 DRIFT DETECTED — triggering retraining")
                         retrain_model()
                         reload_model()
 
-                if should_retrain():
-                    log.info("⚡ Triggering retraining...")
-                    retrain_model()
-                    reload_model()
-            except Exception as e:
-                log.error("Background task error: %s", e)
+            except Exception as exc:
+                log.error("Background MLOps error: %s", exc)
 
         import threading
-        threading.Thread(target=background_tasks, daemon=True).start()
+        threading.Thread(target=_background_mlops, daemon=True).start()
 
-        emit('progress', {'step': 'Decision ready ✓', 'percent': 100})
+        emit("progress", {"step": "Decision ready ✓", "percent": 100})
         time.sleep(0.1)
-=======
-        # Bug #6 fix: Only retrain every 100th prediction (not every prediction)
-        if should_retrain():
-            log.info("⚡ Triggering scheduled retraining (every 100 predictions)...")
-            feedback_data = build_feedback_dataset()
-            if feedback_data is not None:
-                update_training_data(feedback_data)
-                log.info("🔁 Feedback data added to training set")
-            retrain_model()
-            reload_model()
-
-        # Drift detection (independent of scheduled retraining)
-        from monitoring.drift_detection import detect_drift
-
-        current_data = get_current_data()
-
-        if current_data is not None:
-            results, drift_flag = detect_drift(REFERENCE_DATA, current_data)
-
-            if drift_flag:
-                log.warning("🚨 DRIFT DETECTED — triggering retraining")
-                retrain_model()
-                reload_model()
-
-        emit('progress', {'step': 'Decision ready ✓', 'percent': 100})
-        time.sleep(0.6)
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
-
-        emit('prediction_complete', {'record_id': record['id']})
+        emit("prediction_complete", {"record_id": record["id"]})
 
     except Exception as exc:
         log.exception("Prediction error")
-        emit('prediction_error', {"error": f"Prediction failed: {exc}"})
+        emit("prediction_error", {"error": f"Prediction failed: {exc}"})
 
 
 @app.route("/result/<record_id>")
 @fl_login_required
-def prediction_result(record_id):
+def prediction_result(record_id: str):
     records = _load_history()
-    record = next((r for r in records if r.get("id") == record_id), None)
+    record  = next((r for r in records if r.get("id") == record_id), None)
     if not record:
         abort(404)
-        
     return render_template(
         "result.html",
-        risk=record["risk_level"],
-        show_warning=record["show_warning"],
-        prob=record["probability"] / 100.0,
-        verdict=record["verdict"],
-        record=record
+        risk         = record["risk_level"],
+        show_warning = record["show_warning"],
+        prob         = record["probability"] / 100.0,
+        model_prob   = record.get("model_probability", record["probability"]) / 100.0,
+        override_triggered = record.get("override_triggered", False),
+        override_reason    = record.get("override_reason"),
+        verdict      = record["verdict"],
+        record       = record,
     )
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ROUTES — DASHBOARD, HISTORY, REPORTS, ADMIN
+# ─────────────────────────────────────────────────────────────────────────────
 
 @app.route("/dashboard")
 @login_required
 def dashboard():
-<<<<<<< HEAD
     has_api_key = False
     if current_user.is_authenticated:
-        key_record = ApiKey.query.filter_by(user_id=current_user.id).first()
-        if key_record:
-            has_api_key = True
+        has_api_key = ApiKey.query.filter_by(user_id=current_user.id).first() is not None
     return render_template("dashboard.html", metrics=METRICS, has_api_key=has_api_key)
-
-@app.route("/api/docs")
-def api_docs():
-    return render_template("api_docs.html")
-=======
-    return render_template("dashboard.html", metrics=METRICS)
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 
 
 @app.route("/history")
 @login_required
 def history():
-    records = _load_history()
-    return render_template("history.html", records=records)
+    return render_template("history.html", records=_load_history())
 
 
 @app.route("/reports")
 @login_required
 def reports():
-    records = _load_history()
-    return render_template("reports.html", records=records)
+    return render_template("reports.html", records=_load_history())
 
 
 @app.route("/reports/<record_id>")
 @login_required
 def report_detail(record_id: str):
-    records = _load_history()
-    record  = next((r for r in records if r.get("id") == record_id), None)
+    record = next((r for r in _load_history() if r.get("id") == record_id), None)
     if record is None:
         abort(404)
     return render_template("report_detail.html", record=record)
 
 
-# ── ADMIN PANEL ──────────────────────────────────────────────────────────────
-
 @app.route("/admin")
 @role_required("admin")
 def admin_panel():
     users = User.query.order_by(User.created_at).all()
-    history_count = len(_load_history())
-    return render_template("admin.html", users=users, history_count=history_count,
-                           model_features=len(MODEL_FEATURES), model_loaded=MODEL is not None)
+    return render_template("admin.html", users=users,
+                           history_count=len(_load_history()),
+                           model_features=len(MODEL_FEATURES),
+                           model_loaded=MODEL is not None)
 
 
 @app.route("/admin/promote", methods=["POST"])
@@ -1407,7 +1222,6 @@ def admin_promote():
     if user:
         user.role = new_role
         db.session.commit()
-        # Refresh session if admin changed their own role
         if email == current_user.email:
             session["user_role"] = new_role
         flash(f"Role updated: {email} → {new_role}", "success")
@@ -1416,7 +1230,29 @@ def admin_promote():
     return redirect(url_for("admin_panel"))
 
 
-# ── JSON APIs ────────────────────────────────────────────────────────────────
+@app.route("/audit")
+@role_required("compliance", "admin")
+def audit():
+    records = sorted(_load_history(), key=lambda x: x.get("timestamp", ""), reverse=True)
+    return render_template("audit.html", records=records)
+
+
+@app.route("/heatmap")
+@login_required
+def heatmap():
+    return render_template("heatmap.html")
+
+
+@app.route("/timeline")
+@login_required
+def timeline():
+    query = request.args.get("q", "").strip()
+    return render_template("timeline.html", query=query)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JSON APIs
+# ─────────────────────────────────────────────────────────────────────────────
 
 @app.route("/api/metrics")
 def api_metrics():
@@ -1430,11 +1266,257 @@ def api_history():
     if q:
         records = [
             r for r in records
-            if q in r.get("borrower", "").lower()
-            or q in r.get("purpose", "").lower()
+            if q in r.get("borrower",   "").lower()
+            or q in r.get("purpose",    "").lower()
             or q in r.get("risk_level", "").lower()
         ]
     return jsonify(records)
+
+
+@app.route("/api/timeline/<path:borrower_name>")
+@login_required
+def api_timeline(borrower_name: str):
+    records    = _load_history()
+    name_lower = borrower_name.lower()
+    matches    = sorted(
+        [r for r in records if r.get("borrower", "").lower() == name_lower],
+        key=lambda r: r.get("timestamp", ""),
+    )
+    if not matches:
+        return jsonify({"error": f"No records found for '{borrower_name}'"}), 404
+
+    points = [
+        {
+            "index":       i + 1,
+            "timestamp":   r.get("timestamp", ""),
+            "probability": round(float(r.get("probability", 0)), 1),
+            "risk_level":  r.get("risk_level", ""),
+            "verdict":     r.get("verdict", ""),
+            "loan_amnt":   r.get("loan_amnt", 0),
+            "int_rate":    r.get("int_rate", 0),
+            "fico":        r.get("fico", 0),
+            "annual_inc":  r.get("annual_inc", 0),
+            "purpose":     r.get("purpose", ""),
+            "id":          r.get("id", ""),
+        }
+        for i, r in enumerate(matches)
+    ]
+
+    delta = points[-1]["probability"] - points[0]["probability"] if len(points) >= 2 else 0
+    trend = "worsening" if delta > 5 else ("improving" if delta < -5 else "stable")
+    if len(points) < 2:
+        trend = "single"
+
+    return jsonify({
+        "borrower": borrower_name,
+        "count":    len(points),
+        "trend":    trend,
+        "delta":    round(delta, 1),
+        "latest":   points[-1],
+        "first":    points[0],
+        "points":   points,
+    })
+
+
+@app.route("/api/borrower-names")
+@login_required
+def api_borrower_names():
+    q       = request.args.get("q", "").lower()
+    records = _load_history()
+    names   = sorted({
+        r.get("borrower", "")
+        for r in records
+        if r.get("borrower") and q in r.get("borrower", "").lower()
+    })
+    return jsonify(names[:20])
+
+
+@app.route("/api/geo-risk")
+@login_required
+def api_geo_risk():
+    _BASELINE = {
+        "AL": 52, "AK": 41, "AZ": 48, "AR": 55, "CA": 44, "CO": 38, "CT": 42,
+        "DE": 40, "FL": 51, "GA": 50, "HI": 36, "ID": 39, "IL": 46, "IN": 49,
+        "IA": 37, "KS": 43, "KY": 54, "LA": 58, "ME": 38, "MD": 43, "MA": 39,
+        "MI": 47, "MN": 36, "MS": 61, "MO": 48, "MT": 41, "NE": 38, "NV": 53,
+        "NH": 35, "NJ": 44, "NM": 52, "NY": 45, "NC": 49, "ND": 34, "OH": 48,
+        "OK": 53, "OR": 40, "PA": 44, "RI": 43, "SC": 51, "SD": 37, "TN": 52,
+        "TX": 49, "UT": 37, "VT": 34, "VA": 42, "WA": 39, "WV": 57, "WI": 40,
+        "WY": 41, "DC": 47, "PR": 63, "VI": 59,
+    }
+    records    = _load_history()
+    state_data: dict = {}
+    for r in records:
+        state = r.get("addr_state") or (r.get("raw_input") or {}).get("addr_state", "")
+        state = str(state).strip().upper()
+        if len(state) != 2:
+            continue
+        prob = float(r.get("probability", 0))
+        if state not in state_data:
+            state_data[state] = {"sum": 0.0, "count": 0}
+        state_data[state]["sum"]   += prob
+        state_data[state]["count"] += 1
+
+    result = []
+    for state, baseline in _BASELINE.items():
+        if state in state_data and state_data[state]["count"] > 0:
+            avg = round(state_data[state]["sum"] / state_data[state]["count"], 1)
+            cnt = state_data[state]["count"]
+            src = "live"
+        else:
+            avg = round(baseline + (hash(state) % 7) - 3, 1)
+            cnt = 0
+            src = "baseline"
+        result.append({"state": state, "avg_prob": avg, "count": cnt, "source": src})
+
+    return jsonify(result)
+
+
+@app.route("/api/history/confirm", methods=["POST"])
+@login_required
+def confirm_outcome():
+    data      = request.json
+    record_id = data.get("id")
+    outcome   = data.get("outcome")
+    if record_id is None or outcome is None:
+        return jsonify({"error": "Missing ID or outcome"}), 400
+    try:
+        history = _load_history()
+        updated = False
+        for entry in history:
+            if entry.get("id") == record_id:
+                entry["actual_outcome"] = outcome
+                updated = True
+                break
+        if updated:
+            _save_history(history)
+            try:
+                from monitoring.model_health import monitor_health
+                monitor_health()
+            except ImportError:
+                pass
+            return jsonify({"status": "success"})
+        return jsonify({"error": "Record not found"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ── API KEY & REST PREDICT ────────────────────────────────────────────────────
+
+def require_api_key(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        api_key = request.headers.get("X-API-Key")
+        if not api_key:
+            auth = request.headers.get("Authorization", "")
+            if auth.startswith("Bearer "):
+                api_key = auth.split(" ")[1]
+        if not api_key:
+            return jsonify({"error": "Missing API Key."}), 401
+        valid_user = next(
+            (k.user for k in ApiKey.query.all() if k.check_key(api_key)), None
+        )
+        if not valid_user:
+            return jsonify({"error": "Invalid API Key."}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+
+@app.route("/api/v1/keys/generate", methods=["POST"])
+@fl_login_required
+def generate_api_key():
+    raw_key = secrets.token_urlsafe(32)
+    ApiKey.query.filter_by(user_id=current_user.id).delete()
+    new_key = ApiKey(user_id=current_user.id)
+    new_key.set_key(raw_key)
+    db.session.add(new_key)
+    db.session.commit()
+    return jsonify({"message": "API key generated.", "api_key": raw_key})
+
+
+@app.route("/api/v1/predict", methods=["POST"])
+@require_api_key
+def api_predict():
+    if MODEL is None:
+        return jsonify({"error": "Model not loaded"}), 503
+    form_data = request.json
+    if not form_data:
+        return jsonify({"error": "Invalid JSON payload"}), 400
+    errors = _validate_input(form_data)
+    if errors:
+        return jsonify({"error": "Validation failed", "details": errors}), 400
+    try:
+        result = _score_borrower(form_data)
+        if result.get("error"):
+            return jsonify({"error": result["error"]}), 500
+        return jsonify({
+            "status": "success",
+            "prediction": {
+                "risk_level":       result["risk"],
+                "probability":      result["prob"],
+                "model_probability": result["model_prob"],
+                "verdict":          result["verdict"],
+                "expected_loss":    result["expected_loss"],
+                "expected_profit":  result["expected_profit"],
+                "override_triggered": result["override"],
+                "override_reason":  result["override_reason"],
+            },
+        })
+    except Exception as exc:
+        log.exception("API Prediction error")
+        return jsonify({"error": str(exc)}), 500
+
+
+@app.route("/api/v1/mlops/health")
+@role_required("admin", "risk_manager")
+def api_mlops_health():
+    try:
+        from monitoring.drift_detection import run_monitoring
+        drift_results     = run_monitoring()
+        champion_metrics  = json.load(open(METRICS_PATH)) if os.path.exists(METRICS_PATH) else {}
+        challenger_metrics = (
+            json.load(open(CHALLENGER_METRICS_PATH))
+            if os.path.exists(CHALLENGER_METRICS_PATH) else {}
+        )
+        live_accuracy = None
+        if os.path.exists(HISTORY_PATH):
+            df = pd.DataFrame(_load_history())
+            if "actual_outcome" in df.columns:
+                valid = df.dropna(subset=["actual_outcome"])
+                if len(valid) > 0:
+                    live_accuracy = round(
+                        float((valid["actual_outcome"] == valid["verdict"]).mean() * 100), 2
+                    )
+        return jsonify({
+            "drift": drift_results,
+            "champion": champion_metrics,
+            "challenger": challenger_metrics,
+            "live_accuracy": live_accuracy,
+            "retrain_threshold": 80.0,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/v1/mlops/retrain", methods=["POST"])
+@role_required("admin")
+def api_mlops_retrain():
+    try:
+        retrain_model()
+        reload_model()
+        return jsonify({"status": "success", "message": "Retraining complete."})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/v1/mlops/reload", methods=["POST"])
+@role_required("admin")
+def api_mlops_reload():
+    try:
+        reload_model()
+        return jsonify({"status": "success", "message": "Models reloaded."})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/health")
@@ -1446,347 +1528,15 @@ def health():
     })
 
 
-# ── PREDICTION TIMELINE ───────────────────────────────────────────────────────
-
-@app.route("/timeline")
-@login_required
-def timeline():
-    query = request.args.get("q", "").strip()
-    return render_template("timeline.html", query=query)
-
-
-@app.route("/api/timeline/<path:borrower_name>")
-@login_required
-def api_timeline(borrower_name: str):
-    """Return all assessments for one borrower, sorted oldest→newest."""
-    records = _load_history()
-    name_lower = borrower_name.lower()
-
-    matches = [
-        r for r in records
-        if r.get("borrower", "").lower() == name_lower
-    ]
-
-    # Sort oldest first for the chart
-    matches.sort(key=lambda r: r.get("timestamp", ""))
-
-    if not matches:
-        return jsonify({"error": f"No records found for '{borrower_name}'"}), 404
-
-    # Build timeline points
-    points = []
-    for i, r in enumerate(matches):
-        prob = float(r.get("probability", 0))   # stored 0-100
-        points.append({
-            "index":       i + 1,
-            "timestamp":   r.get("timestamp", ""),
-            "probability": round(prob, 1),
-            "risk_level":  r.get("risk_level", ""),
-            "verdict":     r.get("verdict", ""),
-            "loan_amnt":   r.get("loan_amnt", 0),
-            "int_rate":    r.get("int_rate", 0),
-            "fico":        r.get("fico", 0),
-            "annual_inc":  r.get("annual_inc", 0),
-            "purpose":     r.get("purpose", ""),
-            "id":          r.get("id", ""),
-        })
-
-    # Trend calculation
-    if len(points) >= 2:
-        delta = points[-1]["probability"] - points[0]["probability"]
-        if   delta >  5: trend = "worsening"
-        elif delta < -5: trend = "improving"
-        else:            trend = "stable"
-    else:
-        trend = "single"
-
-    return jsonify({
-        "borrower": borrower_name,
-        "count":    len(points),
-        "trend":    trend,
-        "delta":    round(points[-1]["probability"] - points[0]["probability"], 1) if len(points) >= 2 else 0,
-        "latest":   points[-1],
-        "first":    points[0],
-        "points":   points,
-    })
-
-
-@app.route("/api/borrower-names")
-@login_required
-def api_borrower_names():
-    """Autocomplete: return unique borrower names from history."""
-    q = request.args.get("q", "").lower()
-    records = _load_history()
-    names = sorted({
-        r.get("borrower", "")
-        for r in records
-        if r.get("borrower") and q in r.get("borrower", "").lower()
-    })
-    return jsonify(names[:20])
-
-
-
-
-
-@app.route("/api/history/confirm", methods=["POST"])
-@login_required
-def confirm_outcome():
-    data = request.json
-    record_id = data.get("id")
-    outcome = data.get("outcome")  # 0 for Repay, 1 for Default
-    
-    if record_id is None or outcome is None:
-        return jsonify({"error": "Missing ID or outcome"}), 400
-        
-    try:
-        with open(HISTORY_PATH, "r") as f:
-            history = json.load(f)
-            
-        updated = False
-        for entry in history:
-            if entry.get("id") == record_id:
-                entry["actual_outcome"] = outcome
-                updated = True
-                break
-                
-        if updated:
-            with open(HISTORY_PATH, "w") as f:
-                json.dump(history, f, indent=4)
-            
-            # After confirmation, check model health
-            try:
-                from monitoring.model_health import monitor_health
-                monitor_health()
-            except ImportError:
-                pass
-                
-            return jsonify({"status": "success", "message": "Outcome confirmed"})
-        else:
-            return jsonify({"error": "Record not found"}), 404
-            
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-# ── GEOGRAPHIC HEATMAP ───────────────────────────────────────────────────────
-
-@app.route("/audit")
-@role_required("compliance", "admin")
-def audit():
-    records = _load_history()
-    # Sort newest first
-    records.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
-    return render_template("audit.html", records=records)
-
-
-@app.route("/heatmap")
-@login_required
-def heatmap():
-    return render_template("heatmap.html")
-
-
-@app.route("/api/geo-risk")
-@login_required
-def api_geo_risk():
-    """Return per-state avg default probability + count from history.
-    Missing states get a synthetic baseline so the map is always full."""
-
-    # Realistic US state default-risk baselines (% probability, from industry data)
-    _BASELINE = {
-        "AL":52,"AK":41,"AZ":48,"AR":55,"CA":44,"CO":38,"CT":42,"DE":40,
-        "FL":51,"GA":50,"HI":36,"ID":39,"IL":46,"IN":49,"IA":37,"KS":43,
-        "KY":54,"LA":58,"ME":38,"MD":43,"MA":39,"MI":47,"MN":36,"MS":61,
-        "MO":48,"MT":41,"NE":38,"NV":53,"NH":35,"NJ":44,"NM":52,"NY":45,
-        "NC":49,"ND":34,"OH":48,"OK":53,"OR":40,"PA":44,"RI":43,"SC":51,
-        "SD":37,"TN":52,"TX":49,"UT":37,"VT":34,"VA":42,"WA":39,"WV":57,
-        "WI":40,"WY":41,"DC":47,"PR":63,"VI":59,
-    }
-
-    # Aggregate from real history
-    records = _load_history()
-    state_data: dict = {}
-    for r in records:
-        state = r.get("addr_state") or (r.get("raw_input") or {}).get("addr_state", "")
-        state = str(state).strip().upper()
-        if len(state) != 2:
-            continue
-        prob = r.get("probability", 0)          # stored as 0-100
-        if state not in state_data:
-            state_data[state] = {"sum": 0.0, "count": 0}
-        state_data[state]["sum"]   += float(prob)
-        state_data[state]["count"] += 1
-
-    # Build final payload — blend real + baseline for missing states
-    result = []
-    for state, baseline in _BASELINE.items():
-        if state in state_data and state_data[state]["count"] > 0:
-            avg  = round(state_data[state]["sum"] / state_data[state]["count"], 1)
-            cnt  = state_data[state]["count"]
-            src  = "live"
-        else:
-            avg  = round(baseline + (hash(state) % 7) - 3, 1)   # ±3 jitter
-            cnt  = 0
-            src  = "baseline"
-        result.append({"state": state, "avg_prob": avg, "count": cnt, "source": src})
-
-    return jsonify(result)
-
-
-# ── API ENDPOINTS & DECORATOR ─────────────────────────────────────────────
-def require_api_key(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        api_key = request.headers.get("X-API-Key")
-        if not api_key:
-            auth_header = request.headers.get("Authorization")
-            if auth_header and auth_header.startswith("Bearer "):
-                api_key = auth_header.split(" ")[1]
-        
-        if not api_key:
-            return jsonify({"error": "Missing API Key. Provide via X-API-Key or Authorization Bearer header."}), 401
-            
-        all_keys = ApiKey.query.all()
-        valid_user = None
-        for key_record in all_keys:
-            if key_record.check_key(api_key):
-                valid_user = key_record.user
-                break
-                
-        if not valid_user:
-            return jsonify({"error": "Invalid API Key."}), 403
-            
-        return f(*args, **kwargs)
-    return decorated
-
-
-@app.route("/api/v1/keys/generate", methods=["POST"])
-@fl_login_required
-def generate_api_key():
-    raw_key = secrets.token_urlsafe(32)
-    new_key = ApiKey(user_id=current_user.id)
-    new_key.set_key(raw_key)
-    
-    # Allow 1 key per user for simplicity
-    ApiKey.query.filter_by(user_id=current_user.id).delete()
-    
-    db.session.add(new_key)
-    db.session.commit()
-    
-    return jsonify({
-        "message": "API key generated successfully.",
-        "api_key": raw_key
-    })
-
-
-@app.route("/api/v1/mlops/health")
-@role_required("admin", "risk_manager")
-def api_mlops_health():
-    try:
-        from monitoring.drift_detection import run_monitoring
-        drift_results = run_monitoring()
-        
-        with open(METRICS_PATH) as f:
-            champion_metrics = json.load(f)
-            
-        challenger_metrics = {}
-        if os.path.exists(CHALLENGER_METRICS_PATH):
-            with open(CHALLENGER_METRICS_PATH) as f:
-                challenger_metrics = json.load(f)
-                
-        # Calculate live accuracy if possible
-        live_accuracy = None
-        if os.path.exists(HISTORY_PATH):
-            with open(HISTORY_PATH) as f:
-                history = json.load(f)
-                df = pd.DataFrame(history)
-                if "actual_outcome" in df.columns:
-                    valid = df.dropna(subset=["actual_outcome"])
-                    if len(valid) > 0:
-                        live_accuracy = round(float((valid["actual_outcome"] == valid["verdict"]).mean() * 100), 2)
-
-        return jsonify({
-            "drift": drift_results,
-            "champion": champion_metrics,
-            "challenger": challenger_metrics,
-            "live_accuracy": live_accuracy,
-            "retrain_threshold": 80.0
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/v1/mlops/retrain", methods=["POST"])
-@role_required("admin")
-def api_mlops_retrain():
-    try:
-        from retrain import retrain_model
-        retrain_model()
-        reload_model()
-        return jsonify({"status": "success", "message": "Retraining complete and models reloaded."})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/v1/mlops/reload", methods=["POST"])
-@role_required("admin")
-def api_mlops_reload():
-    try:
-        reload_model()
-        return jsonify({"status": "success", "message": "Models reloaded from disk."})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/v1/predict", methods=["POST"])
-@require_api_key
-def api_predict():
-    if MODEL is None:
-        return jsonify({"error": "Model not loaded"}), 503
-        
-    form_data = request.json
-    if not form_data:
-        return jsonify({"error": "Invalid JSON payload"}), 400
-        
-    errors = _validate_input(form_data)
-    if errors:
-        return jsonify({"error": "Validation failed", "details": errors}), 400
-        
-    try:
-        result = _score_borrower(form_data)
-        records = _load_history()
-        record = next((r for r in records if r.get("id") == result["record_id"]), None)
-        
-        return jsonify({
-            "status": "success",
-            "prediction": {
-                "risk_level": result["risk"],
-                "probability": result["prob"],
-                "verdict": result["verdict"],
-                "expected_loss": record.get("expected_loss") if record else None
-            },
-            "record_id": result["record_id"]
-        })
-    except Exception as exc:
-        log.exception("API Prediction error")
-        return jsonify({"error": str(exc)}), 500
-
-
-
 # ─────────────────────────────────────────────────────────────────────────────
 # ENTRY POINT
 # ─────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     with app.app_context():
-        db.create_all()          # Create tables if they don't exist
-        _seed_default_users()    # Insert demo accounts (idempotent)
+        db.create_all()
+        _seed_default_users()
         log.info("✅ Database ready at %s", DB_PATH)
-    
-    print(" * Serving Flask app 'webapp.app'")
-    print(" * Debug mode: off")
-    print(" * Running on http://127.0.0.1:5000")
-    socketio.run(app, debug=False, host="127.0.0.1", port=5000, allow_unsafe_werkzeug=True)
 
-
-#System Works Like This
-#Prediction → Store → Drift Check → If Drift → Retrain → Reload Model ✅
+    socketio.run(app, debug=False, host="127.0.0.1", port=5000,
+                 allow_unsafe_werkzeug=True)
