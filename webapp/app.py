@@ -738,118 +738,73 @@ def signin():
     if current_user.is_authenticated:
         return redirect(url_for("index"))
     if request.method == "POST":
-        email    = request.form.get("email", "").strip().lower()
+        email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
         user = User.query.filter_by(email=email).first()
         if user and user.check_password(password) and user.is_active:
             login_user(user, remember=bool(request.form.get("remember")))
             session["user_email"] = user.email
-            session["user_name"]  = user.full_name
-            session["user_role"]  = user.role
+            session["user_name"] = user.full_name
+            session["user_role"] = user.role
             flash(f"Welcome back, {user.first_name}! 👋", "success")
             return redirect(url_for("index"))
         flash("Invalid email or password. Please try again.", "error")
-        return render_template_string(
-                """<!doctype html>
+
+    # Render signin page (GET, or POST with invalid credentials)
+    return render_template_string("""<!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Sign In — AegisBank</title>
-        <style>
-            :root { color-scheme: dark; }
-            body {
-                margin: 0;
-                font-family: Arial, Helvetica, sans-serif;
-                background: linear-gradient(135deg, #08101c 0%, #0f172a 55%, #111827 100%);
-                color: #e5e7eb;
-                min-height: 100vh;
-                display: grid;
-                place-items: center;
-                padding: 24px;
-            }
-            .card {
-                width: min(100%, 440px);
-                background: rgba(15, 23, 42, 0.92);
-                border: 1px solid rgba(148, 163, 184, 0.2);
-                border-radius: 20px;
-                box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
-                padding: 32px;
-            }
-            h1 { margin: 0 0 8px; font-size: 2rem; }
-            p { margin: 0 0 24px; color: #94a3b8; line-height: 1.5; }
-            .flash {
-                padding: 12px 14px;
-                border-radius: 12px;
-                margin-bottom: 14px;
-                font-size: 0.95rem;
-            }
-            .flash.success { background: rgba(16, 185, 129, 0.15); color: #a7f3d0; }
-            .flash.error { background: rgba(239, 68, 68, 0.15); color: #fecaca; }
-            label { display: block; margin: 14px 0 8px; font-weight: 600; }
-            input[type="email"], input[type="password"] {
-                width: 100%;
-                box-sizing: border-box;
-                padding: 12px 14px;
-                border-radius: 12px;
-                border: 1px solid rgba(148, 163, 184, 0.28);
-                background: rgba(2, 6, 23, 0.75);
-                color: #f8fafc;
-            }
-            .row {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                margin-top: 14px;
-                color: #cbd5e1;
-                font-size: 0.95rem;
-            }
-            .actions { margin-top: 22px; display: grid; gap: 12px; }
-            button {
-                border: 0;
-                border-radius: 12px;
-                padding: 12px 16px;
-                font-weight: 700;
-                cursor: pointer;
-                background: linear-gradient(135deg, #c9a84c, #f0d78b);
-                color: #0f172a;
-            }
-            a { color: #93c5fd; text-decoration: none; }
-            .footer { margin-top: 18px; font-size: 0.95rem; color: #94a3b8; }
-        </style>
-    </head>
-    <body>
-        <main class="card">
-            <h1>Sign in</h1>
-            <p>Use your registered email and password to access the AegisBank risk engine.</p>
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="flash {{ category }}">{{ message }}</div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-            <form method="post" action="/signin">
-                <label for="email">Email</label>
-                <input id="email" name="email" type="email" required autocomplete="email" />
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign In — AegisBank</title>
+    <style>
+      :root { color-scheme: dark; }
+      body { margin:0; font-family:Arial,Helvetica,sans-serif; background:linear-gradient(135deg,#08101c 0%,#0f172a 55%,#111827 100%); color:#e5e7eb; min-height:100vh; display:grid; place-items:center; padding:24px }
+      .card { width:min(100%,440px); background:rgba(15,23,42,0.92); border:1px solid rgba(148,163,184,0.2); border-radius:20px; padding:32px; box-shadow:0 24px 80px rgba(0,0,0,0.35) }
+      h1 { margin:0 0 8px; font-size:2rem }
+      p { margin:0 0 24px; color:#94a3b8 }
+      .flash { padding:12px 14px; border-radius:12px; margin-bottom:14px; font-size:0.95rem }
+      .flash.success { background: rgba(16,185,129,0.15); color:#a7f3d0 }
+      .flash.error { background: rgba(239,68,68,0.15); color:#fecaca }
+      label { display:block; margin:14px 0 8px; font-weight:600 }
+      input[type="email"], input[type="password"] { width:100%; box-sizing:border-box; padding:12px 14px; border-radius:12px; border:1px solid rgba(148,163,184,0.28); background:rgba(2,6,23,0.75); color:#f8fafc }
+      .row { display:flex; align-items:center; gap:10px; margin-top:14px; color:#cbd5e1 }
+      .actions { margin-top:22px }
+      button { border:0; border-radius:12px; padding:12px 16px; font-weight:700; cursor:pointer; background:linear-gradient(135deg,#c9a84c,#f0d78b); color:#0f172a }
+      a { color:#93c5fd }
+      .footer { margin-top:18px; font-size:0.95rem; color:#94a3b8 }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>Sign in</h1>
+      <p>Use your registered email and password to access the AegisBank risk engine.</p>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      <form method="post" action="/signin">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" required autocomplete="email" />
 
-                <label for="password">Password</label>
-                <input id="password" name="password" type="password" required autocomplete="current-password" />
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" required autocomplete="current-password" />
 
-                <div class="row">
-                    <input id="remember" name="remember" type="checkbox" />
-                    <label for="remember" style="margin:0;font-weight:500;">Remember me</label>
-                </div>
+        <div class="row">
+          <input id="remember" name="remember" type="checkbox" />
+          <label for="remember" style="margin:0;font-weight:500;">Remember me</label>
+        </div>
 
-                <div class="actions">
-                    <button type="submit">Sign In</button>
-                </div>
-            </form>
-            <div class="footer">
-                New here? <a href="/signup">Create an account</a>
-            </div>
-        </main>
-    </body>
+        <div class="actions">
+          <button type="submit">Sign In</button>
+        </div>
+      </form>
+      <div class="footer">New here? <a href="/signup">Create an account</a></div>
+    </main>
+  </body>
 </html>"""
         )
 
