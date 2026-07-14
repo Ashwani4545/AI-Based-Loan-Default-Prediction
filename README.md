@@ -35,7 +35,7 @@ Financial institutions face key challenges in loan risk assessment:
 - **Regulatory Compliance** — AI systems must be transparent, auditable, and consent-driven when pulling bureau or bank data
 - **Cost of Enterprise Tooling** — Existing enterprise-grade credit decisioning platforms (Experian, SAS, FIS) cost $500K–$5M+ with 6–18 month implementations, pricing out small NBFCs and digital lenders
 
-**Objective:** Rebuild this into a fair, explainable, behaviorally-aware AI loan default prediction system, trained and validated on real Indian credit data, priced for lenders the enterprise players don't serve.
+**Objective:** Rebuild this into a fair, explainable, behaviorally-aware AI-based loan default prediction system, trained and validated on real Indian credit data, and priced for lenders the enterprise players don't serve.
 
 ---
 

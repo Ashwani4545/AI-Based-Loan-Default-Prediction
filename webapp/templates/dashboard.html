@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-<<<<<<< HEAD
 {% block title %}Dashboard Overview{% endblock %}
 
 {% block content %}
@@ -64,7 +63,6 @@
     <h3 class="card-title">Defaults by Loan Purpose</h3>
     <div style="height:250px;">
       <canvas id="chartPurpose"></canvas>
-=======
 {% block title %}Dashboard{% endblock %}
 {% block head %}
 <style>
@@ -254,14 +252,12 @@ canvas { max-width:100%; }
           </div>
         </div>
       </div>
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
     </div>
   </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<<<<<<< HEAD
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 async function loadDashboardData() {
@@ -371,7 +367,6 @@ async function loadDashboardData() {
   }
 }
 loadDashboardData();
-=======
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 async function generateApiKey() {
@@ -533,6 +528,5 @@ setTimeout(() => {
   document.querySelectorAll('.mt-fill').forEach(el => { el.style.width = el.style.width; });
   document.querySelectorAll('.feat-bar-fill').forEach(el => { el.style.width = el.dataset.width; });
 }, 100);
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 </script>
 {% endblock %}

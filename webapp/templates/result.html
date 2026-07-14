@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-<<<<<<< HEAD
 {% block title %}Prediction Result{% endblock %}
 
 {% block content %}
@@ -89,7 +88,6 @@
       This applicant presents moderate risk. Further manual review is recommended.
       {% else %}
       This applicant is low risk. Standard approval procedures apply.
-=======
 {% block title %}Assessment Result{% endblock %}
 {% block head %}
 <style>
@@ -259,17 +257,14 @@
         This applicant presents a <strong>moderate default risk</strong> of <strong>{{ (prob*100)|round(1) }}%</strong>. The model identified mixed signals — some positive credit indicators are offset by elevated risk factors. A manual underwriter review is recommended before final decision. <strong>Recommendation: Manual Review.</strong>
       {% else %}
         This applicant presents a <strong>high default risk</strong> of <strong>{{ (prob*100)|round(1) }}%</strong>. The XGBoost model detected multiple strong default predictors in this profile. Key risk drivers include financial stress indicators that historically correlate with non-repayment. <strong>Recommendation: Decline or require collateral.</strong>
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
       {% endif %}
     </p>
   </div>
 
-<<<<<<< HEAD
 </div>
 
 <div style="margin-top: 24px;">
   <a href="/history" class="btn-primary">Back to History</a>
-=======
   <!-- ── SHAP FEATURE IMPORTANCE ── -->
   <div class="shap-card">
     <div class="shap-title">🔍 Top Risk Drivers (SHAP Feature Importance)</div>
@@ -346,13 +341,11 @@
     <a href="/reports" class="btn btn-outline">📄 Full Report</a>
   </div>
 
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-<<<<<<< HEAD
   // Animate Risk Dial
   setTimeout(() => {
     const dialFill = document.getElementById('dialFill');
@@ -366,7 +359,6 @@
     else if(prob < 60) dialFill.style.stroke = 'var(--medium-risk)';
     else dialFill.style.stroke = 'var(--high-risk)';
   }, 100);
-=======
 const PROB = {{ prob }};
 const TARGET_OFFSET = 251.2 - (PROB * 251.2);
 
@@ -450,6 +442,5 @@ document.getElementById('wiRunBtn').addEventListener('click', function() {
     btn.disabled = false;
   }, 900);
 });
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46
 </script>
 {% endblock %}

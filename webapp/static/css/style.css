@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 :root {
   /* Colors - Light Theme (Dashboard) */
   --bg-main: #f3f4f6;
@@ -386,7 +385,6 @@ td {
 }
 .dial-number { font-size: 36px; font-weight: 700; color: #111827; }
 .dial-label { font-size: 14px; color: var(--text-muted); }
-=======
 /* ═══════════════════════════════════════════════════════════════
    AegisBank — Main Stylesheet
    Fonts: Syne (display) + DM Sans (body) + DM Mono (code/labels)
@@ -1212,4 +1210,3 @@ body::after {
 @media (max-width: 480px) {
   .field-row { grid-template-columns: 1fr; }
 }
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46

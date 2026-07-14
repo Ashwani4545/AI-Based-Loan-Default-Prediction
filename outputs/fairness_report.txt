@@ -1,6 +1,5 @@
 === Demographic Parity (avg prediction rate per group) ===
 group
-<<<<<<< HEAD
 AK    0.062731
 AL    0.077409
 AR    0.073356
@@ -101,7 +100,6 @@ WY    0.046823
   WI: 0.1868
   WV: 0.2000
   WY: 0.1636
-=======
 AK    0.000000
 AL    0.000000
 AR    0.000000
@@ -202,4 +200,3 @@ WY    0.000000
   WI: 0.0000
   WV: 0.0000
   WY: 0.0000
->>>>>>> 5d6f7cb80e94c9b1113dea84a0f86173cb1c2f46

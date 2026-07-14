@@ -161,7 +161,10 @@ class ApiKey(db.Model):
 
 @login_manager.user_loader
 def load_user(user_id: str):
-    return db.session.get(User, int(user_id))
+    try:
+        return db.session.get(User, int(user_id))
+    except (TypeError, ValueError):
+        return None
 
 
 # ── TOKEN HELPERS ─────────────────────────────────────────────────────────────
