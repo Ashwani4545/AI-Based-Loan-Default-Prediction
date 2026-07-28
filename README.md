@@ -491,6 +491,8 @@ Open: **http://localhost:5000**
 |---|---|
 | **Language** | Python 3.9+ |
 | **ML Framework** | XGBoost, Scikit-learn |
+| **Hugging Face Hub** | `huggingface_hub` (Model artifacts & dataset versioning) |
+| **Hugging Face NLP** | `transformers` (Zero-shot classification & qualitative text risk engine) |
 | **Sequence Modeling [PLANNED]** | TensorFlow/Keras or PyTorch (LSTM/GRU) |
 | **Explainability** | SHAP (TreeSHAP) |
 | **Imbalance Handling** | imbalanced-learn (SMOTE) |
@@ -499,12 +501,13 @@ Open: **http://localhost:5000**
 | **Web Framework** | Flask, Flask-SocketIO, Eventlet |
 | **API Docs** | Flask-Swagger-UI (OpenAPI 3.0) |
 | **Frontend** | HTML5, CSS3, JavaScript |
-| **Serialization** | Joblib, Pickle (v1) / model registry [PLANNED v2] |
+| **Serialization** | Joblib, Pickle, Hugging Face Model Hub |
 | **Database [PLANNED]** | PostgreSQL (replacing SQLite/JSON) |
 | **Bureau Data [PLANNED]** | CIBIL, Experian, CRIF High Mark, Equifax via aggregator API |
 | **Cashflow Data [PLANNED]** | Account Aggregator (Setu, Finvu, or equivalent licensed AA) |
-| **Containerization** | Docker, Docker Compose |
-| **Version Control** | Git / GitHub |
+| **Containerization & Hosting** | Docker, Docker Compose, Hugging Face Spaces |
+| **Version Control** | Git / GitHub / Hugging Face Hub |
+
 
 ---
 

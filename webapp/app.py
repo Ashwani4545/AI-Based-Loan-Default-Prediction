@@ -312,11 +312,23 @@ def _load_threshold() -> float:
 
 # Load artefacts at startup
 MODEL            = _load_model(CHAMPION_MODEL_PATH) or _load_model(MODEL_PATH)
+
+if MODEL is None:
+    log.info("Local model not found. Attempting to download champion model from Hugging Face Hub...")
+    try:
+        from utils.hf_hub import download_model_from_hf
+        hf_res = download_model_from_hf()
+        if hf_res.get("status") == "success":
+            MODEL = _load_model(CHAMPION_MODEL_PATH) or _load_model(MODEL_PATH)
+    except Exception as _hf_err:
+        log.warning("Hugging Face startup model download fallback failed: %s", _hf_err)
+
 CHALLENGER_MODEL = _load_model(CHALLENGER_MODEL_PATH)
 MODEL_FEATURES   = _load_features()
 METRICS          = _load_metrics()
 REFERENCE_DATA   = pd.read_csv(PROCESSED_DATA_PATH).iloc[:10_000]
 EXPLAINER        = LoanModelExplainer()
+
 
 
 def reload_model() -> None:
@@ -699,6 +711,21 @@ def _score_borrower(form_data: dict) -> dict:
         if CHALLENGER_MODEL:
             challenger_prob = float(CHALLENGER_MODEL.predict_proba(input_df)[0][1])
 
+        # Hugging Face Qualitative Text Risk Evaluation
+        text_input = (
+            form_data.get("loan_purpose_text") or
+            form_data.get("loan_description") or
+            form_data.get("notes") or
+            form_data.get("description") or ""
+        )
+        hf_text_analysis = None
+        if text_input and str(text_input).strip():
+            try:
+                from src.hf_text_risk import evaluate_borrower_text
+                hf_text_analysis = evaluate_borrower_text(str(text_input))
+            except Exception as _hf_t_err:
+                log.warning("Hugging Face text risk evaluation failed: %s", _hf_t_err)
+
         return {
             "prob":            round(display_prob * 100, 1),
             "model_prob":      round(model_prob * 100, 1),
@@ -716,6 +743,8 @@ def _score_borrower(form_data: dict) -> dict:
             "expected_profit": round(expected_profit, 2),
             "override":        override,
             "override_reason": override_reason,
+            "hf_text_analysis": hf_text_analysis,
+
             "name":            form_data.get("borrower_name", "Borrower"),
             "error":           None,
         }
@@ -1509,7 +1538,7 @@ def api_predict():
         result = _score_borrower(form_data)
         if result.get("error"):
             return jsonify({"error": result["error"]}), 500
-        return jsonify({
+        res_payload = {
             "status": "success",
             "prediction": {
                 "risk_level":       result["risk"],
@@ -1521,10 +1550,71 @@ def api_predict():
                 "override_triggered": result["override"],
                 "override_reason":  result["override_reason"],
             },
-        })
+        }
+        if result.get("hf_text_analysis"):
+            res_payload["prediction"]["hf_text_analysis"] = result["hf_text_analysis"]
+
+        return jsonify(res_payload)
     except Exception as exc:
         log.exception("API Prediction error")
         return jsonify({"error": str(exc)}), 500
+
+
+# ── HUGGING FACE API ENDPOINTS ───────────────────────────────────────────────
+
+@app.route("/api/v1/hf/status", methods=["GET"])
+def api_hf_status():
+    from utils.hf_hub import check_hf_hub_available
+    from utils.config import HF_MODEL_REPO, HF_DATASET_REPO, HF_ENABLE_TEXT_RISK
+    token_present = bool(os.environ.get("HF_TOKEN"))
+    return jsonify({
+        "hf_hub_installed": check_hf_hub_available(),
+        "token_configured": token_present,
+        "model_repo": HF_MODEL_REPO,
+        "dataset_repo": HF_DATASET_REPO,
+        "text_risk_enabled": HF_ENABLE_TEXT_RISK,
+    })
+
+
+@app.route("/api/v1/hf/push", methods=["POST"])
+@role_required("admin")
+def api_hf_push():
+    from utils.hf_hub import upload_model_to_hf
+    req = request.json or {}
+    repo = req.get("repo")
+    token = req.get("token")
+    result = upload_model_to_hf(repo_id=repo, token=token)
+    status_code = 200 if result.get("status") == "success" else 400
+    return jsonify(result), status_code
+
+
+@app.route("/api/v1/hf/pull", methods=["POST"])
+@role_required("admin")
+def api_hf_pull():
+    from utils.hf_hub import download_model_from_hf
+    req = request.json or {}
+    repo = req.get("repo")
+    token = req.get("token")
+    result = download_model_from_hf(repo_id=repo, token=token)
+    if result.get("status") == "success":
+        reload_model()
+    status_code = 200 if result.get("status") == "success" else 400
+    return jsonify(result), status_code
+
+
+@app.route("/api/v1/hf/text-risk", methods=["POST"])
+def api_hf_text_risk():
+    data = request.json or {}
+    text = data.get("text") or data.get("notes") or ""
+    if not text:
+        return jsonify({"error": "Missing 'text' field in JSON request"}), 400
+    try:
+        from src.hf_text_risk import evaluate_borrower_text
+        res = evaluate_borrower_text(str(text))
+        return jsonify({"status": "success", "analysis": res})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 
 @app.route("/api/v1/mlops/health")

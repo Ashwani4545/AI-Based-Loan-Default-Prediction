@@ -58,3 +58,11 @@ def get_risk_level(probability: float) -> dict:
         if probability < threshold:
             return {"label": label, "verdict": verdict, "color": color}
     return {"label": "VERY HIGH RISK", "verdict": "Decline", "color": "#ef4444"}
+
+
+# ── HUGGING FACE CONFIGURATION ───────────────────────────────────────────────
+HF_MODEL_REPO        = os.environ.get("HF_MODEL_REPO", "AegisBank/loan-default-prediction-model")
+HF_DATASET_REPO      = os.environ.get("HF_DATASET_REPO", "AegisBank/loan-default-dataset")
+HF_TOKEN             = os.environ.get("HF_TOKEN", None)
+HF_ENABLE_TEXT_RISK  = os.environ.get("HF_ENABLE_TEXT_RISK", "true").lower() in ("true", "1", "yes")
+HF_TEXT_MODEL_NAME   = os.environ.get("HF_TEXT_MODEL_NAME", "facebook/bart-large-mnli")

@@ -332,6 +332,14 @@ def save_artifacts(model: XGBClassifier, metrics: dict, feature_names: list) -> 
 # ─────────────────────────────────────────────────────────────────────────────
 
 def main() -> None:
+    import argparse
+    parser = argparse.ArgumentParser(description="Train AegisBank XGBoost Champion Model")
+    parser.add_argument("--push-to-hf", action="store_true", help="Push trained model artifacts to Hugging Face Hub")
+    parser.add_argument("--hf-repo", type=str, default=None, help="Hugging Face model repository ID")
+    parser.add_argument("--hf-token", type=str, default=None, help="Hugging Face Access Token")
+
+    args, _ = parser.parse_known_args()
+
     X, y                             = load_and_preprocess()
     X_train, X_test, y_train, y_test = split(X, y)
     model                            = train_xgboost(X_train, y_train)
@@ -339,6 +347,16 @@ def main() -> None:
     save_artifacts(model, metrics, list(X.columns))
     log.info("Training pipeline complete ✅")
 
+    if args.push_to_hf or os.environ.get("HF_AUTO_PUSH", "false").lower() in ("true", "1", "yes"):
+        log.info("Pushing model artifacts to Hugging Face Hub...")
+        try:
+            from utils.hf_hub import upload_model_to_hf
+            res = upload_model_to_hf(repo_id=args.hf_repo, token=args.hf_token)
+            log.info("Hugging Face upload response: %s", res)
+        except Exception as e:
+            log.error("Failed to push model to Hugging Face Hub: %s", e)
+
 
 if __name__ == "__main__":
     main()
+
