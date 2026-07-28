@@ -1,8 +1,16 @@
 # AegisBank — AI-Based Loan Default Prediction System
 
+[![Hugging Face Model](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Model%20Hub-yellow.svg)](https://huggingface.co/AegisBank/loan-default-prediction-model)
+[![Hugging Face Dataset](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Dataset%20Hub-orange.svg)](https://huggingface.co/datasets/AegisBank/loan-default-dataset)
+
+> 🔗 **Hugging Face Repositories:**
+> - 🤖 **Model Hub**: [AegisBank/loan-default-prediction-model](https://huggingface.co/AegisBank/loan-default-prediction-model)
+> - 📊 **Dataset Hub**: [AegisBank/loan-default-dataset](https://huggingface.co/datasets/AegisBank/loan-default-dataset)
+
 > **v1 (current, implemented):** An XGBoost-powered ML web application that predicts probability of loan default in real time, with SHAP-based explainability, drift detection, and auto-retraining, trained on the LendingClub dataset.
 >
 > **v2 (this roadmap):** A rebuild around a **hybrid LSTM/RNN + XGBoost** architecture trained on real Indian bureau and cashflow data (CIBIL/Experian/CRIF/Equifax + Account Aggregator), moving from a static-snapshot model to a model that understands a borrower's *trajectory* over time — positioned as a sellable Risk Intelligence product for Indian NBFCs and digital lenders.
+
 
 This README documents both: what exists today (v1) and the target architecture and phased plan to get to v2. Sections marked **[PLANNED]** are roadmap items, not yet implemented in code.
 
