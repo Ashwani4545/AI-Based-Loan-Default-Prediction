@@ -1,0 +1,16 @@
+===== AegisBank Loan Risk Report =====
+Borrower:    Sarah Jenkins
+Loan Amount: $35,000.00
+Annual Inc:  $62,000.00
+
+Default Probability: 59.02%
+Risk Level:          HIGH RISK
+Decision:            Default
+Override:            False
+
+Key Risk Drivers (SHAP):
+  int_rate                            +0.461282  (↑ risk)
+  term__60_months                     -0.243532  (↓ risk)
+  loan_income_ratio                   -0.196239  (↓ risk)
+  risk_score                          -0.188608  (↓ risk)
+  revol_income_ratio                  +0.140361  (↑ risk)

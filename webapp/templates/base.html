@@ -200,63 +200,64 @@
       </div>
     </nav>
 
-    <!-- ── EMAIL VERIFICATION BANNER ─────────────────────────────────────── -->
-    {% if current_user.is_authenticated and not current_user.email_verified %}
-    <div
-      id="verifyBanner"
-      style="
-        background: rgba(245, 158, 11, 0.1);
-        border-bottom: 1px solid rgba(245, 158, 11, 0.25);
-        padding: 9px 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 12px;
-        font-size: 13px;
-        color: #fcd34d;
-        flex-wrap: wrap;
-        text-align: center;
-      "
-    >
-      <span>⚠ Your email is not verified.</span>
-      <a
-        href="/resend-verification"
+    <div class="page-root">
+      <!-- ── EMAIL VERIFICATION BANNER ─────────────────────────────────────── -->
+      {% if current_user.is_authenticated and not current_user.email_verified %}
+      <div
+        id="verifyBanner"
         style="
-          background: rgba(245, 158, 11, 0.18);
-          border: 1px solid rgba(245, 158, 11, 0.3);
-          color: #fbbf24;
-          padding: 3px 12px;
-          border-radius: 12px;
-          font-weight: 600;
-          text-decoration: none;
-          font-size: 12px;
-          transition: background 0.15s;
+          width: 100%;
+          background: rgba(245, 158, 11, 0.12);
+          border-bottom: 1px solid rgba(245, 158, 11, 0.25);
+          padding: 10px 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 14px;
+          font-size: 13px;
+          color: #fcd34d;
+          text-align: center;
+          position: relative;
+          z-index: 100;
         "
-        onmouseover="this.style.background = 'rgba(245,158,11,.28)'"
-        onmouseout="this.style.background = 'rgba(245,158,11,.18)'"
       >
-        Resend Verification Email
-      </a>
-      <button
-        onclick="document.getElementById('verifyBanner').style.display = 'none'"
-        style="
-          background: none;
-          border: none;
-          color: #fbbf24;
-          cursor: pointer;
-          font-size: 16px;
-          padding: 0 4px;
-          line-height: 1;
-          margin-left: 4px;
-        "
-        title="Dismiss"
-      >
-        ✕
-      </button>
-    </div>
-    {% endif %}
+        <span>⚠ Your email is not verified.</span>
+        <a
+          href="/resend-verification"
+          style="
+            background: rgba(245, 158, 11, 0.22);
+            border: 1px solid rgba(245, 158, 11, 0.35);
+            color: #fbbf24;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-weight: 600;
+            text-decoration: none;
+            font-size: 12px;
+            transition: all 0.15s;
+          "
+        >
+          Verify / Resend Email
+        </a>
+        <button
+          onclick="document.getElementById('verifyBanner').style.display = 'none'"
+          style="
+            background: none;
+            border: none;
+            color: #fbbf24;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0 6px;
+            line-height: 1;
+          "
+          title="Dismiss"
+        >
+          ✕
+        </button>
+      </div>
+      {% endif %}
 
-    <div class="page-root">{% block content %}{% endblock %}</div>
+      {% block content %}{% endblock %}
+    </div>
 
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
     {% block scripts %}{% endblock %} {% if session.get('user_email') %}

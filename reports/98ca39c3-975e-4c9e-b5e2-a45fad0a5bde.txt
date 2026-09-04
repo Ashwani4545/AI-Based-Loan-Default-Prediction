@@ -1,0 +1,16 @@
+===== AegisBank Loan Risk Report =====
+Borrower:    Alice Smith
+Loan Amount: $15,000.00
+Annual Inc:  $90,000.00
+
+Default Probability: 20.28%
+Risk Level:          LOW RISK
+Decision:            Repay
+Override:            False
+
+Key Risk Drivers (SHAP):
+  int_rate                            -0.499742  (↓ risk)
+  fico_range_low                      -0.267191  (↓ risk)
+  loan_income_ratio                   -0.204766  (↓ risk)
+  risk_score                          -0.179079  (↓ risk)
+  avg_cur_bal                         +0.146613  (↑ risk)

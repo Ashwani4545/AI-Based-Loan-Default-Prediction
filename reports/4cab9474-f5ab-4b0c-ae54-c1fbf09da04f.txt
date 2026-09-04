@@ -1,0 +1,16 @@
+===== AegisBank Loan Risk Report =====
+Borrower:    p
+Loan Amount: $2,410,000.00
+Annual Inc:  $134,567,890.00
+
+Default Probability: 33.38%
+Risk Level:          MEDIUM RISK
+Decision:            Review
+Override:            False
+
+Key Risk Drivers (SHAP):
+  int_rate                            -0.352400  (↓ risk)
+  risk_score                          -0.246748  (↓ risk)
+  term__60_months                     -0.154684  (↓ risk)
+  avg_cur_bal                         +0.108739  (↑ risk)
+  revol_income_ratio                  +0.105429  (↑ risk)

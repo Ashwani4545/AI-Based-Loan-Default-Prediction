@@ -1,0 +1,16 @@
+===== AegisBank Loan Risk Report =====
+Borrower:    as
+Loan Amount: $5,000,000.00
+Annual Inc:  $10,000,000,000.00
+
+Default Probability: 65.97%
+Risk Level:          HIGH RISK
+Decision:            Default
+Override:            False
+
+Key Risk Drivers (SHAP):
+  term__60_months                     +0.397316  (↑ risk)
+  int_rate                            +0.387943  (↑ risk)
+  risk_score                          -0.248719  (↓ risk)
+  avg_cur_bal                         +0.128308  (↑ risk)
+  bc_open_to_buy                      +0.108391  (↑ risk)

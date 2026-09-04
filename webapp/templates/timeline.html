@@ -1,8 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Prediction Timeline{% endblock %}
+{% block title %}Prediction Timeline — Longitudinal Risk{% endblock %}
+
 {% block head %}
 <style>
-.tl-shell { max-width: 1100px; margin: 0 auto; padding: 0 20px 40px; }
+.tl-shell { max-width: 1100px; margin: 0 auto; padding: 0 24px 60px; }
 
 /* ── Search Bar ── */
 .tl-search-card {
@@ -28,10 +29,24 @@
 }
 .tl-btn:hover { background: #e2c26e; transform: translateY(-2px); }
 
+/* Quick chips */
+.borrower-chips {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; align-items: center;
+}
+.chip-label { font-size: 11px; color: var(--tx-3); text-transform: uppercase; letter-spacing: .06em; font-family: 'DM Mono', monospace; }
+.b-chip {
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+  border-radius: 20px; padding: 4px 12px; font-size: 12px; color: var(--tx-2);
+  cursor: pointer; transition: all 0.15s;
+}
+.b-chip:hover {
+  background: var(--gold-dim); border-color: var(--gold-border); color: var(--gold);
+}
+
 /* ── Summary Stats ── */
-.tl-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; display: none; }
-.tl-stat { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px 20px; }
-.tl-stat-val { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 28px; color: var(--tx-1); line-height: 1; margin-bottom: 4px; }
+.tl-stats { display: none; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+.tl-stat { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 18px 22px; }
+.tl-stat-val { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 28px; color: var(--tx-1); line-height: 1; margin-bottom: 6px; }
 .tl-stat-lbl { font-size: 11px; color: var(--tx-3); text-transform: uppercase; letter-spacing: .06em; }
 .trend-worsening { color: #ef4444; }
 .trend-improving { color: #22c55e; }
@@ -65,8 +80,8 @@
 .v-decline { background: rgba(239,68,68,.15); color: #ef4444; }
 
 /* ── Loading / Empty ── */
-.tl-msg { text-align: center; padding: 40px; color: var(--tx-3); font-size: 14px; display: none; }
-.tl-spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid rgba(201,168,76,.2); border-top-color: var(--gold); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 12px; }
+.tl-msg { text-align: center; padding: 50px 20px; color: var(--tx-3); font-size: 14px; }
+.tl-spinner { display: inline-block; width: 26px; height: 26px; border: 3px solid rgba(201,168,76,.2); border-top-color: var(--gold); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 12px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 {% endblock %}
@@ -81,25 +96,32 @@
 </div>
 
 <div class="tl-shell">
-
   <!-- Search -->
   <div class="tl-search-card">
-    <div class="tl-search-title">Lookup Borrower</div>
-    <div class="tl-search-sub">Enter an exact name to pull their historical risk trajectory.</div>
+    <div class="tl-search-title">Lookup Borrower Risk Trajectory</div>
+    <div class="tl-search-sub">Enter an exact borrower name or select from recent assessments below.</div>
     <form id="searchForm" class="tl-input-wrap">
-      <input type="text" id="borrowerInput" class="tl-input" placeholder="e.g. Alice Johnson" value="{{ query }}" autocomplete="off" list="borrowerNames">
+      <input type="text" id="borrowerInput" class="tl-input" placeholder="e.g. Sarah Jenkins, Alice Smith" value="{{ query }}" autocomplete="off" list="borrowerNames">
       <datalist id="borrowerNames"></datalist>
       <button type="submit" class="tl-btn">Generate Timeline</button>
     </form>
+    <div class="borrower-chips" id="quickChips">
+      <span class="chip-label">Quick Select:</span>
+      <span style="color:var(--tx-3); font-size:12px;">Loading recent borrowers...</span>
+    </div>
   </div>
 
   <!-- Messages -->
-  <div id="loadingMsg" class="tl-msg">
+  <div id="loadingMsg" class="tl-msg" style="display:none;">
     <div class="tl-spinner"></div>
-    <div>Analyzing historical records...</div>
+    <div>Analyzing borrower historical records and computing trend...</div>
   </div>
-  <div id="errorMsg" class="tl-msg" style="color:#ef4444"></div>
-  <div id="emptyMsg" class="tl-msg">Use the search bar above to view a borrower's timeline.</div>
+  <div id="errorMsg" class="tl-msg" style="display:none; color:#ef4444;"></div>
+  <div id="emptyMsg" class="tl-msg" style="display:none;">
+    <div style="font-size:36px; margin-bottom:12px;">📈</div>
+    <div style="font-size:16px; font-weight:600; color:var(--tx-2); margin-bottom:6px;">No Borrower Selected</div>
+    <div style="color:var(--tx-3);">Choose a borrower name above to view historical default probability changes over time.</div>
+  </div>
 
   <!-- Stats -->
   <div class="tl-stats" id="statsRow">
@@ -109,7 +131,7 @@
     </div>
     <div class="tl-stat">
       <div class="tl-stat-val" id="statLatest">—</div>
-      <div class="tl-stat-lbl">Latest Risk Score</div>
+      <div class="tl-stat-lbl">Latest Assessed Risk</div>
     </div>
     <div class="tl-stat">
       <div class="tl-stat-val" id="statTrend">—</div>
@@ -121,14 +143,17 @@
   <div class="tl-chart-card" id="chartCard">
     <div class="tl-chart-header">
       <div class="tl-chart-title">Risk Probability Trend</div>
+      <span style="font-size:12px; color:var(--tx-3); font-family:'DM Mono',monospace;">Longitudinal XGBoost Output</span>
     </div>
-    <canvas id="timelineChart" height="280"></canvas>
+    <div style="height: 300px; position: relative;">
+      <canvas id="timelineChart"></canvas>
+    </div>
   </div>
 
   <!-- Table -->
   <div class="tl-table-card" id="tableCard">
     <div class="tl-table-header">
-      <div class="tl-table-title">Assessment History</div>
+      <div class="tl-table-title">Historical Assessment Log</div>
     </div>
     <div style="overflow-x:auto">
       <table class="tl-table">
@@ -137,7 +162,7 @@
             <th>Date</th>
             <th>Loan Amount</th>
             <th>FICO</th>
-            <th>Income</th>
+            <th>Annual Income</th>
             <th>Risk Score</th>
             <th>Verdict</th>
             <th>Report</th>
@@ -147,17 +172,16 @@
       </table>
     </div>
   </div>
-
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-// Elements
 const form = document.getElementById('searchForm');
 const input = document.getElementById('borrowerInput');
 const datalist = document.getElementById('borrowerNames');
+const quickChips = document.getElementById('quickChips');
 const loadingMsg = document.getElementById('loadingMsg');
 const errorMsg = document.getElementById('errorMsg');
 const emptyMsg = document.getElementById('emptyMsg');
@@ -168,22 +192,46 @@ const tableBody = document.getElementById('tableBody');
 
 let chartInstance = null;
 
-// Autocomplete
+// Initial populate of available names
+async function initBorrowerList() {
+  try {
+    const res = await fetch('/api/borrower-names');
+    const names = await res.json();
+    datalist.innerHTML = names.map(n => `<option value="${n}">`).join('');
+    if (names.length > 0) {
+      quickChips.innerHTML = '<span class="chip-label">Quick Select:</span>' +
+        names.slice(0, 8).map(n => `<button type="button" class="b-chip" onclick="selectBorrower('${n.replace(/'/g, "\\'")}')">${n}</button>`).join('');
+    } else {
+      quickChips.innerHTML = '<span class="chip-label">No previous assessments found in history.</span>';
+    }
+  } catch (e) {
+    quickChips.innerHTML = '';
+  }
+}
+
+function selectBorrower(name) {
+  input.value = name;
+  loadTimeline(name);
+}
+
+// Live autocomplete input
 input.addEventListener('input', async function() {
   const val = this.value.trim();
-  if (val.length < 2) return;
+  if (val.length < 1) return;
   try {
     const res = await fetch(`/api/borrower-names?q=${encodeURIComponent(val)}`);
     const names = await res.json();
     datalist.innerHTML = names.map(n => `<option value="${n}">`).join('');
-  } catch (e) { console.error('Autocomplete failed', e); }
+  } catch (e) {}
 });
 
-// Formatters
-const fmtDate = iso => new Date(iso).toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' });
-const fmtMoney = n => '$' + Number(n).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0});
+const fmtDate = iso => {
+  try { return new Date(iso).toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' }); }
+  catch(e) { return iso || 'Recent'; }
+};
+const fmtMoney = n => '$' + Number(n || 0).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0});
 
-function setDisplay(el, val) { el.style.display = val; }
+function setDisplay(el, val) { if (el) el.style.display = val; }
 
 function getVerdictClass(v) {
   const v_low = (v || '').toLowerCase();
@@ -199,8 +247,6 @@ function getVerdictText(v) {
   return 'Review';
 }
 
-
-// Load data
 async function loadTimeline(name) {
   setDisplay(emptyMsg, 'none');
   setDisplay(errorMsg, 'none');
@@ -213,7 +259,7 @@ async function loadTimeline(name) {
     const res = await fetch(`/api/timeline/${encodeURIComponent(name)}`);
     if (!res.ok) {
       const data = await res.json();
-      throw new Error(data.error || 'Failed to load timeline');
+      throw new Error(data.error || 'No records found for this borrower');
     }
     const data = await res.json();
     
@@ -226,7 +272,6 @@ async function loadTimeline(name) {
     setDisplay(chartCard, 'block');
     setDisplay(tableCard, 'block');
     
-    // Update URL without reload
     const newUrl = new URL(window.location);
     newUrl.searchParams.set('q', name);
     window.history.pushState({}, '', newUrl);
@@ -240,17 +285,17 @@ async function loadTimeline(name) {
 
 function renderStats(data) {
   document.getElementById('statAssessments').textContent = data.count;
-  document.getElementById('statLatest').textContent = data.latest.probability + '%';
+  document.getElementById('statLatest').textContent = (data.latest ? data.latest.probability : 0) + '%';
   
   const trendEl = document.getElementById('statTrend');
   if (data.trend === 'single') {
-    trendEl.textContent = 'Insufficient Data';
+    trendEl.textContent = 'Single Assessment';
     trendEl.className = 'tl-stat-val';
   } else {
     let text = '', cls = '';
     if (data.trend === 'worsening') { text = `↗ +${data.delta}% (Worsening)`; cls = 'trend-worsening'; }
     else if (data.trend === 'improving') { text = `↘ ${data.delta}% (Improving)`; cls = 'trend-improving'; }
-    else { text = `→ Stable`; cls = 'trend-stable'; }
+    else { text = `→ Stable (±${data.delta}%)`; cls = 'trend-stable'; }
     trendEl.textContent = text;
     trendEl.className = `tl-stat-val ${cls}`;
   }
@@ -263,12 +308,6 @@ function renderChart(data) {
   const labels = data.points.map(p => fmtDate(p.timestamp));
   const probs = data.points.map(p => p.probability);
   
-  // Color gradient
-  const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-  gradient.addColorStop(0, 'rgba(239, 68, 68, 0.4)'); // Red (High risk)
-  gradient.addColorStop(0.5, 'rgba(245, 158, 11, 0.4)'); // Yellow (Medium risk)
-  gradient.addColorStop(1, 'rgba(34, 197, 94, 0.4)'); // Green (Low risk)
-
   chartInstance = new Chart(ctx, {
     type: 'line',
     data: {
@@ -277,15 +316,15 @@ function renderChart(data) {
         label: 'Default Risk %',
         data: probs,
         borderColor: '#c9a84c',
-        backgroundColor: gradient,
+        backgroundColor: 'rgba(201,168,76,0.15)',
         borderWidth: 3,
         pointBackgroundColor: '#0d1526',
         pointBorderColor: '#c9a84c',
         pointBorderWidth: 2,
-        pointRadius: 5,
-        pointHoverRadius: 7,
+        pointRadius: 6,
+        pointHoverRadius: 8,
         fill: true,
-        tension: 0.3
+        tension: 0.35
       }]
     },
     options: {
@@ -312,7 +351,7 @@ function renderChart(data) {
           borderColor: 'rgba(255,255,255,0.1)',
           borderWidth: 1,
           displayColors: false,
-          callbacks: { label: ctx => `Risk: ${ctx.raw}%` }
+          callbacks: { label: ctx => `Probability: ${ctx.raw}%` }
         }
       }
     }
@@ -320,16 +359,14 @@ function renderChart(data) {
 }
 
 function renderTable(data) {
-  // Sort descending for table (newest first)
   const sorted = [...data.points].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-  
   tableBody.innerHTML = sorted.map(p => `
     <tr>
       <td style="font-family:'DM Mono',monospace">${fmtDate(p.timestamp)}</td>
       <td style="font-family:'DM Mono',monospace">${fmtMoney(p.loan_amnt)}</td>
-      <td style="font-family:'DM Mono',monospace">${p.fico}</td>
+      <td style="font-family:'DM Mono',monospace">${p.fico || 'N/A'}</td>
       <td style="font-family:'DM Mono',monospace">${fmtMoney(p.annual_inc)}</td>
-      <td style="font-family:'DM Mono',monospace;font-weight:700">${p.probability}%</td>
+      <td style="font-family:'DM Mono',monospace;font-weight:700;color:${p.probability < 30 ? '#22c55e' : (p.probability < 60 ? '#f59e0b' : '#ef4444')}">${p.probability}%</td>
       <td><span class="verdict-pill ${getVerdictClass(p.verdict)}">${getVerdictText(p.verdict)}</span></td>
       <td>
         <a href="/reports/${p.id}" target="_blank" style="color:var(--gold);text-decoration:none;font-weight:600;font-size:12px">View ↗</a>
@@ -338,14 +375,14 @@ function renderTable(data) {
   `).join('');
 }
 
-// Initial state
 form.addEventListener('submit', e => {
   e.preventDefault();
   const val = input.value.trim();
   if (val) loadTimeline(val);
 });
 
-// Load from URL if present
+initBorrowerList();
+
 if (input.value.trim()) {
   loadTimeline(input.value.trim());
 } else {

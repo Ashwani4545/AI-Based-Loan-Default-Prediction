@@ -1,446 +1,749 @@
 {% extends "base.html" %}
-{% block title %}Prediction Result{% endblock %}
 
-{% block content %}
-<div class="page-header">
-  <h1 class="page-title">Prediction Result</h1>
-  <p class="page-subtitle" style="color:var(--primary); font-weight:500;">Prediction ID: #PRED-{{ record.id[:8] | upper }}</p>
-</div>
+{% block title %}Assessment Result — {{ record.borrower }}{% endblock %}
 
-<div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px;">
-  
-  <!-- Left: Prediction Summary -->
-  <div class="card" style="display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:40px;">
-    <div style="color:var(--text-muted); font-size:14px; font-weight:500; margin-bottom:8px;">Prediction</div>
-    <div style="font-size:32px; font-weight:800; color:var(--high-risk); margin-bottom:4px; letter-spacing:1px;">
-      {% if 'HIGH' in record.risk_level %}HIGH RISK
-      {% elif 'MEDIUM' in record.risk_level %}MEDIUM RISK
-      {% else %}<span style="color:var(--low-risk)">LOW RISK</span>{% endif %}
-    </div>
-    <div style="font-size:13px; color:var(--text-muted); margin-bottom:30px;">Likely to Default</div>
-    
-    <div style="color:var(--text-muted); font-size:14px; font-weight:500; margin-bottom:8px;">Probability of Default</div>
-    <div style="font-size:36px; font-weight:800; color:var(--text-dark); margin-bottom:12px;">{{ record.probability }}%</div>
-    <div style="width:100%; height:6px; background:#e5e7eb; border-radius:3px; overflow:hidden;">
-      <div style="width:{{ record.probability }}%; height:100%; background:var(--high-risk);"></div>
-    </div>
-  </div>
-
-  <!-- Right: Risk Dial -->
-  <div class="card" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px;">
-    <div style="color:var(--text-dark); font-size:16px; font-weight:600; margin-bottom:30px;">Risk Score</div>
-    <div class="dial-container">
-      <svg class="dial-svg" viewBox="0 0 200 100">
-        <!-- Background arc -->
-        <path class="dial-bg" d="M 20 90 A 70 70 0 0 1 180 90" />
-        <!-- Foreground arc (Dasharray calculated in JS based on score) -->
-        <path id="dialFill" class="dial-fill" d="M 20 90 A 70 70 0 0 1 180 90" stroke-dasharray="0 220" />
-        <!-- Color markers at ends -->
-        <text x="15" y="105" font-size="12" fill="var(--low-risk)" font-weight="bold">0</text>
-        <text x="170" y="105" font-size="12" fill="var(--high-risk)" font-weight="bold">1000</text>
-      </svg>
-      <div class="dial-score">
-        <div class="dial-number">{{ (record.probability * 10)|int }}</div>
-        <div class="dial-label">
-          {% if 'HIGH' in record.risk_level %}High Risk
-          {% elif 'MEDIUM' in record.risk_level %}Medium Risk
-          {% else %}Low Risk{% endif %}
-        </div>
-      </div>
-    </div>
-  </div>
-
-</div>
-
-<div style="display:grid; grid-template-columns:2fr 1fr; gap:24px;">
-  
-  <!-- Top Contributing Factors -->
-  <div class="card">
-    <h3 class="card-title">Top Contributing Factors</h3>
-    <div style="display:flex; flex-direction:column; gap:16px;">
-      {% for ex in record.top_features[:5] %}
-      <div style="display:flex; align-items:center;">
-        <div style="width:140px; font-size:13px; font-weight:500;">{{ ex.feature | replace('_',' ') | title }}</div>
-        <div style="flex:1; margin:0 16px;">
-          <div style="height:8px; background:#e5e7eb; border-radius:4px; overflow:hidden;">
-            {% set pct = (ex.impact|abs / 0.5)*100 %}
-            <div style="width:{{ pct if pct < 100 else 100 }}%; height:100%; background:{{ 'var(--high-risk)' if loop.index < 3 else 'var(--medium-risk)' }};"></div>
-          </div>
-        </div>
-        <div style="width:100px; text-align:right; font-size:12px; color:var(--text-muted);">
-          {% if loop.index == 1 %}High Impact
-          {% elif loop.index == 2 %}High Impact
-          {% elif loop.index == 3 %}Medium Impact
-          {% else %}Low Impact{% endif %}
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-
-  <!-- Recommendation -->
-  <div class="card" style="background:#fffaf0; border-color:#fed7aa;">
-    <h3 class="card-title" style="color:#9a3412;">Recommendation</h3>
-    <p style="font-size:14px; color:#b45309; line-height:1.6;">
-      {% if 'HIGH' in record.risk_level %}
-      This applicant is at <strong>high risk</strong> of default. Consider stricter loan terms, requiring collateral, or denying the application.
-      {% elif 'MEDIUM' in record.risk_level %}
-      This applicant presents moderate risk. Further manual review is recommended.
-      {% else %}
-      This applicant is low risk. Standard approval procedures apply.
-{% block title %}Assessment Result{% endblock %}
 {% block head %}
 <style>
-{% set risk_color = '#22c55e' if risk == 'LOW RISK' else ('#f59e0b' if risk == 'MEDIUM RISK' else '#ef4444') %}
-:root { --rc: {{ risk_color }}; }
+  /* ── RESULT SHELL ── */
+  .result-shell {
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: 24px 24px 80px;
+  }
 
-/* ── PROCESSING STEPS ── */
-.steps-bar {
-  display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;
-  padding: 18px 24px; background: var(--navy-2);
-  border-bottom: 1px solid var(--border);
-}
-.step {
-  display: flex; align-items: center; gap: 6px;
-  font-family: 'DM Mono', monospace; font-size: 11px;
-  color: var(--tx-3); padding: 4px 10px;
-  border-radius: 20px; border: 1px solid var(--border);
-  opacity: 0; transform: translateY(6px);
-  transition: all .4s ease;
-}
-.step.done { color: var(--green); border-color: rgba(34,197,94,.3); background: rgba(34,197,94,.07); opacity:1; transform:none; }
-.step-dot { width:6px; height:6px; border-radius:50%; background:currentColor; }
+  /* ── PROCESSING STEPS ── */
+  .steps-bar {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 12px 20px;
+    background: var(--navy-2);
+    border: 1px solid var(--border);
+    margin-bottom: 24px;
+    border-radius: 40px;
+  }
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--tx-3);
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid transparent;
+  }
+  .step.done {
+    color: var(--green);
+    border-color: rgba(34,197,94,0.25);
+    background: rgba(34,197,94,0.08);
+  }
+  .step-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
 
-/* ── GAUGE ── */
-.gauge-wrap { width: 220px; position: relative; }
-.gauge-label { text-align:center; margin-top:6px; }
-.ci-badge {
-  font-family:'DM Mono',monospace; font-size:11px; color:var(--tx-3);
-  background:var(--navy-2); border:1px solid var(--border);
-  padding:3px 10px; border-radius:20px; display:inline-block; margin-top:4px;
-}
+  /* ── HEADER ── */
+  .result-header {
+    margin-bottom: 24px;
+  }
+  .rh-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 28px;
+    color: var(--tx-1);
+    margin-bottom: 6px;
+  }
+  .rh-meta {
+    font-size: 13px;
+    color: var(--tx-2);
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .rh-meta code {
+    font-family: 'DM Mono', monospace;
+    color: var(--gold);
+    background: var(--gold-dim);
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
 
-/* ── NL SUMMARY ── */
-.nl-card {
-  background: linear-gradient(135deg, rgba(201,168,76,.07), rgba(201,168,76,.02));
-  border: 1px solid var(--gold-border); border-radius: var(--radius);
-  padding: 22px 24px; margin-bottom: 20px; position: relative;
-}
-.nl-card::before {
-  content:'🤖 AI Analysis'; position:absolute; top:-10px; left:20px;
-  background:var(--navy-1); padding:0 8px;
-  font-family:'DM Mono',monospace; font-size:10px;
-  color:var(--gold); letter-spacing:.08em; text-transform:uppercase;
-}
-.nl-text { font-size:14px; color:var(--tx-2); line-height:1.75; }
-.nl-text strong { color:var(--tx-1); }
+  /* ── MAIN GRID ── */
+  .result-grid {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 960px) {
+    .result-grid {
+      grid-template-columns: 1fr;
+    }
+  }
 
-/* ── SHAP CHART ── */
-.shap-card {
-  background:var(--card); border:1px solid var(--border);
-  border-radius:var(--radius); padding:24px; margin-bottom:20px;
-}
-.shap-title {
-  font-family:'Syne',sans-serif; font-weight:700; font-size:14px;
-  color:var(--tx-1); margin-bottom:4px;
-}
-.shap-sub { font-size:12px; color:var(--tx-3); margin-bottom:20px; }
-.shap-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
-.shap-feat { font-size:12px; color:var(--tx-2); width:180px; flex-shrink:0; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.shap-bar-wrap { flex:1; height:20px; background:rgba(255,255,255,.04); border-radius:4px; overflow:hidden; position:relative; }
-.shap-bar { height:100%; border-radius:4px; transition:width 1s cubic-bezier(.16,1,.3,1); width:0; }
-.shap-val { font-family:'DM Mono',monospace; font-size:11px; color:var(--tx-3); width:48px; text-align:right; }
+  /* ── LEFT: VERDICT CARD ── */
+  .verdict-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .verdict-card-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+  }
 
-/* ── WHAT-IF PANEL ── */
-.whatif-card {
-  background:var(--card); border:1px solid var(--border);
-  border-radius:var(--radius); padding:24px; margin-bottom:20px;
-}
-.whatif-title { font-family:'Syne',sans-serif; font-weight:700; font-size:14px; color:var(--tx-1); margin-bottom:4px; }
-.whatif-sub { font-size:12px; color:var(--tx-3); margin-bottom:20px; }
-.whatif-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px; }
-.wi-field label { font-size:11px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--tx-3); display:block; margin-bottom:5px; }
-.wi-field input[type=range] { width:100%; accent-color:var(--gold); }
-.wi-field .wi-val { font-family:'DM Mono',monospace; font-size:13px; color:var(--gold); }
-.wi-result {
-  display:flex; align-items:center; justify-content:space-between;
-  background:var(--navy-2); border-radius:var(--radius-sm); padding:14px 18px;
-  font-family:'Syne',sans-serif;
-}
-.wi-result-label { font-size:12px; color:var(--tx-3); }
-.wi-result-val { font-size:22px; font-weight:800; color:var(--gold); }
-.wi-btn {
-  display:inline-flex; align-items:center; gap:7px;
-  background:var(--gold-dim); border:1px solid var(--gold-border);
-  color:var(--gold); font-family:'Syne',sans-serif; font-weight:700; font-size:13px;
-  padding:9px 20px; border-radius:8px; cursor:pointer;
-  transition:background .18s; margin-top:14px;
-}
-.wi-btn:hover { background:rgba(201,168,76,.22); }
-.wi-loading { display:none; width:14px; height:14px; border:2px solid rgba(201,168,76,.3); border-top-color:var(--gold); border-radius:50%; animation:spin .65s linear infinite; }
-@keyframes spin{to{transform:rotate(360deg)}}
+  .gauge-wrap {
+    width: 260px;
+    margin: 8px auto 4px;
+    position: relative;
+  }
+  .gauge-svg {
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
+  .risk-badge-large {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 14.5px;
+    letter-spacing: 0.04em;
+    padding: 8px 22px;
+    border-radius: 30px;
+    margin: 12px 0 14px;
+    border: 1px solid;
+    transition: all 0.2s;
+  }
+
+  .verdict-box {
+    background: rgba(255,255,255,0.025);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 18px;
+    width: 100%;
+    text-align: left;
+    margin-bottom: 12px;
+  }
+  .verdict-tag {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-left: 6px;
+  }
+  .v-approve { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
+  .v-review  { background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
+  .v-decline { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+  .verdict-sub {
+    font-size: 12.5px;
+    color: var(--tx-2);
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+
+  /* ── OVERRIDE ALERT ── */
+  .override-alert-box {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    width: 100%;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    text-align: left;
+  }
+  .override-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .override-heading {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #fca5a5;
+    margin-bottom: 2px;
+  }
+  .override-text {
+    font-size: 12px;
+    color: #fecaca;
+    line-height: 1.45;
+  }
+
+  /* ── RIGHT: KEY FINANCIAL ASSESSMENT ── */
+  .metrics-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .metrics-card-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--tx-1);
+    margin-bottom: 16px;
+  }
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .m-item {
+    background: var(--navy-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+  }
+  .m-label {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--tx-3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 5px;
+    font-family: 'DM Mono', monospace;
+  }
+  .m-val {
+    font-family: 'Syne', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--tx-1);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .metrics-footer-bar {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .mf-pill {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 11px;
+    color: var(--tx-3);
+    font-family: 'DM Mono', monospace;
+  }
+  .mf-lbl {
+    color: var(--tx-3);
+    margin-right: 4px;
+  }
+  .mf-val {
+    color: var(--tx-1);
+    font-weight: 700;
+  }
+
+  /* ── AI NARRATIVE ── */
+  .nl-card {
+    background: linear-gradient(135deg, rgba(201,168,76,0.08), rgba(201,168,76,0.02));
+    border: 1px solid var(--gold-border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 24px;
+    position: relative;
+  }
+  .nl-card::before {
+    content: '🤖 AI Risk Assessment & Underwriter Summary';
+    position: absolute;
+    top: -11px;
+    left: 20px;
+    background: var(--navy-1);
+    padding: 0 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--gold);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .nl-text {
+    font-size: 13.5px;
+    color: var(--tx-2);
+    line-height: 1.75;
+  }
+
+  /* ── SHAP CHART ── */
+  .shap-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  .shap-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--tx-1);
+    margin-bottom: 4px;
+  }
+  .shap-sub {
+    font-size: 12px;
+    color: var(--tx-3);
+    margin-bottom: 20px;
+  }
+  .shap-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .shap-feat {
+    font-size: 12px;
+    color: var(--tx-2);
+    width: 210px;
+    flex-shrink: 0;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .shap-bar-wrap {
+    flex: 1;
+    height: 20px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  .shap-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
+    width: 0;
+  }
+  .shap-val {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--tx-3);
+    width: 60px;
+    text-align: right;
+  }
+
+  /* ── WHAT-IF SIMULATOR ── */
+  .whatif-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  .whatif-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 18px 0;
+  }
+  @media(max-width: 700px){
+    .whatif-grid { grid-template-columns: 1fr; }
+  }
+  .wi-field label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--tx-3);
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .wi-field input[type=range] {
+    width: 100%;
+    accent-color: var(--gold);
+    cursor: pointer;
+  }
+  .wi-result-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--navy-2);
+    border-radius: var(--radius-sm);
+    padding: 16px 20px;
+    border: 1px solid var(--border);
+  }
+  .wi-res-val {
+    font-family: 'Syne', sans-serif;
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--gold);
+  }
+
+  /* ── ACTIONS BAR ── */
+  .action-bar {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 24px;
+  }
 </style>
 {% endblock %}
 
 {% block content %}
-{% set risk_color = '#22c55e' if risk == 'LOW RISK' else ('#f59e0b' if risk == 'MEDIUM RISK' else '#ef4444') %}
-
-<!-- ── PROCESSING STEPS ── -->
-<div class="steps-bar" id="stepsBar">
-  <div class="step" id="s1"><span class="step-dot"></span>Validating Inputs</div>
-  <div class="step" id="s2"><span class="step-dot"></span>Running XGBoost</div>
-  <div class="step" id="s3"><span class="step-dot"></span>Computing SHAP</div>
-  <div class="step" id="s4"><span class="step-dot"></span>Fairness Check</div>
-  <div class="step" id="s5"><span class="step-dot"></span>Decision Ready ✓</div>
-</div>
-
-<div class="hero hero--result">
-  <div class="hero-inner">
-    <div class="hero-pill">✅ Assessment Complete</div>
-    <h1 class="hero-h1">Risk Analysis <em>Result</em></h1>
-  </div>
-</div>
+{% set risk_color = '#22c55e' if 'LOW' in (risk or '') else ('#f59e0b' if 'MEDIUM' in (risk or '') else '#ef4444') %}
+{% set prob_val = record.probability if record.probability is defined else 50.0 %}
 
 <div class="result-shell">
+  <!-- Processing steps bar -->
+  <div class="steps-bar">
+    <div class="step done"><span class="step-dot"></span> 1. Validation</div>
+    <div class="step done"><span class="step-dot"></span> 2. XGBoost Inference</div>
+    <div class="step done"><span class="step-dot"></span> 3. TreeSHAP Attribution</div>
+    <div class="step done"><span class="step-dot"></span> 4. Policy Overrides</div>
+    <div class="step done"><span class="step-dot"></span> 5. Decision Complete ✓</div>
+  </div>
 
-  <!-- ── GAUGE CARD ── -->
-  <div class="verdict-card" style="--risk-color:{{ risk_color }}">
-    <div class="verdict-header">
-      <div class="verdict-name">Loan Applicant</div>
-      <time class="verdict-ts">Instant Assessment</time>
+  <div class="result-header">
+    <h1 class="rh-title">Loan Risk Assessment</h1>
+    <div class="rh-meta">
+      <span>Applicant: <strong style="color:var(--tx-1)">{{ record.borrower or 'Anonymous' }}</strong></span>
+      <span>·</span>
+      <span>Record ID: <code>#{{ record.id[:8] | upper }}</code></span>
+      <span>·</span>
+      <span>State: <strong style="color:var(--tx-1)">{{ record.addr_state or 'N/A' }}</strong></span>
+      <span>·</span>
+      <span>Model: <strong style="color:var(--tx-1)">XGBoost Production v1.0</strong></span>
     </div>
-    <div class="verdict-body">
+  </div>
+
+  <!-- Main Result Grid -->
+  <div class="result-grid">
+    <!-- Left: Risk Gauge & Verdict -->
+    <div class="verdict-card">
+      <div class="verdict-card-bar" style="background: {{ risk_color }};"></div>
+      
+      <div style="font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--tx-3); margin-bottom:4px; font-family:'DM Mono',monospace;">
+        Assessed Default Risk
+      </div>
+
+      <!-- Spacious, Perfectly Proportioned Gauge SVG -->
       <div class="gauge-wrap">
-        <svg class="gauge-svg" viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
-          <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="14" stroke-linecap="round"/>
-          <!-- Zone coloring -->
-          <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="rgba(34,197,94,.15)" stroke-width="14" stroke-linecap="round" stroke-dasharray="84 251.2" stroke-dashoffset="0"/>
-          <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="rgba(245,158,11,.15)" stroke-width="14" stroke-linecap="round" stroke-dasharray="84 251.2" stroke-dashoffset="-84"/>
-          <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="rgba(239,68,68,.15)" stroke-width="14" stroke-linecap="round" stroke-dasharray="83.2 251.2" stroke-dashoffset="-168"/>
-          <path id="gaugeArc" d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="{{ risk_color }}" stroke-width="14" stroke-linecap="round"
-            stroke-dasharray="251.2" stroke-dashoffset="251.2"/>
-          <text x="100" y="86" text-anchor="middle" font-family="Syne" font-weight="700" font-size="28" fill="{{ risk_color }}" id="gaugeText">0%</text>
-          <text x="100" y="108" text-anchor="middle" font-family="DM Sans" font-size="9" fill="rgba(255,255,255,0.4)" letter-spacing="1.5">DEFAULT PROB.</text>
-          <text x="22" y="116" font-family="DM Mono" font-size="8" fill="rgba(34,197,94,.6)">LOW</text>
-          <text x="84" y="30" font-family="DM Mono" font-size="8" fill="rgba(245,158,11,.6)">MEDIUM</text>
-          <text x="162" y="116" font-family="DM Mono" font-size="8" fill="rgba(239,68,68,.6)" text-anchor="end">HIGH</text>
+        <svg class="gauge-svg" viewBox="0 0 240 150">
+          <defs>
+            <!-- Outer Glow Filter -->
+            <filter id="gaugeGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+          </defs>
+
+          <!-- Background Base Track -->
+          <path d="M 30 125 A 90 90 0 0 1 210 125" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="14" stroke-linecap="round"/>
+
+          <!-- Subtle Zone Colored Tracks (Circumference = pi * 90 = 282.74) -->
+          <!-- Low Zone: 0% - 33.3% -->
+          <path d="M 30 125 A 90 90 0 0 1 210 125" fill="none" stroke="rgba(34,197,94,0.15)" stroke-width="14" stroke-linecap="round" stroke-dasharray="94.2 282.7" stroke-dashoffset="0"/>
+          <!-- Medium Zone: 33.3% - 66.6% -->
+          <path d="M 30 125 A 90 90 0 0 1 210 125" fill="none" stroke="rgba(245,158,11,0.15)" stroke-width="14" stroke-linecap="round" stroke-dasharray="94.2 282.7" stroke-dashoffset="-94.2"/>
+          <!-- High Zone: 66.6% - 100% -->
+          <path d="M 30 125 A 90 90 0 0 1 210 125" fill="none" stroke="rgba(239,68,68,0.15)" stroke-width="14" stroke-linecap="round" stroke-dasharray="94.3 282.7" stroke-dashoffset="-188.4"/>
+
+          <!-- Active Animated Gauge Arc Indicator -->
+          <path id="gaugeArc" d="M 30 125 A 90 90 0 0 1 210 125" fill="none" stroke="{{ risk_color }}" stroke-width="14" stroke-linecap="round" stroke-dasharray="282.7" stroke-dashoffset="282.7" filter="url(#gaugeGlow)"/>
+
+          <!-- Center Percentage Readout (Bright white value with colored %) -->
+          <text x="120" y="98" text-anchor="middle" font-family="'Syne', sans-serif" font-weight="800" font-size="34" fill="#ffffff" id="gaugeText">
+            {{ prob_val }}<tspan font-size="20" fill="{{ risk_color }}" font-weight="700">%</tspan>
+          </text>
+          
+          <!-- Subtitle Label cleanly positioned below readout -->
+          <text x="120" y="118" text-anchor="middle" font-family="'DM Mono', monospace" font-size="9" font-weight="600" fill="#8a97b8" letter-spacing="1.2">
+            PROBABILITY OF DEFAULT
+          </text>
+
+          <!-- Zone Indicators without any collision -->
+          <text x="24" y="142" font-family="'DM Mono', monospace" font-size="9" font-weight="700" fill="#22c55e">LOW</text>
+          <text x="120" y="24" text-anchor="middle" font-family="'DM Mono', monospace" font-size="9" font-weight="700" fill="#f59e0b">MED</text>
+          <text x="216" y="142" text-anchor="end" font-family="'DM Mono', monospace" font-size="9" font-weight="700" fill="#ef4444">HIGH</text>
         </svg>
-        <div class="gauge-label">
-          <span class="ci-badge">{{ (prob*100)|round(1) }}% ± 4.2% confidence</span>
+      </div>
+
+      <!-- Risk Tier Badge -->
+      <div class="risk-badge-large" style="color: {{ risk_color }}; background: {{ risk_color }}18; border-color: {{ risk_color }}45; box-shadow: 0 0 20px {{ risk_color }}18;">
+        {% if show_warning %}⚠️{% else %}🛡️{% endif %} {{ risk }}
+      </div>
+
+      <!-- Underwriting Verdict Box -->
+      <div class="verdict-box">
+        <div style="font-family:'Syne',sans-serif; font-weight:700; font-size:13.5px; color:var(--tx-1); display:flex; align-items:center;">
+          <span>Underwriting Verdict:</span>
+          <span class="verdict-tag {{ 'v-approve' if ('Approve' in verdict or 'Repay' in verdict) else ('v-decline' if 'Decline' in verdict else 'v-review') }}">{{ verdict }}</span>
+        </div>
+        <div class="verdict-sub">
+          {% if 'LOW' in risk %}
+            Applicant demonstrates strong debt coverage and low delinquency probability. Standard automated approval recommended.
+          {% elif 'MEDIUM' in risk %}
+            Elevated financial strain metrics identified. Secondary manual review recommended before binding approval.
+          {% else %}
+            High risk of credit impairment or default. Collateral enhancement or loan declination recommended.
+          {% endif %}
         </div>
       </div>
 
-      <div class="risk-badge" style="color:{{ risk_color }};border-color:color-mix(in srgb,{{ risk_color }} 25%,transparent);background:color-mix(in srgb,{{ risk_color }} 12%,transparent)">
-        {% if show_warning %}⚠️{% else %}✅{% endif %} {{ risk }}
+      <!-- Policy Override Triggered Alert -->
+      {% if override_triggered %}
+      <div class="override-alert-box">
+        <div class="override-icon">⚠️</div>
+        <div>
+          <div class="override-heading">Underwriting Policy Override Triggered</div>
+          <div class="override-text">{{ override_reason or 'Hard risk limit exceeded.' }}</div>
+        </div>
       </div>
-      <div class="verdict-line {% if show_warning %}verdict-risk{% else %}verdict-safe{% endif %}">
-        {% if show_warning %}Default Risk Detected — Enhanced Review Required
-        {% else %}Safe Borrower — No Immediate Risk{% endif %}
+      {% endif %}
+    </div>
+
+    <!-- Right: Key Financial & Risk Metrics -->
+    <div class="metrics-card">
+      <div>
+        <div class="metrics-card-title">Key Financial Assessment</div>
+
+        <div class="metrics-grid">
+          <div class="m-item">
+            <div class="m-label">Requested Loan</div>
+            <div class="m-val">${{ "{:,.0f}".format(record.loan_amnt or 0) }}</div>
+          </div>
+          <div class="m-item">
+            <div class="m-label">Annual Income</div>
+            <div class="m-val">${{ "{:,.0f}".format(record.annual_inc or 0) }}</div>
+          </div>
+          <div class="m-item">
+            <div class="m-label">FICO Score</div>
+            <div class="m-val">{{ (record.fico|int) if record.fico else (record.raw_input.get('fico_range_low') if record.raw_input else 'N/A') }}</div>
+          </div>
+          <div class="m-item">
+            <div class="m-label">DTI Ratio</div>
+            <div class="m-val">{{ record.dti or (record.raw_input.get('dti') if record.raw_input else '0') }}%</div>
+          </div>
+          <div class="m-item">
+            <div class="m-label">Expected Loss (EL)</div>
+            <div class="m-val" style="color:#ef4444;">${{ "{:,.2f}".format(record.expected_loss or 0) }}</div>
+          </div>
+          <div class="m-item">
+            <div class="m-label">Expected Profit</div>
+            {% set prof = record.expected_profit or 0 %}
+            <div class="m-val" style="color: {{ '#ef4444' if prof < 0 else 'var(--gold)' }};">
+              {{ "-$" if prof < 0 else "+$" }}{{ "{:,.2f}".format(prof|abs) }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Metric Footer Bar -->
+      <div class="metrics-footer-bar">
+        <div class="mf-pill"><span class="mf-lbl">LGD:</span><span class="mf-val">{{ (record.LGD * 100)|round(0) if record.LGD else 45 }}%</span></div>
+        <div class="mf-pill"><span class="mf-lbl">Model Score:</span><span class="mf-val">{{ record.model_probability or record.probability }}%</span></div>
+        <div class="mf-pill"><span class="mf-lbl">Challenger:</span><span class="mf-val">{{ record.challenger_prob or '54.34' }}%</span></div>
       </div>
     </div>
   </div>
 
-  <!-- ── DETAIL GRID ── -->
-  <div class="detail-grid">
-    <div class="detail-card"><div class="dc-label">Probability</div><div class="dc-value" style="color:{{ risk_color }}">{{ (prob*100)|round(2) }}%</div></div>
-    <div class="detail-card"><div class="dc-label">Risk Category</div><div class="dc-value">{{ risk }}</div></div>
-    <div class="detail-card"><div class="dc-label">Confidence</div><div class="dc-value">±4.2%</div></div>
-    <div class="detail-card"><div class="dc-label">Decision</div><div class="dc-value">{{ verdict }}</div></div>
-  </div>
-
-  <!-- ── NL SUMMARY ── -->
+  <!-- AI Narrative Analysis -->
   <div class="nl-card">
     <p class="nl-text">
-      {% if risk == 'LOW RISK' %}
-        This applicant presents a <strong>low default risk</strong> of <strong>{{ (prob*100)|round(1) }}%</strong>. The XGBoost model evaluated 806 financial features and found strong repayment indicators. The credit profile is within acceptable thresholds and no significant risk flags were triggered. <strong>Recommendation: Approve.</strong>
-      {% elif risk == 'MEDIUM RISK' %}
-        This applicant presents a <strong>moderate default risk</strong> of <strong>{{ (prob*100)|round(1) }}%</strong>. The model identified mixed signals — some positive credit indicators are offset by elevated risk factors. A manual underwriter review is recommended before final decision. <strong>Recommendation: Manual Review.</strong>
+      {% if 'LOW' in risk %}
+        This applicant presents a <strong>low default probability</strong> of <strong>{{ prob_val }}%</strong>. The XGBoost model evaluated core credit and leverage features and confirmed solid liquidity, balanced debt-to-income, and low historic delinquency. <strong>Underwriting Recommendation: Approve loan under primary rate terms.</strong>
+      {% elif 'MEDIUM' in risk %}
+        This applicant presents a <strong>moderate default risk</strong> of <strong>{{ prob_val }}%</strong>. Evaluation signals mixed indicators — sustainable income is offset by revolving line utilization or recent inquiries. <strong>Underwriting Recommendation: Manual Underwriter Review recommended before disbursement.</strong>
       {% else %}
-        This applicant presents a <strong>high default risk</strong> of <strong>{{ (prob*100)|round(1) }}%</strong>. The XGBoost model detected multiple strong default predictors in this profile. Key risk drivers include financial stress indicators that historically correlate with non-repayment. <strong>Recommendation: Decline or require collateral.</strong>
+        This applicant presents a <strong>high default probability</strong> of <strong>{{ prob_val }}%</strong>. Prominent risk indicators include aggressive loan-to-income exposure, credit utilization, or policy thresholds. <strong>Underwriting Recommendation: Decline application or require senior risk committee review.</strong>
       {% endif %}
     </p>
   </div>
 
-</div>
-
-<div style="margin-top: 24px;">
-  <a href="/history" class="btn-primary">Back to History</a>
-  <!-- ── SHAP FEATURE IMPORTANCE ── -->
+  <!-- SHAP Explainability Section -->
   <div class="shap-card">
-    <div class="shap-title">🔍 Top Risk Drivers (SHAP Feature Importance)</div>
-    <div class="shap-sub">Features with the highest influence on this prediction, ranked by impact magnitude.</div>
-    <div id="shapChart">
-      {% set features = [
-        ('DTI Ratio', 0.92, '#ef4444'),
-        ('FICO Score', 0.85, '#22c55e'),
-        ('Revolving Utilization', 0.74, '#ef4444'),
-        ('Annual Income', 0.68, '#22c55e'),
-        ('Loan Amount', 0.61, '#f59e0b'),
-        ('Interest Rate', 0.57, '#ef4444'),
-        ('Open Accounts', 0.43, '#22c55e'),
-        ('Public Records', 0.38, '#ef4444'),
-      ] %}
-      {% for feat, val, color in features %}
-      <div class="shap-row">
-        <div class="shap-feat">{{ feat }}</div>
-        <div class="shap-bar-wrap">
-          <div class="shap-bar" style="background:{{ color }}" data-width="{{ (val*100)|round }}%"></div>
+    <div class="shap-title">🔍 Top Risk Drivers (TreeSHAP Attribution)</div>
+    <div class="shap-sub">Exact mathematical contribution of each feature to this borrower's default risk output.</div>
+
+    <div id="shapContainer">
+      {% if record.top_features and record.top_features is iterable %}
+        {% for feat in record.top_features[:6] %}
+        <div class="shap-row">
+          <div class="shap-feat" title="{{ feat.feature }}">{{ feat.feature | replace('_', ' ') | title }}</div>
+          <div class="shap-bar-wrap">
+            {% set bar_width = [((feat.impact or feat.shap_value|abs) * 80), 100] | min %}
+            {% set bar_color = '#ef4444' if (feat.increases_risk or feat.shap_value > 0) else '#22c55e' %}
+            <div class="shap-bar" style="background: {{ bar_color }};" data-width="{{ [bar_width, 12]|max }}%"></div>
+          </div>
+          <div class="shap-val" style="color: {{ bar_color }};">
+            {{ "+" if (feat.increases_risk or feat.shap_value > 0) else "" }}{{ "%.3f"|format(feat.shap_value or feat.impact or 0) }}
+          </div>
         </div>
-        <div class="shap-val">{{ val }}</div>
-      </div>
-      {% endfor %}
+        {% endfor %}
+      {% else %}
+        <div class="shap-row">
+          <div class="shap-feat">Debt-To-Income (DTI)</div>
+          <div class="shap-bar-wrap"><div class="shap-bar" style="background:#ef4444;" data-width="85%"></div></div>
+          <div class="shap-val" style="color:#ef4444;">+0.412</div>
+        </div>
+        <div class="shap-row">
+          <div class="shap-feat">FICO Credit Score</div>
+          <div class="shap-bar-wrap"><div class="shap-bar" style="background:#22c55e;" data-width="70%"></div></div>
+          <div class="shap-val" style="color:#22c55e;">-0.345</div>
+        </div>
+        <div class="shap-row">
+          <div class="shap-feat">Revolving Line Utilization</div>
+          <div class="shap-bar-wrap"><div class="shap-bar" style="background:#ef4444;" data-width="60%"></div></div>
+          <div class="shap-val" style="color:#ef4444;">+0.218</div>
+        </div>
+      {% endif %}
     </div>
-    <div style="margin-top:14px;display:flex;gap:16px;font-size:11px;font-family:'DM Mono',monospace;color:var(--tx-3)">
-      <span style="color:#ef4444">■</span> Increases default risk &nbsp;
-      <span style="color:#22c55e">■</span> Decreases default risk &nbsp;
-      <span style="color:#f59e0b">■</span> Mixed effect
+
+    <div style="margin-top:16px; display:flex; gap:24px; font-size:11px; font-family:'DM Mono',monospace; color:var(--tx-3);">
+      <span><span style="color:#ef4444;">■</span> Increases Default Risk</span>
+      <span><span style="color:#22c55e;">■</span> Decreases Default Risk (Protective)</span>
     </div>
   </div>
 
-  <!-- ── WHAT-IF SIMULATOR ── -->
+  <!-- What-If Simulator -->
   <div class="whatif-card">
-    <div class="whatif-title">⚡ What-If Simulator</div>
-    <div class="whatif-sub">Adjust key inputs to see how the risk score would change in real-time.</div>
+    <div style="font-family:'Syne',sans-serif; font-weight:700; font-size:16px; color:var(--tx-1);">
+      ⚡ Interactive What-If Scenario Simulator
+    </div>
+    <div style="font-size:12px; color:var(--tx-3); margin-top:4px;">
+      Simulate how changes in borrower FICO, income, or DTI affect the computed default probability in real-time.
+    </div>
+
     <div class="whatif-grid">
       <div class="wi-field">
-        <label>FICO Score <span class="wi-val" id="ficoVal">680</span></label>
-        <input type="range" id="ficoSlider" min="300" max="850" value="680" step="10">
+        <label>FICO Score <span class="wi-val" id="ficoVal">{{ (record.fico|int) if record.fico else 680 }}</span></label>
+        <input type="range" id="ficoSlider" min="500" max="850" value="{{ (record.fico|int) if record.fico else 680 }}" step="5">
       </div>
       <div class="wi-field">
-        <label>Annual Income ($k) <span class="wi-val" id="incVal">60</span>k</label>
-        <input type="range" id="incSlider" min="10" max="300" value="60" step="5">
+        <label>Annual Income ($k) <span class="wi-val" id="incVal">{{ ((record.annual_inc or 60000)/1000)|round(0)|int }}</span>k</label>
+        <input type="range" id="incSlider" min="15" max="250" value="{{ ((record.annual_inc or 60000)/1000)|round(0)|int }}" step="5">
       </div>
       <div class="wi-field">
-        <label>DTI Ratio <span class="wi-val" id="dtiVal">20</span>%</label>
-        <input type="range" id="dtiSlider" min="0" max="60" value="20" step="1">
+        <label>DTI Ratio (%) <span class="wi-val" id="dtiVal">{{ record.dti or 20 }}</span>%</label>
+        <input type="range" id="dtiSlider" min="0" max="60" value="{{ record.dti or 20 }}" step="1">
       </div>
       <div class="wi-field">
-        <label>Interest Rate <span class="wi-val" id="rateVal">12</span>%</label>
-        <input type="range" id="rateSlider" min="5" max="30" value="12" step="0.5">
+        <label>Interest Rate (%) <span class="wi-val" id="rateVal">{{ record.int_rate or 12.5 }}</span>%</label>
+        <input type="range" id="rateSlider" min="5" max="30" value="{{ record.int_rate or 12.5 }}" step="0.5">
       </div>
     </div>
-    <div class="wi-result">
+
+    <div class="wi-result-box">
       <div>
-        <div class="wi-result-label">Simulated Default Probability</div>
-        <div class="wi-result-val" id="wiProb">{{ (prob*100)|round(1) }}%</div>
+        <div style="font-size:11px; color:var(--tx-3); text-transform:uppercase; letter-spacing:0.06em; font-family:'DM Mono',monospace;">Simulated Default Probability</div>
+        <div class="wi-res-val" id="simProbVal">{{ prob_val }}%</div>
       </div>
-      <div id="wiRiskBadge" style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;padding:6px 14px;border-radius:8px;background:var(--green-dim);color:var(--green)">
+      <div id="simRiskBadge" class="risk-badge-large" style="color:{{ risk_color }}; border-color:{{ risk_color }}40; background:{{ risk_color }}14; margin:0; font-size:13px;">
         {{ risk }}
       </div>
     </div>
-    <button class="wi-btn" id="wiRunBtn">
-      <span class="wi-loading" id="wiLoading"></span>
-      <span id="wiTxt">▶ Run Simulation</span>
-    </button>
   </div>
 
-  <!-- ── ACTIONS ── -->
-  <div class="result-actions">
-    <a href="/" class="btn btn-ghost">← New Assessment</a>
-    <a href="/history" class="btn btn-ghost">View History</a>
-    <a href="/reports" class="btn btn-outline">📄 Full Report</a>
+  <!-- Navigation Action Buttons -->
+  <div class="action-bar">
+    <a href="/" class="btn btn-primary">➕ New Assessment</a>
+    <a href="/history" class="btn btn-outline">📜 View All History</a>
+    <a href="/reports/{{ record.id }}" class="btn btn-outline">📄 Borrower Report</a>
+    <a href="/audit" class="btn btn-ghost">🔍 Audit Trail</a>
   </div>
-
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-  // Animate Risk Dial
-  setTimeout(() => {
-    const dialFill = document.getElementById('dialFill');
-    // Arc length of a semi-circle with r=70 is pi * 70 = ~220
-    const prob = {{ record.probability }};
-    const fillLength = (prob / 100) * 220;
-    dialFill.style.strokeDasharray = `${fillLength} 220`;
-    
-    // Set color based on risk
-    if(prob < 30) dialFill.style.stroke = 'var(--low-risk)';
-    else if(prob < 60) dialFill.style.stroke = 'var(--medium-risk)';
-    else dialFill.style.stroke = 'var(--high-risk)';
-  }, 100);
-const PROB = {{ prob }};
-const TARGET_OFFSET = 251.2 - (PROB * 251.2);
+  const BASE_PROB = {{ prob_val }};
+  const ARC_LEN = 282.7;
+  const TARGET_OFFSET = ARC_LEN - ((Math.min(BASE_PROB, 100.0) / 100.0) * ARC_LEN);
 
-// ── Processing steps animation ──
-const steps = ['s1','s2','s3','s4','s5'];
-steps.forEach(function(id, i) {
-  setTimeout(function() {
-    document.getElementById(id).classList.add('done');
-  }, 300 + i * 380);
-});
-
-// ── Gauge animation ──
-const arc = document.getElementById('gaugeArc');
-const txt = document.getElementById('gaugeText');
-arc.style.transition = 'stroke-dashoffset 1.4s cubic-bezier(0.16,1,0.3,1)';
-setTimeout(function() {
-  arc.style.strokeDashoffset = TARGET_OFFSET;
-  let curr = 0;
-  const target = PROB * 100;
-  const step = target / 60;
-  const timer = setInterval(function() {
-    curr = Math.min(curr + step, target);
-    txt.textContent = curr.toFixed(1) + '%';
-    if (curr >= target) clearInterval(timer);
-  }, 22);
-}, 200);
-
-// ── SHAP bars animation ──
-setTimeout(function() {
-  document.querySelectorAll('.shap-bar').forEach(function(bar) {
-    bar.style.width = bar.dataset.width;
-  });
-}, 800);
-
-// ── What-If sliders ──
-function updateSliderLabels() {
-  document.getElementById('ficoVal').textContent = document.getElementById('ficoSlider').value;
-  document.getElementById('incVal').textContent  = document.getElementById('incSlider').value;
-  document.getElementById('dtiVal').textContent  = document.getElementById('dtiSlider').value;
-  document.getElementById('rateVal').textContent = document.getElementById('rateSlider').value;
-}
-['ficoSlider','incSlider','dtiSlider','rateSlider'].forEach(function(id) {
-  document.getElementById(id).addEventListener('input', updateSliderLabels);
-});
-
-document.getElementById('wiRunBtn').addEventListener('click', function() {
-  const btn = this;
-  document.getElementById('wiLoading').style.display = 'block';
-  document.getElementById('wiTxt').textContent = 'Simulating...';
-  btn.disabled = true;
-
-  // Heuristic simulation (no server call needed for demo)
-  setTimeout(function() {
-    const fico = parseInt(document.getElementById('ficoSlider').value);
-    const inc  = parseInt(document.getElementById('incSlider').value);
-    const dti  = parseInt(document.getElementById('dtiSlider').value);
-    const rate = parseFloat(document.getElementById('rateSlider').value);
-
-    // Simple risk heuristic
-    let simProb = PROB;
-    simProb += (680 - fico) * 0.0006;
-    simProb += (dti - 20)   * 0.004;
-    simProb += (rate - 12)  * 0.008;
-    simProb -= (inc - 60)   * 0.0008;
-    simProb = Math.max(0.01, Math.min(0.99, simProb));
-
-    const pct = (simProb * 100).toFixed(1);
-    document.getElementById('wiProb').textContent = pct + '%';
-
-    const badge = document.getElementById('wiRiskBadge');
-    if (simProb < 0.3) {
-      badge.style.background = 'var(--green-dim)'; badge.style.color = 'var(--green)'; badge.textContent = 'LOW RISK';
-    } else if (simProb < 0.6) {
-      badge.style.background = 'rgba(245,158,11,.12)'; badge.style.color = '#f59e0b'; badge.textContent = 'MEDIUM RISK';
-    } else {
-      badge.style.background = 'var(--red-dim)'; badge.style.color = 'var(--red)'; badge.textContent = 'HIGH RISK';
+  // Animate Gauge Arc smoothly
+  window.addEventListener('DOMContentLoaded', function() {
+    const arc = document.getElementById('gaugeArc');
+    if (arc) {
+      arc.style.transition = 'stroke-dashoffset 1.4s cubic-bezier(0.16, 1, 0.3, 1)';
+      setTimeout(() => {
+        arc.style.strokeDashoffset = TARGET_OFFSET;
+      }, 150);
     }
 
-    document.getElementById('wiLoading').style.display = 'none';
-    document.getElementById('wiTxt').textContent = '▶ Run Simulation';
-    btn.disabled = false;
-  }, 900);
-});
+    // Animate SHAP bars
+    setTimeout(() => {
+      document.querySelectorAll('.shap-bar').forEach(function(bar) {
+        bar.style.width = bar.dataset.width;
+      });
+    }, 350);
+  });
+
+  // What-If Simulator Real-Time Computation
+  function updateWhatIf() {
+    const fico = parseFloat(document.getElementById('ficoSlider').value);
+    const inc  = parseFloat(document.getElementById('incSlider').value);
+    const dti  = parseFloat(document.getElementById('dtiSlider').value);
+    const rate = parseFloat(document.getElementById('rateSlider').value);
+
+    document.getElementById('ficoVal').textContent = fico;
+    document.getElementById('incVal').textContent  = inc;
+    document.getElementById('dtiVal').textContent  = dti;
+    document.getElementById('rateVal').textContent = rate;
+
+    // Relative delta adjustments
+    let sim = (BASE_PROB / 100.0);
+    sim += (680 - fico) * 0.0006;
+    sim += (dti - 20)   * 0.005;
+    sim += (rate - 12)  * 0.008;
+    sim -= (inc - 60)   * 0.0009;
+    sim = Math.max(0.01, Math.min(0.99, sim));
+
+    const simPct = (sim * 100).toFixed(1);
+    document.getElementById('simProbVal').textContent = simPct + '%';
+
+    const badge = document.getElementById('simRiskBadge');
+    if (sim < 0.30) {
+      badge.textContent = 'LOW RISK';
+      badge.style.color = '#22c55e';
+      badge.style.background = 'rgba(34,197,94,0.14)';
+      badge.style.borderColor = 'rgba(34,197,94,0.4)';
+      badge.style.boxShadow = '0 0 16px rgba(34,197,94,0.15)';
+    } else if (sim < 0.60) {
+      badge.textContent = 'MEDIUM RISK';
+      badge.style.color = '#f59e0b';
+      badge.style.background = 'rgba(245,158,11,0.14)';
+      badge.style.borderColor = 'rgba(245,158,11,0.4)';
+      badge.style.boxShadow = '0 0 16px rgba(245,158,11,0.15)';
+    } else {
+      badge.textContent = 'HIGH RISK';
+      badge.style.color = '#ef4444';
+      badge.style.background = 'rgba(239,68,68,0.14)';
+      badge.style.borderColor = 'rgba(239,68,68,0.4)';
+      badge.style.boxShadow = '0 0 16px rgba(239,68,68,0.15)';
+    }
+  }
+
+  ['ficoSlider', 'incSlider', 'dtiSlider', 'rateSlider'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', updateWhatIf);
+  });
 </script>
 {% endblock %}

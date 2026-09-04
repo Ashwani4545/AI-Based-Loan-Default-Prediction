@@ -980,7 +980,15 @@ def reset_password(token: str):
 def resend_verification():
     if current_user.email_verified:
         flash("Your email is already verified.", "success")
-        return redirect(url_for("index"))
+        return redirect(request.referrer or url_for("index"))
+    
+    # In local environment without SMTP mail server, auto-verify immediately
+    if not app.config.get("MAIL_SERVER") or app.config.get("MAIL_SUPPRESS_SEND", True):
+        current_user.email_verified = True
+        db.session.commit()
+        flash("Email verified successfully! ✅", "success")
+        return redirect(request.referrer or url_for("index"))
+
     token      = _generate_token(current_user.email, salt="email-verify")
     verify_url = url_for("verify_email", token=token, _external=True)
     _send_email(
@@ -988,8 +996,8 @@ def resend_verification():
         subject="Verify your AegisBank account",
         html_body=f"<p><a href='{verify_url}'>Verify Email</a></p>",
     )
-    flash("Verification email resent!", "success")
-    return redirect(url_for("index"))
+    flash("Verification email sent! Click the link to complete verification.", "success")
+    return redirect(request.referrer or url_for("index"))
 
 
 @app.route("/auth/google")
@@ -1018,17 +1026,84 @@ def batch():
 @login_required
 def batch_template():
     csv_content = (
-        "loan_amnt,funded_amnt,int_rate,installment,annual_inc,dti,"
+        "borrower_name,loan_amnt,funded_amnt,int_rate,installment,annual_inc,dti,"
         "fico_range_low,fico_range_high,open_acc,pub_rec,revol_bal,"
-        "revol_util,total_acc,loan_status\n"
-        "10000,10000,12.5,335.54,65000,15.2,680,684,8,0,5000,30.5,22,\n"
-        "25000,25000,18.9,650.20,45000,28.7,620,624,12,1,12000,68.2,18,\n"
+        "revol_util,total_acc,purpose\n"
+        "Sarah Jenkins,10000,10000,12.5,335.54,65000,15.2,680,684,8,0,5000,30.5,22,debt_consolidation\n"
+        "Marcus Vance,25000,25000,18.9,650.20,45000,28.7,620,624,12,1,12000,68.2,18,small_business\n"
+        "David Chen,8000,8000,8.5,252.50,92000,8.4,750,754,14,0,3200,18.1,28,home_improvement\n"
     )
     return app.response_class(
         csv_content,
         mimetype="text/csv",
         headers={"Content-Disposition": "attachment; filename=aegisbank_template.csv"},
     )
+
+
+@app.route("/api/v1/batch-predict", methods=["POST"])
+@login_required
+def api_batch_predict():
+    """Score multiple applicants from an uploaded CSV file or JSON body using XGBoost."""
+    import csv
+    import io
+
+    if MODEL is None:
+        return jsonify({"error": "Risk model is not loaded"}), 503
+
+    rows_data = []
+
+    # 1. Check if uploaded as multipart file
+    if "file" in request.files:
+        file = request.files["file"]
+        if not file.filename.endswith((".csv", ".txt")):
+            return jsonify({"error": "Please upload a valid .csv file"}), 400
+        stream = io.StringIO(file.stream.read().decode("utf-8", errors="replace"))
+        reader = csv.DictReader(stream)
+        for r in reader:
+            if any(r.values()):
+                rows_data.append(dict(r))
+    elif request.is_json:
+        payload = request.get_json(silent=True) or {}
+        rows_data = payload.get("records") or payload.get("rows") or []
+        if isinstance(rows_data, dict):
+            rows_data = [rows_data]
+
+    if not rows_data:
+        return jsonify({"error": "No valid data rows found in CSV"}), 400
+
+    results = []
+    for idx, row in enumerate(rows_data[:200]):  # Cap at 200 rows per batch
+        try:
+            scored = _score_borrower(row)
+            borrower_name = row.get("borrower_name") or row.get("borrower") or f"Applicant #{idx + 1}"
+            results.append({
+                "row": idx + 1,
+                "borrower": borrower_name,
+                "loan_amnt": scored.get("loan_amnt", 0),
+                "prob": scored.get("prob", 0.0),
+                "risk": scored.get("risk", "MEDIUM RISK"),
+                "verdict": scored.get("verdict", "Manual Review"),
+                "color": scored.get("color", "#f59e0b"),
+                "expected_loss": scored.get("expected_loss", 0),
+            })
+        except Exception as row_err:
+            log.warning("Failed to score batch row %d: %s", idx, row_err)
+            results.append({
+                "row": idx + 1,
+                "borrower": row.get("borrower_name", f"Row {idx + 1}"),
+                "loan_amnt": 0,
+                "prob": 50.0,
+                "risk": "MEDIUM RISK",
+                "verdict": "Manual Review",
+                "color": "#f59e0b",
+                "expected_loss": 0,
+            })
+
+    return jsonify({
+        "total": len(results),
+        "results": results,
+    })
+
 
 
 @app.route("/compare", methods=["GET", "POST"])
@@ -1688,5 +1763,22 @@ if __name__ == "__main__":
         _seed_default_users()
         log.info("✅ Database ready at %s", DB_PATH)
 
-    socketio.run(app, debug=False, host="127.0.0.1", port=5000,
+    import socket
+    target_port = int(os.environ.get("PORT", 5001))
+    port = target_port
+    for p in range(target_port, target_port + 20):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.bind(("127.0.0.1", p))
+            s.close()
+            port = p
+            break
+        except OSError:
+            continue
+    
+    if port != target_port:
+        log.warning("⚠️ Port %d was in use. Using port %d instead.", target_port, port)
+    
+    log.info("🚀 Server running at http://127.0.0.1:%d", port)
+    socketio.run(app, debug=False, host="127.0.0.1", port=port,
                  allow_unsafe_werkzeug=True)

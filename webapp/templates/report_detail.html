@@ -1,9 +1,12 @@
-{% extends "base.html" %} {% block title %}Report — {{ record.borrower }}{%
-endblock %} {% block content %}
+{% extends "base.html" %}
+{% block title %}Report — {{ record.borrower }}{% endblock %}
+
+{% block content %}
 <div class="hero">
   <div class="hero-inner">
     <div class="hero-pill">📄 Borrower Report</div>
     <h1 class="hero-h1">Loan Risk<br /><em>Report</em></h1>
+    <p class="hero-sub">Official AI-generated credit risk and default assessment documentation.</p>
   </div>
 </div>
 
@@ -14,16 +17,15 @@ endblock %} {% block content %}
       <div class="rpt-logo">A</div>
       <div>
         <div class="rpt-bank">AegisBank</div>
-        <div class="rpt-bank">Ministry of Banking</div>
-        <div class="rpt-sub">AI Risk Engine v2.4</div>
+        <div class="rpt-sub">AI Risk Engine v2.4 · XGBoost Production</div>
       </div>
     </div>
     <div class="rpt-meta">
       <div class="rpt-meta-row">
-        <span>Report ID:</span><code>{{ record.id[:8].upper() }}</code>
+        <span>Report ID:</span><code>#{{ record.id[:8].upper() }}</code>
       </div>
       <div class="rpt-meta-row">
-        <span>Generated:</span>{{ record.timestamp[:10] }}
+        <span>Generated:</span>{{ record.timestamp[:10] if record.timestamp else 'Recent' }}
       </div>
     </div>
   </div>
@@ -33,15 +35,13 @@ endblock %} {% block content %}
     <h2 class="rpt-section-title">Borrower Summary</h2>
     <div class="rpt-grid-3">
       <div class="rpt-field">
-        <label>Full Name</label><span>{{ record.borrower }}</span>
+        <label>Full Name</label><span>{{ record.borrower or 'Anonymous' }}</span>
       </div>
       <div class="rpt-field">
-        <label>Assessment Date</label><span>{{ record.timestamp[:10] }}</span>
+        <label>Assessment Date</label><span>{{ record.timestamp[:10] if record.timestamp else 'Recent' }}</span>
       </div>
       <div class="rpt-field">
-        <label>Purpose</label
-        ><span>{{ record.purpose.replace('_',' ').title() }}</span>
-        <label>Purpose</label><span>{{ record.purpose.replace('_',' ').title() }}</span>
+        <label>Purpose</label><span>{{ (record.purpose or 'Loan') | replace('_',' ') | title }}</span>
       </div>
     </div>
   </div>
@@ -51,71 +51,51 @@ endblock %} {% block content %}
     <h2 class="rpt-section-title">Loan Details</h2>
     <div class="rpt-grid-3">
       <div class="rpt-field">
-        <label>Loan Amount</label
-        ><span>${{ "{:,.0f}".format(record.loan_amnt) }}</span>
-        <label>Loan Amount</label><span>${{ "{:,.0f}".format(record.loan_amnt) }}</span>
+        <label>Loan Amount</label><span>${{ "{:,.0f}".format(record.loan_amnt or 0) }}</span>
       </div>
       <div class="rpt-field">
-        <label>Interest Rate</label><span>{{ record.int_rate }}%</span>
+        <label>Interest Rate</label><span>{{ record.int_rate or 0 }}%</span>
       </div>
       <div class="rpt-field">
-        <label>Annual Income</label
-        ><span>${{ "{:,.0f}".format(record.annual_inc) }}</span>
-        <label>Annual Income</label><span>${{ "{:,.0f}".format(record.annual_inc) }}</span>
+        <label>Annual Income</label><span>${{ "{:,.0f}".format(record.annual_inc or 0) }}</span>
       </div>
       <div class="rpt-field">
-        <label>FICO Score</label><span>{{ record.fico | int }}</span>
+        <label>FICO Score</label><span>{{ record.fico | int if record.fico else 'N/A' }}</span>
       </div>
       <div class="rpt-field">
-        <label>Grade</label><span>{{ record.grade }}</span>
+        <label>Grade</label><span>{{ record.grade or 'B' }}</span>
+      </div>
+      <div class="rpt-field">
+        <label>DTI Ratio</label><span>{{ record.dti or 0 }}%</span>
       </div>
     </div>
   </div>
 
   <!-- ── RISK ASSESSMENT ────────────────────────────────────────────────── -->
-  <div
-    class="rpt-section rpt-risk-section"
-    style="border-color: {{ record.color }}30"
-  >
-  <div class="rpt-section rpt-risk-section" style="border-color: {{ record.color }}30">
-    <h2 class="rpt-section-title">Risk Assessment</h2>
-    <div class="rpt-risk-body">
-      <div class="rpt-prob-big" style="color: {{ record.color }}">
+  {% set rc = record.color or ('#22c55e' if 'LOW' in (record.risk_level or '') else ('#f59e0b' if 'MEDIUM' in (record.risk_level or '') else '#ef4444')) %}
+  <div class="rpt-section rpt-risk-section" style="border-color: {{ rc }}40; background: rgba(255,255,255,0.02); border-radius: var(--radius); padding: 24px; margin-bottom: 28px; border: 1px solid {{ rc }}40;">
+    <h2 class="rpt-section-title" style="color:var(--tx-1); border-bottom:none; margin-bottom:18px;">Risk Assessment Decision</h2>
+    <div class="rpt-risk-body" style="display:flex; align-items:center; gap:24px; flex-wrap:wrap;">
+      <div class="rpt-prob-big" style="color: {{ rc }}; font-size:36px; font-weight:800; font-family:'Syne',sans-serif;">
         {{ record.probability }}%
-        <span class="rpt-prob-label">Default Probability</span>
+        <span class="rpt-prob-label" style="display:block; font-size:11px; color:var(--tx-3); text-transform:uppercase; letter-spacing:0.06em; margin-top:4px;">Default Probability</span>
       </div>
-      <div class="rpt-risk-detail">
-        <div
-          class="rpt-risk-badge"
-          style="color:{{ record.color }}; background:{{ record.color }}12; border-color:{{ record.color }}30"
-        >
+      <div class="rpt-risk-detail" style="flex:1; min-width:240px;">
+        <div class="rpt-risk-badge" style="display:inline-block; font-family:'Syne',sans-serif; font-weight:700; font-size:13px; padding:5px 14px; border-radius:20px; color:{{ rc }}; background:{{ rc }}18; border:1px solid {{ rc }}40; margin-bottom:10px;">
           {{ record.risk_level }}
         </div>
-        <div
-          class="rpt-verdict {% if record.prediction == 0 %}rpt-safe{% else %}rpt-risk{% endif %}"
-        >
-        <div class="rpt-risk-badge"
-          style="color:{{ record.color }}; background:{{ record.color }}12; border-color:{{ record.color }}30">
-          {{ record.risk_level }}
+        <div class="rpt-verdict" style="font-size:14px; font-weight:600; color:var(--tx-1); margin-bottom:12px;">
+          {% if record.prediction == 0 or record.verdict == 'Approve' or record.verdict == 'Repay' %}
+            ✅ Likely to Repay — Recommended for Approval
+          {% else %}
+            ⚠️ Default Risk Detected — Enhanced Committee Review Required
+          {% endif %}
         </div>
-        <div class="rpt-verdict {% if record.prediction == 0 %}rpt-safe{% else %}rpt-risk{% endif %}">
-          {% if record.prediction == 0 %} ✅ Likely to Repay — Recommended for
-          Approval {% else %} ⚠️ Default Risk Detected — Enhanced Review
-          Required {% endif %}
+        <div class="rpt-risk-bar-wrap" style="height:8px; background:rgba(255,255,255,0.06); border-radius:4px; overflow:hidden; margin-bottom:8px;">
+          <div class="rpt-risk-bar" style="height:100%; width: {{ record.probability }}%; background: {{ rc }};"></div>
         </div>
-        <div class="rpt-risk-bar-wrap">
-          <div
-            class="rpt-risk-bar"
-            style="width: {{ record.probability }}%; background: {{ record.color }}"
-          ></div>
-        </div>
-        <div class="rpt-risk-scale">
-          <span>0% (No Risk)</span><span>50%</span
-          ><span>100% (Certain Default)</span>
-          <div class="rpt-risk-bar" style="width: {{ record.probability }}%; background: {{ record.color }}"></div>
-        </div>
-        <div class="rpt-risk-scale">
-          <span>0% (No Risk)</span><span>50%</span><span>100% (Certain Default)</span>
+        <div class="rpt-risk-scale" style="display:flex; justify-content:space-between; font-size:10px; font-family:'DM Mono',monospace; color:var(--tx-3);">
+          <span>0% (No Risk)</span><span>50% (Threshold)</span><span>100% (High Risk)</span>
         </div>
       </div>
     </div>
@@ -125,55 +105,49 @@ endblock %} {% block content %}
   {% if record.raw_input %}
   <div class="rpt-section">
     <h2 class="rpt-section-title">Full Application Data</h2>
-    <div class="rpt-features">
-      {% for key, val in record.raw_input.items() %} {% if key not in
-      ['borrower_name'] and val %}
-      <div class="rpt-feat-row">
-        <span class="rf-key">{{ key.replace('_',' ').title() }}</span>
-        <span class="rf-val">{{ val }}</span>
+    <div class="rpt-features" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:10px;">
+      {% for key, val in record.raw_input.items() %}
+      {% if key not in ['borrower_name'] and val %}
+      <div class="rpt-feat-row" style="background:var(--navy-2); padding:8px 12px; border-radius:6px; border:1px solid var(--border); display:flex; justify-content:space-between; font-size:12px;">
+        <span class="rf-key" style="color:var(--tx-3);">{{ key.replace('_',' ').title() }}</span>
+        <span class="rf-val" style="color:var(--tx-1); font-weight:600;">{{ val }}</span>
       </div>
-      {% endif %} {% endfor %}
+      {% endif %}
+      {% endfor %}
     </div>
   </div>
   {% endif %}
 
   <!-- ── DISCLAIMER ─────────────────────────────────────────────────────── -->
-  <div class="rpt-disclaimer">
-    This report is generated automatically by the AegisBank AI Risk Engine and
-    This report is generated automatically by the Ministry of Banking AI Risk Engine and
-    is intended for internal review purposes only. It does not constitute a
-    formal credit decision. All lending decisions must be reviewed and approved
-    by a qualified credit officer in accordance with applicable regulations.
+  <div class="rpt-disclaimer" style="font-size:11px; color:var(--tx-3); line-height:1.6; margin-top:24px; padding-top:16px; border-top:1px solid var(--border);">
+    This report is generated automatically by the AegisBank AI Risk Engine and is intended for internal decision support purposes only. It does not constitute an automated legal refusal. All credit underwriting decisions must be audited and verified by authorized risk officers.
   </div>
 
   <!-- ── ACTIONS ────────────────────────────────────────────────────────── -->
-  <div class="rpt-actions">
-    <button onclick="window.print()" class="btn btn-outline">
+  <div class="rpt-actions" style="margin-top:24px; display:flex; gap:12px;">
+    <button onclick="window.print()" class="btn btn-primary">
       🖨 Print Report
     </button>
-    <a href="/reports" class="btn btn-ghost">← All Reports</a>
+    <a href="/reports" class="btn btn-outline">← All Reports</a>
     <a href="/" class="btn btn-ghost">New Assessment</a>
   </div>
 </div>
-{% endblock %} {% block scripts %}
+{% endblock %}
+
+{% block scripts %}
 <style>
   @media print {
-
-    .nav,
-    .rpt-actions,
-    .hero {
+    .nav, .rpt-actions, .hero, #verifyBanner {
       display: none !important;
     }
-
     .rpt-shell {
       margin: 0;
-      padding: 20px;
+      padding: 10px;
       max-width: 100%;
     }
-
     body {
-      background: white;
-      color: black;
+      background: white !important;
+      color: black !important;
     }
   }
 </style>

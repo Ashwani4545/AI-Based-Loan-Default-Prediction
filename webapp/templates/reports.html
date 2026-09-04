@@ -1,11 +1,13 @@
-{% extends "base.html" %} {% block title %}Reports{% endblock %} {% block
-content %}
+{% extends "base.html" %}
+{% block title %}Reports — Borrower Assessments{% endblock %}
+
+{% block content %}
 <div class="hero">
   <div class="hero-inner">
     <div class="hero-pill">📄 Borrower Reports</div>
     <h1 class="hero-h1">Individual<br /><em>Reports</em></h1>
     <p class="hero-sub">
-      Structured reports for every loan assessment, ready to view or print.
+      Structured reports for every loan assessment, ready to view, analyze, or print.
     </p>
   </div>
 </div>
@@ -14,27 +16,19 @@ content %}
   {% if records %}
   <div class="report-cards">
     {% for r in records %}
+    {% set card_color = r.color or ('#22c55e' if 'LOW' in (r.risk_level or '') else ('#f59e0b' if 'MEDIUM' in (r.risk_level or '') else '#ef4444')) %}
     <div class="report-card">
       <div class="rc-header">
-        <div
-          class="rc-avatar"
-          style="background: {{ r.color }}20; color: {{ r.color }}"
-        >
-        <div class="rc-avatar" style="background: {{ r.color }}20; color: {{ r.color }}">
-          {{ r.borrower[0].upper() if r.borrower else 'A' }}
+        <div class="rc-avatar" style="background: {{ card_color }}22; color: {{ card_color }};">
+          {{ (r.borrower[0] if r.borrower else 'A') | upper }}
         </div>
         <div class="rc-meta">
-          <div class="rc-name">{{ r.borrower }}</div>
+          <div class="rc-name">{{ r.borrower or 'Anonymous' }}</div>
           <div class="rc-date">
-            {{ r.timestamp[:10] }} · {{ r.purpose.replace('_',' ').title() }}
+            {{ (r.timestamp[:10] if r.timestamp else 'Recent') }} · {{ (r.purpose or 'Loan') | replace('_',' ') | title }}
           </div>
         </div>
-        <span
-          class="risk-pill"
-          style="color:{{ r.color }}; border-color:{{ r.color }}30; background:{{ r.color }}10; margin-left:auto"
-        >
-        <span class="risk-pill"
-          style="color:{{ r.color }}; border-color:{{ r.color }}30; background:{{ r.color }}10; margin-left:auto">
+        <span class="risk-pill" style="color:{{ card_color }}; border-color:{{ card_color }}33; background:{{ card_color }}14; margin-left:auto;">
           {{ r.risk_level }}
         </span>
       </div>
@@ -42,47 +36,41 @@ content %}
       <div class="rc-body">
         <div class="rc-stat">
           <div class="rc-stat-label">Default Probability</div>
-          <div class="rc-stat-value" style="color: {{ r.color }}">
+          <div class="rc-stat-value" style="color: {{ card_color }};">
             {{ r.probability }}%
           </div>
         </div>
         <div class="rc-stat">
           <div class="rc-stat-label">Loan Amount</div>
-          <div class="rc-stat-value">${{ "{:,.0f}".format(r.loan_amnt) }}</div>
+          <div class="rc-stat-value">${{ "{:,.0f}".format(r.loan_amnt or 0) }}</div>
         </div>
         <div class="rc-stat">
           <div class="rc-stat-label">Grade</div>
-          <div class="rc-stat-value">{{ r.grade }}</div>
+          <div class="rc-stat-value">{{ r.grade or 'B' }}</div>
         </div>
         <div class="rc-stat">
           <div class="rc-stat-label">Verdict</div>
-          <div
-            class="rc-stat-value {% if r.prediction == 0 %}color-green{% else %}color-red{% endif %}"
-          >
-          <div class="rc-stat-value {% if r.prediction == 0 %}color-green{% else %}color-red{% endif %}">
-            {% if r.prediction == 0 %}✅ Repay{% else %}⚠️ Default{% endif %}
+          <div class="rc-stat-value {% if r.prediction == 0 or r.verdict == 'Approve' or r.verdict == 'Repay' %}color-green{% else %}color-red{% endif %}">
+            {% if r.prediction == 0 or r.verdict == 'Approve' or r.verdict == 'Repay' %}✅ Repay{% else %}⚠️ Default{% endif %}
           </div>
         </div>
       </div>
 
       <div class="rc-foot">
-        <a href="/reports/{{ r.id }}" class="btn btn-outline btn-sm"
-          >View Full Report →</a
-        >
-        <a href="/reports/{{ r.id }}" class="btn btn-outline btn-sm">View Full Report →</a>
+        <a href="/reports/{{ r.id }}" class="btn btn-outline btn-sm" style="width:100%; text-align:center;">View Full Report →</a>
       </div>
     </div>
     {% endfor %}
   </div>
 
   {% else %}
-  <div class="empty-state">
-    <div class="es-icon">📄</div>
-    <div class="es-title">No reports yet</div>
-    <div class="es-sub">
-      Complete a loan assessment to generate a borrower report.
+  <div class="empty-state" style="text-align:center; padding: 60px 20px;">
+    <div class="es-icon" style="font-size:48px; margin-bottom:16px;">📄</div>
+    <div class="es-title" style="font-family:'Syne',sans-serif; font-size:20px; font-weight:700; margin-bottom:8px;">No reports generated yet</div>
+    <div class="es-sub" style="color:var(--tx-3); margin-bottom:24px;">
+      Complete a loan assessment to generate an individual borrower risk report.
     </div>
-    <a href="/" class="btn btn-outline">Start Assessment</a>
+    <a href="/" class="btn btn-primary">Start Assessment</a>
   </div>
   {% endif %}
 </div>

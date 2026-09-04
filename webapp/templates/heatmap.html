@@ -217,9 +217,10 @@ const map = L.map('riskMap', {
   zoomControl: true, attributionControl: false
 });
 
-// Dark tile layer
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-  maxZoom: 10
+// Clean Dark Tile Layer (Zero API key required, no watermarks)
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+  maxZoom: 12,
+  attribution: 'Tiles &copy; Esri'
 }).addTo(map);
 
 let geoLayer = null;

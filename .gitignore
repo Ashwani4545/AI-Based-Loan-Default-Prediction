@@ -1,10 +1,25 @@
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
-.venv
+
+# Virtual environments & Conda
+.conda_env/
+.conda_pkgs/
+.venv/
 venv/
 ENV/
+env/
+
+# Databases, Cache & Logs
 *.db
 *.log
 .env
+.DS_Store
+.matplotlib-cache/
+.mplcache/
+
+# IDEs
+.idea/
+.vscode/

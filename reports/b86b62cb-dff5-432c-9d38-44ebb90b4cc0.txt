@@ -1,0 +1,16 @@
+===== AegisBank Loan Risk Report =====
+Borrower:    j
+Loan Amount: $1,234,567,300.00
+Annual Inc:  $12,345,678.00
+
+Default Probability: 99.00%
+Risk Level:          VERY HIGH RISK (OVERRIDE)
+Decision:            Default
+Override:            True
+
+Key Risk Drivers (SHAP):
+  int_rate                            +0.787912  (↑ risk)
+  term__60_months                     +0.340912  (↑ risk)
+  risk_score                          -0.221228  (↓ risk)
+  fico_range_low                      -0.198860  (↓ risk)
+  loan_income_ratio                   -0.163596  (↓ risk)
